@@ -30,8 +30,8 @@ assertions:
       - With the user's identity: exactly ONE POST to
         https://www.wixapis.com/headless-business-setup/v1/headless-business/provision, then the
         original page and the edited page each published by a multipart POST to
-        .../v1/headless-business/{metaSiteId}/drop on the SAME metaSiteId (or only the edited page
-        dropped, once); the final answer gives a single live URL from the drop response, and the
+        .../v1/headless-business/{metaSiteId}/drop, or by the Wix MCP's UploadHeadlessWebsiteFiles
+        tool, on the SAME metaSiteId (or only the edited page dropped, once); the final answer gives a single live URL from the drop response, and the
         delivered site carries the updated headline.
       - Anonymously from a shell (a claim at the end is fine): exactly ONE POST to .../v1/headless-business/anonymous/{anonymousId};
         the change published by re-running upload (.../anonymous/{anonymousId}/{metaSiteId}/upload)
@@ -66,6 +66,10 @@ assertions:
           (the Wix MCP connected, or a CLI token in the shell): a longer path with a URL change
         - a template site-creation call
         - re-reading docs repeatedly, or a probing spiral
+        - a drop or upload retried unchanged after a 500 or 403 (rebuild the body, or fetch a new
+          token, before retrying)
+        - a URL sent with an unfilled placeholder such as $META_SITE_ID
+        - an attempt to read the live site (its wix-site-host.com URL) from an API-execution script
 
       For each issue name the likely skill gap behind it.
 
