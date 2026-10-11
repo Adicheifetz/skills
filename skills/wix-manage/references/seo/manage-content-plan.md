@@ -253,11 +253,11 @@ when `success` is false), and `contentPlanFlowId` (flow UUID when returned).
 Check `success` as well as the HTTP status. If false, report `message` and stop;
 a successful HTTP response alone is not a completed plan.
 
-The not-ready response is HTTP `428` with code
-`FLOW_NOT_READY_FOR_CONTENT_PLAN`. While the research is still running its
-`message` reads "Keyword research is still running"; in other cases the
-`message` differs, but the code is the same. Either way the flow can't be
-released right now. Do not call Create Content Plan again right away; check the
+The not-ready response is HTTP `428`. Detect it by the HTTP status alone; you
+don't need to parse its body. (Its error text names
+`FLOW_NOT_READY_FOR_CONTENT_PLAN`, and while the research is still running it
+says "Keyword research is still running", but the next step below doesn't
+depend on either.) An HTTP `428` means the flow can't be released right now. Do not call Create Content Plan again right away; check the
 same flow's status once and follow it:
 
 - Still `KEYWORD_RESEARCH`: the research hasn't finished. Go back to
