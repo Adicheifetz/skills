@@ -3,7 +3,7 @@ description: >-
   Verifies the agent knows the cross-service orchestration: a Content Plan Flow
   parked at KEYWORD_RESEARCH needs Create Content Plan (on the Blog Post Candidate
   service) to release it, but only after the flow's keyword research items
-  exist, because releasing earlier fails the flow.
+  exist, because an earlier release is refused with HTTP 428.
 triggerPrompt: >-
   My SEO content plan flow has been stuck at KEYWORD_RESEARCH for 10 minutes.
   I've been polling GetContentPlanFlow and the status never changes.
@@ -21,9 +21,11 @@ assertions:
       for 10 minutes and polling doesn't change the status.
 
       The correct answer: KEYWORD_RESEARCH is not a stall. The flow shows
-      it while keyword research runs and can then park there. Finishing the
-      research does not change the status by itself, so polling the flow
-      alone cannot show the research is ready. The user must first confirm
+      it while keyword research runs; when the research finishes the flow
+      usually moves to CONTENT_PLAN on its own, but it can also stay parked
+      at KEYWORD_RESEARCH, and the status alone does not show whether the
+      research is ready. A flow still there after 10 minutes is parked. The
+      user must first confirm
       the research is ready
       (GET /content-plan-keyword-research-items returns items with the
       flow's keywordResearchId), then call Create Content Plan once
@@ -47,9 +49,9 @@ assertions:
       - told the user to call Create Content Plan once to release the flow,
       - provided enough detail to act (the endpoints or a clear description).
 
-      Score 9+ if it also mentioned the endpoint paths, that releasing
-      before the research is ready fails the flow, or that Create Content
-      Plan is on a different service than the one being polled.
+      Score 9+ if it also mentioned the endpoint paths, that a release
+      before the research is ready is refused with HTTP 428, or that Create
+      Content Plan is on a different service than the one being polled.
 
       Fail (score below 5) if the agent:
       - called KEYWORD_RESEARCH just an intentional pause and said to
