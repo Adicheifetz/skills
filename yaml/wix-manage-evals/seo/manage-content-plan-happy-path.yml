@@ -18,11 +18,15 @@ assertions:
     prompt: |
       Require evidence of ALL steps in order for the same flow:
       1. POST /content-plan-flows/trigger and capture the returned contentPlanFlowId.
-      2. GET /content-plan-flows/{id} until contentPlanFlow.status is KEYWORD_RESEARCH.
+      2. GET /content-plan-flows/{id} until contentPlanFlow.status is
+         KEYWORD_RESEARCH or a later status (CONTENT_PLAN or SUCCESS). Fast
+         research can pass KEYWORD_RESEARCH between two checks; seeing a later
+         status satisfies this step.
       3. Keep checking the same flow while the research runs. If it moves to
          CONTENT_PLAN or SUCCESS on its own, steps 3 and 4 are satisfied
          without a release.
-      4. Only if the flow stays at KEYWORD_RESEARCH for 20 sequential checks: GET
+      4. Only if the flow stays at KEYWORD_RESEARCH for about 20 sequential
+         checks (a few more or fewer is fine): GET
          /content-plan-keyword-research-items, and POST /create-content-plan
          once only after it returns items with the flow's keywordResearchId.
          A 404 "No Keyword research" reply there means not ready yet. A 428
@@ -52,9 +56,12 @@ assertions:
       Penalize: one API execution that loops, sleeps, or waits for a status
       inside the call instead of separate checks; guessed shapes; repeated
       triggers; non-2xx errors; several status checks sent together instead
-      of one at a time; checking the keyword research items before 20
-      sequential status checks at KEYWORD_RESEARCH; more than one 404 reply
-      from that check; and documentation lookups after an expected 404.
+      of one at a time; checking the keyword research items within the first
+      few status checks at KEYWORD_RESEARCH (being a few checks off the
+      skill's ~20 guide is not friction); 404 replies from that check spaced
+      much closer than the skill's ~10-check cadence (several 404s at that
+      cadence in a slow run are fine); and documentation lookups after an
+      expected 404.
       Identify likely skill, MCP, API, or provisioning causes for each friction.
       Return ONLY {"score":<0-10>,"reason":"<frictions and causes, or clean path>"}.
 siteSetup:

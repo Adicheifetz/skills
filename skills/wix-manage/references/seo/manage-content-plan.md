@@ -184,9 +184,11 @@ on its own:
 
 - `CONTENT_PLAN`: skip Create Content Plan; continue with step 5.
 - `SUCCESS`: go to step 6.
-- Still `KEYWORD_RESEARCH` after 20 checks in a row, or the user says it has
-  been there for two minutes or more: check the research once. Never check it
-  sooner; before that it is usually not ready:
+- Still `KEYWORD_RESEARCH` after about 20 checks in a row (roughly two
+  minutes), or the user says it has been there for two minutes or more: check
+  the research once. The count is a guide, not an exact rule: a few checks
+  early or late is fine, but don't check it within the first few checks,
+  because it is usually not ready then:
 
 ```
 GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items
@@ -204,13 +206,15 @@ It takes no parameters and returns the site's most recent research. Keep only
 
 | Response | Next action |
 | --- | --- |
-| `404` `NOT_FOUND: No Keyword research for given content plan` | Not ready yet. The request is correct; do not change it or look up docs. Make 10 more flow status checks before you check the research again. |
-| Other `keywordResearchId` than the flow's | Earlier research. Make 10 more flow status checks before you check the research again; the 60-check limit below still applies. |
+| `404` `NOT_FOUND: No Keyword research for given content plan` | Not ready yet. The request is correct; do not change it or look up docs. Make about 10 more flow status checks (roughly another minute) before you check the research again. |
+| Other `keywordResearchId` than the flow's | Earlier research. Make about 10 more flow status checks before you check the research again; the limit below still applies. |
 | Flow's `keywordResearchId`, at least one item | Ready. Call Create Content Plan once (step 4). |
 | Any other error | Report it and stop. |
 
-At the 60th status check, check the research one last time; if it is still
-not ready, report the flow ID as incomplete. These counts are heuristics from
+After about 60 status checks (roughly five minutes), check the research one
+last time; if it is still not ready, report the flow ID as incomplete. If you
+lose exact count, estimate; stopping a few checks early or late is fine. These
+counts are heuristics from
 flows observed in September 2026: research took 14 to 76 seconds, and 20
 checks took one to two minutes when sent back to back (about five minutes at
 15-second spacing, which also covers it). Retune them if that timing changes.
@@ -273,8 +277,8 @@ Same single-GET execution and nested response as step 2, using the same flow
 ID and returning after each check, one at a time. Typical status progression:
 `CONTENT_PLAN` → `SUCCESS`. Generating the briefs took 20 to 50 seconds in
 observed runs, often more checks than the research wait: keep checking while
-the status is `CONTENT_PLAN`, up to 60 checks, before reporting the flow as
-incomplete. Read candidates in a subsequent execution after observing
+the status is `CONTENT_PLAN`, up to about 60 checks (an estimate is fine),
+before reporting the flow as incomplete. Read candidates in a subsequent execution after observing
 `SUCCESS`.
 
 ### 6. Read the briefs
@@ -381,8 +385,8 @@ durable across generations.
   Create Content Plan (step 4).
 - Call Create Content Plan as soon as the status is `KEYWORD_RESEARCH`, before
   the flow's keyword research items exist.
-- Check the keyword research items during generation before 20 status checks
-  in a row at `KEYWORD_RESEARCH`.
+- Check the keyword research items within the first few status checks at
+  `KEYWORD_RESEARCH`, well before the ~20-check guide in step 3.
 - Read candidates before `SUCCESS`.
 - Retry after `PENDING_REQUIREMENTS`.
 - Ask for a site ID.
