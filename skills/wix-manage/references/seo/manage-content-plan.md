@@ -192,8 +192,10 @@ own:
 - `CONTENT_PLAN`: skip Create Content Plan; continue with step 5.
 - `SUCCESS`: go to step 6.
 - Still `KEYWORD_RESEARCH` at check 20, or the user says it has been there for
-  five minutes or more: check the research once. Not before check 20; it is
-  usually not ready sooner:
+  five minutes or more: check the research once. Check 20 is the one trigger:
+  it comes at least about 80 seconds in even when checks run back to back, and
+  about five minutes in at 15-second spacing, so either way the research has
+  had its observed time to finish. Not before check 20:
 
   ```
   GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items
@@ -217,12 +219,10 @@ It takes no parameters and returns the site's most recent research. Keep only
 | Any other error | Report it and stop. |
 
 At check 60, check the research one last time; if it is still not ready,
-report the flow ID as incomplete. Check 20 comes after about 80 seconds even
-when checks run back to back, so a flow still at `KEYWORD_RESEARCH` there is
-parked rather than still researching; most flows leave the status on their own
-well before it. A release before the
-research is ready gets the [not-ready `428`](#4-release-the-flow) and the flow
-keeps waiting; keep checking instead of retrying the release.
+report the flow ID as incomplete. Most flows leave `KEYWORD_RESEARCH` on their
+own well before check 20. A release before the research is ready gets the
+[not-ready `428`](#4-release-the-flow) and the flow keeps waiting; keep
+checking instead of retrying the release.
 See [List Keyword Research Items](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-keyword-research-v1/list-keyword-research-items).
 
 ### 4. Release the flow
@@ -363,9 +363,11 @@ flow's `keywordResearchId`.
 
 A read before the research finishes returns a not found error or an earlier
 research's `keywordResearchId`. A user request to see or edit keywords is not
-a reason to check sooner: during generation, wait as step 3 says. Outside
-generation, read once; on a not found error, tell the user the research is not
-ready yet instead of retrying.
+a reason to check sooner. Treat it as during generation when a flow you know
+of (triggered in this conversation, or whose ID the user gave you) has a
+status check that last returned `CREATED`, `SITE_ANALYSIS` or
+`KEYWORD_RESEARCH`: wait as step 3 says. Otherwise, read once; on a not found
+error, tell the user the research is not ready yet instead of retrying.
 
 ```
 GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items
