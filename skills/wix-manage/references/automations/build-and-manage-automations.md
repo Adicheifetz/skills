@@ -162,9 +162,10 @@ resource, finish setup). Report its `title`/`message` and the `ctaUrl`, and don'
    Run the Get as a separate call once Create has returned (not batched into the same script),
    and keep its response body as returned: the returned `automation` is the evidence, so don't
    replace it with a summary you assemble from selected fields.
-4. Hand off: name, status (inactive), id, and the edit link
-   `https://manage.wix.com/dashboard/<metaSiteId>/triggers/edit/<automationId>`. Ask the user to
-   review it in the builder; its main button on an inactive automation, **Activate**, turns it on.
+4. Hand off, leading with the outcome: open your answer by saying it is saved and inactive, and
+   that **Activate** in the builder turns it on, with the edit link
+   `https://manage.wix.com/dashboard/<metaSiteId>/triggers/edit/<automationId>`. Then give the
+   name, id and what it does, and ask the user to review it in the builder.
 5. Do not activate through the API in this stage, even if the user asks: tell them to click **Activate** in the builder (edit link above).
 
 ### Update
