@@ -182,11 +182,12 @@ step 3 describes. Completion time varies.
 
 Keep checking the flow status (the step 2 request), one request at a time:
 wait for each reply before the next check, and wait 15 seconds between checks
-if your client can. Requests sent together count as one check. Number the
-checks out loud as you go ("check 7 of 60") so the count survives a long
-wait; count only checks that return `KEYWORD_RESEARCH`. Research usually
-finishes within a minute or two; when it does, generation usually starts on
-its own:
+if your client can. Requests sent together count as one check. Keep a
+running count of the checks that return `KEYWORD_RESEARCH` in your own notes
+so it survives a long wait; it's for you, not the user, who only needs a short
+progress line such as "still researching keywords". In observed runs, research
+finished within about 80 seconds, and generation then usually starts on its
+own:
 
 - `CONTENT_PLAN`: skip Create Content Plan; continue with step 5.
 - `SUCCESS`: go to step 6.
@@ -216,9 +217,10 @@ It takes no parameters and returns the site's most recent research. Keep only
 | Any other error | Report it and stop. |
 
 At check 60, check the research one last time; if it is still not ready,
-report the flow ID as incomplete. These counts are heuristics, not measured
-limits: most flows leave `KEYWORD_RESEARCH` on their own well before check 20,
-so they only matter for a flow that stays parked. A release before the
+report the flow ID as incomplete. Check 20 comes after about 80 seconds even
+when checks run back to back, so a flow still at `KEYWORD_RESEARCH` there is
+parked rather than still researching; most flows leave the status on their own
+well before it. A release before the
 research is ready gets the [not-ready `428`](#4-release-the-flow) and the flow
 keeps waiting; keep checking instead of retrying the release.
 See [List Keyword Research Items](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-keyword-research-v1/list-keyword-research-items).
