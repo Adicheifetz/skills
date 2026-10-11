@@ -369,7 +369,7 @@ Use the Extension Types Reference Table and decision content above. State extens
 | ------------------------------------ | ------------------------------------ | --------------------------------------------------- |
 | "Display store products"             | ✅ YES (MCP discovery)               | Wix Stores API — **include Stores Versioning reference** |
 | "Dashboard for orders / refunds"     | ✅ YES (MCP discovery)               | Wix eCommerce API (`@wix/ecom`) — **NEVER a CMS collection** |
-| "Show booking calendar"              | ✅ YES (MCP discovery)               | Wix Bookings SDK not in reference files (only Bookings service plugins are) |
+| "Show booking calendar"              | ✅ YES (MCP discovery)               | Wix Bookings API not in reference files             |
 | "Send emails to users"               | ✅ YES (MCP discovery)               | Wix Triggered Emails not in reference files         |
 | "Get member info"                    | ✅ YES (MCP discovery)               | Wix Members API not in reference files              |
 | "Listen for cart events"             | Check `COMMON-EVENTS.md`             | MCP discovery only if event missing in reference    |

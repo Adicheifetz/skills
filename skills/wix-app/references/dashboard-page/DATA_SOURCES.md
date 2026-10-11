@@ -34,8 +34,6 @@ Three consequences worth knowing before you start grepping:
 
 ## Confirming a method
 
-Locate the method through the docs first; this only confirms it exists in the installed version.
-
 ```bash
 E=node_modules/@wix/auto_sdk_ecom_order-transactions/build/es
 grep -oE "^declare function [a-zA-Z]+" $E/index.d.mts
