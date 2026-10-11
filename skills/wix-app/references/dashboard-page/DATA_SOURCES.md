@@ -1,8 +1,8 @@
 # Finding the real SDK shape behind a dashboard page
 
-> **Scope.** [DRAFT_TEMPLATE.md](DRAFT_TEMPLATE.md) gives you the page; this file finds the method
-> and *field names* for its data. Read it before Step 3's MCP discovery. The installed package is
-> the version your code compiles against.
+> **Scope.** [DRAFT_TEMPLATE.md](DRAFT_TEMPLATE.md) gives you the page; this file verifies the method
+> and *field names* for its data against the installed package. Locate the method through the docs
+> first (Step 3), then read this. The installed package is the version your code compiles against.
 
 ## Where the types actually live
 
@@ -33,6 +33,8 @@ Three consequences worth knowing before you start grepping:
    `grep -oE "^declare (const|function) [a-zA-Z]+"` — or pipe any barrel grep through `cut -c1-200`.
 
 ## Confirming a method
+
+Locate the method through the docs first; this only confirms it exists in the installed version.
 
 ```bash
 E=node_modules/@wix/auto_sdk_ecom_order-transactions/build/es
