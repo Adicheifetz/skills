@@ -182,7 +182,7 @@ step 3 describes. Completion time varies.
 Keep checking the flow status (the step 2 request), one request at a time:
 wait for each reply before the next check, and wait 15 seconds between checks
 if your client can. Requests sent together count as one check. Research
-usually takes 14 to 76 seconds; when it finishes, generation usually starts
+usually finishes within a minute or two; when it does, generation usually starts
 on its own:
 
 - `CONTENT_PLAN`: skip Create Content Plan; continue with step 5.
@@ -216,10 +216,12 @@ It takes no parameters and returns the site's most recent research. Keep only
 
 After about 60 status checks, check the research one last time; if it is
 still not ready, report the flow ID as incomplete. If you lose exact count,
-estimate; stopping a few checks early or late is fine. These counts hold
-whatever the spacing: in flows observed in September 2026, research took 14 to
-76 seconds, which about 20 checks cover both back to back and at 15-second
-spacing. Retune them if that timing changes.
+estimate; stopping a few checks early or late is fine. These counts are rough
+heuristics, not measured limits. Most flows leave `KEYWORD_RESEARCH` on their
+own long before about 20 checks, so the counts only matter for a flow that
+stays parked; for that flow, checking the research a little late costs only a
+few extra status checks, and checking it too early is harmless because an
+early release is refused with HTTP `428`.
 Calling Create Content Plan before the research is ready returns HTTP `428`
 ("Keyword research is still running") and leaves the flow waiting; keep
 checking instead of retrying the release.
