@@ -35,6 +35,7 @@ const BUSINESS_MANAGER_DEFAULTS: WixDesignSystemDefaultProps = {
   IconButton: { size: 'small', skin: 'dark', priority: 'tertiary' },
   TextButton: { size: 'small', skin: 'standard' },
   Input: { size: 'small' },
+  Search: { size: 'small', border: 'standard' },
 };
 
 export const BusinessManagerTheme: FC<{ children: ReactNode; locale?: string }> = ({
@@ -65,6 +66,8 @@ Duplicating these four providers per entry file is how one surface silently drif
 
 A prop on a component still wins over the provider, so a one-off `size="medium"` is fine. **A nested `WixDesignSystemDefaultPropsProvider` replaces these defaults rather than merging**, so don't add a second for one subtree. And don't pass `features={{ newColorsBranding: true }}` — it predates the theme and is not a substitute.
 
+**`Search` is in the list for a reason.** It defaults to `border: 'round'` — a full pill — while `Input` defaults to `'standard'`. Business Manager uses standard corners, so without that entry every search field comes out pill-shaped beside square inputs. The published default-props snippet omits `Search`; this one does not. It reaches a `@wix/patterns` search too: `resolveDefaultProps` fills a prop only when it is `undefined`, and patterns' `QuerySearch` passes `border: isBmHarmonyTheme ? 'standard' : undefined`, so that `undefined` falls through to here. An explicitly-valued prop would not.
+
 ## 3. Where the wrapper goes
 
 **Write the file once per app; use it once per extension.** Every dashboard extension — page, modal, plugin — is a separate iframe, so each needs its own wrapper at its own root, in the file that owns the providers, never in a child, tab or helper file:
@@ -94,11 +97,25 @@ Two things worth knowing before you convert everything:
 - **`/lazy/system` is not where app icons live.** The `system` entry holds WDS's own internal component decorations (`CheckboxChecked`, `DropDownArrow`, …) — about 80 glyphs. Ordinary icons like `Add` and `Confirm` are in `/lazy` itself, so importing them from `/lazy/system` fails `tsc` with "no exported member".
 - **A lazy icon is a network fetch.** `core/icon.js` fetches the glyph JSON from the CDN at render time and suspends, falling back to an empty state on failure. That is fine in the dashboard, but a unit test asserting icon markup synchronously will see the fallback. If you need the redesign glyphs statically inlined with no provider and no fetch, `@wix/wix-ui-icons-common/odeditor` is a real entry point — `lazy` is still the default here because one import keeps tracking the right set both inside and outside Business Manager.
 
-## 5. Tokens and component adjustments
+## 5. A `@wix/patterns` page has a second gate
+
+Verified at `@wix/patterns` 1.486.0. Patterns does **not** read the WDS theme to decide its own look. It calls `useBmHarmonyTheme()`, which is `experiments.enabled('bmHarmonyTheme')` resolved from the patterns container (scope `cairo`) — a Petri experiment, not a provider you can set.
+
+So a collection page can be wired perfectly per this file and still render patterns' own chrome in the pre-redesign style:
+
+| Symptom | What patterns passes with the experiment off | Does the wrapper fix it? |
+| --- | --- | --- |
+| Filter button outlined, not tertiary | `ResponsiveButton` → `priority: 'secondary'` (explicit) | **No.** An explicit prop beats the defaults provider — it needs the experiment |
+| Search renders as a pill | `QuerySearch` → `border: undefined` | **Yes** — `undefined` falls through to the `Search` default in § 2 |
+| Toolbar icons look like the old set | `ContentFilter` from `/lazy`, resolved via `IconThemeContext` | **Yes** — that is what `IconThemeProvider theme="odeditor"` is for. A lazy icon with no provider renders the *default*, i.e. classic, set |
+
+**So before hunting through your own code:** a filter button still rendering secondary is the experiment, not your wiring — raise it with the `@wix/patterns` team rather than overriding it per call site. An old-looking icon, by contrast, almost always means the icon providers are missing or that surface sits outside the wrapper.
+
+## 6. Tokens and component adjustments
 
 Everything you style yourself — which `--wds-*` token replaces a hardcoded value, which `skin`/`size` prop replaces an inline `style`, the spacing unit the theme rebases, and the per-component adjustments the wrapper can't make for you — is in [BUSINESS_MANAGER_TOKENS.md](BUSINESS_MANAGER_TOKENS.md). Read it before styling anything by hand.
 
-## 6. Verify
+## 7. Verify
 
 - The entry file wraps the page in `BusinessManagerTheme`, and that file imports both stylesheets and nests all four providers in order.
 - Every icon comes from `@wix/wix-ui-icons-common/lazy` (not the package root, and not `/lazy/system`).
