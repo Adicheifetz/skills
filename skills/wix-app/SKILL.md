@@ -34,7 +34,7 @@ Helps build extensions for Wix CLI applications. Covers all extension types: das
 
     For the object `useTableCollection()` returns, read [TABLE_STATE.md](references/dashboard-page/TABLE_STATE.md) — a state object you receive rather than construct, whose members are unobvious and several plausible ones absent.
 - [ ] **Step 3:** Checked API references; used MCP discovery only for gaps
-  - [ ] **Dashboard page over Wix data:** located the method through the docs (module map, then docs search and method schema), then verified every mapped field against the installed SDK's own declaration — see [DATA_SOURCES.md](references/dashboard-page/DATA_SOURCES.md), and [QUERY_AND_PAGING.md](references/dashboard-page/QUERY_AND_PAGING.md) before writing `fetchData`. A field marked `@deprecated` still compiles and renders something plausible and wrong.
+  - [ ] **Dashboard page over Wix data:** located the method through the docs (module map, then `SearchWixSDKDocumentation` and `ReadFullDocsMethodSchema`), then verified every mapped field against the installed SDK's own declaration — see [DATA_SOURCES.md](references/dashboard-page/DATA_SOURCES.md), and [QUERY_AND_PAGING.md](references/dashboard-page/QUERY_AND_PAGING.md) before writing `fetchData`. A field marked `@deprecated` still compiles and renders something plausible and wrong.
   - [ ] **Vertical SDK prerequisites — for every `@wix/*` vertical the page touches, including one added later:** confirmed the package is actually a dependency (installed it if not), and noted the Dev Center permission scope the read needs — a missing scope produces a page that builds, mounts and shows nothing. Both in [DATA_SOURCES.md](references/dashboard-page/DATA_SOURCES.md#two-things-to-settle-before-you-write-the-page); the scope goes under [Manual Steps Required](#-manual-steps-required). **A second vertical added during Step 4b needs this check too, and its failure must not take down the page** — see [A second vertical is a second scope](references/dashboard-page/DATA_SOURCES.md#a-second-vertical-is-a-second-scope).
   - [ ] **Modelled the call on the SDK, not the REST page:** namespace name, `_id` vs `id`, no `ReturnType` on overloaded methods, no `hasNext` on `PagingMetadataV2` — see [The SDK is not the REST API](references/dashboard-page/DATA_SOURCES.md#the-sdk-is-not-the-rest-api).
   - [ ] Site/editor extensions only: kept SDK calls in the extension by default, routing out only business-wide methods a visitor genuinely cannot call (see [Identity and Elevation Requirement](#identity-and-elevation-requirement))
@@ -227,7 +227,7 @@ Use a Dashboard Modal for dialogs that neither write nor display a listed record
 
 **CRITICAL:** Data owned by an existing Wix business app is read and written through that app's SDK module — NEVER modeled as a new CMS Data Collection. A custom collection for such data starts empty and stays disconnected from the real records (e.g., a "refunds dashboard" built on CMS shows an empty state while refunded orders exist in Wix eCommerce).
 
-Find the entity the user mentioned in the [entity → SDK module map](references/SDK_MODULE_MAP.md) and use that package. If the entity isn't listed or you're unsure, search the SDK docs for it — **never conclude CMS with zero MCP calls**. CMS is only for data your app itself introduces (configuration, rules, app-specific records) that no Wix app manages.
+Find the entity the user mentioned in the [entity → SDK module map](references/SDK_MODULE_MAP.md) and use that package. If the entity isn't listed or you're unsure, run `SearchWixSDKDocumentation` for it — **never conclude CMS with zero MCP calls**. CMS is only for data your app itself introduces (configuration, rules, app-specific records) that no Wix app manages.
 
 **SDK types:** access them through the namespace you import, as `<namespace>.<TypeName>`, using any type name shown in the docs — never import a type by name from the `@wix/<pkg>` root.
 
@@ -381,11 +381,11 @@ Use the Extension Types Reference Table and decision content above. State extens
 | "Settings page with form inputs"     | N/A (UI only, no external API)       | ❌ Skip discovery                                   |
 | "Dashboard page with local state"    | N/A (no external API)                | ❌ Skip discovery                                   |
 
-**Docs tools for discovery (when needed):**
+**MCP Tools for discovery (when needed):**
 
-- SDK docs search - finds SDK methods and APIs (**keep the result limit at 5**)
-- Method schema reader - full type schema for a specific SDK method (parameters, return type, permissions)
-- Article reader - prose guides and conceptual articles only (not for SDK method signatures)
+- `SearchWixSDKDocumentation` - SDK methods and APIs (**Always use maxResults: 5**)
+- `ReadFullDocsMethodSchema` - Full type schema for a specific SDK method (parameters, return type, permissions)
+- `ReadFullDocsArticle` - Prose guides and conceptual articles only (not for SDK method signatures)
 
 ### Step 4a: Scaffold via the CLI
 

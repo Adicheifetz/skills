@@ -13,7 +13,7 @@ The Custom Triggers SPI allows you to define custom conditions that can trigger 
 
 ## Request and Response Schema
 
-Before implementing, get the method schema from each docs URL for the full request/response types.
+Before implementing, call `ReadFullDocsMethodSchema` on each docs URL to get the full request/response types.
 
 | Handler | Docs URL |
 | --- | --- |

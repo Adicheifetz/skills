@@ -6,7 +6,7 @@ The Additional Fees SPI lets you add custom fees to orders during checkout (hand
 
 ## Request and Response Schema
 
-Before implementing, get the method schema from the docs URL for the full request/response types.
+Before implementing, call `ReadFullDocsMethodSchema` on the docs URL to get the full request/response types.
 
 | Handler | Docs URL |
 | --- | --- |
