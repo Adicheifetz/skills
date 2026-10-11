@@ -5,17 +5,13 @@ description: "Inspect Wix automations and create inactive linear automations usi
 
 **Topic guides not yet published:** Automations Feasibility and Planning; Automations Entity and Provider Configuration; Automations Item Selection; Automations Email Actions; Automations Conditions; Automations Delays Variables and Branches; Automations Schemas and Scheduling. References marked “not yet published” refer to procedures that are not in this stage; the general API reference does not contain them. Do not attempt a workflow that requires one of them.
 
-This stage supports read-only inspection and creation of inactive, immediate, linear APP_DEFINED automations with schema-defined inputs. Configuration updates, deletion, activation/deactivation, execution tests, email/opaque widgets, entity pickers, schedules, conditions and special steps are outside this stage. Do not perform those workflows with this skill. Validation and its numbered checklist are included in this guide.
+This stage supports read-only inspection and creation of inactive, immediate, linear APP_DEFINED automations with schema-defined inputs. Configuration updates, deletion, activation/deactivation, execution tests, email/opaque widgets, entity pickers, schedules, conditions and special steps are outside this stage. Do not perform those workflows with this skill. Validation and its numbered checklist are included in this guide. “Stage” and “not yet published” describe how this skill is being rolled out; never mention them to the user. Explain a limit in product terms: what can’t be done through the API here and where the user can do it instead (for example, **Activate** in the automations builder).
 
 # Build and Manage Wix Automations
 
-This skill supports inspection and creation of **inactive, immediate, linear**
-automations whose nodes are APP_DEFINED actions with schema-defined inputs. Configuration
-updates, activation/deactivation and Test Automation are not supported in this stage.
-Email/opaque widgets, entity pickers, schedules, condition nodes and special steps require
-later guides. If the request needs one, explain the limit; do not substitute a different
-business operation. A conditional formula in a schema-enabled input is supported by the
-expression guide; it is not a condition node.
+If a request needs a workflow outside the scope above, explain the limit; do not substitute a
+different business operation. A conditional formula in a schema-enabled input is supported by
+the expression guide; it is not a condition node.
 
 ## Required guides
 

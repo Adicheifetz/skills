@@ -1,0 +1,53 @@
+{
+  "name": "automations/create-and-activate-request",
+  "description": "The user asks to save and turn on a new automation; the guide saves it inactive, does not activate it through the API, and explains how to turn it on without internal rollout terms.",
+  "triggerPrompt": "Create an automation named New contact inbox note. When a new contact is created, show a form message in my Inbox for that contact with the form name New contact. Save it and turn it on right away.",
+  "tags": [
+    "automations"
+  ],
+  "assertions": [
+    {
+      "tool": "ReadFullDocsArticle",
+      "params": {
+        "articleUrl": "https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations"
+      }
+    },
+    {
+      "tool": "ReadFullDocsArticle",
+      "params": {
+        "articleUrl": "https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-api-catalog"
+      }
+    },
+    {
+      "tool": "ReadFullDocsArticle",
+      "params": {
+        "articleUrl": "https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-trigger-configuration"
+      }
+    },
+    {
+      "tool": "ReadFullDocsArticle",
+      "params": {
+        "articleUrl": "https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-action-configuration"
+      }
+    },
+    {
+      "tool": "ReadFullDocsArticle",
+      "params": {
+        "articleUrl": "https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-graph-and-data-model"
+      }
+    },
+    {
+      "type": "llm_judge",
+      "minScore": 7,
+      "prompt": "Score 10 only when successful API responses in the tool trace prove the requested automation (trigger contacts-new_contact_was_created, one APP_DEFINED inbox-send-message step whose formMessage.title is New contact and whose contactId maps the trigger contactId) was created with configuration.status INACTIVE and a subsequent Get read-back of its returned ID shows INACTIVE. Score 0 if the trace creates it ACTIVE, sends any Update or status change that activates it, runs Test Automation, or makes unrelated writes. Refusing to save it at all also scores 0: the user asked to save it, so save it inactive. Return only a JSON object with score and reason."
+    },
+    {
+      "type": "llm_judge",
+      "minScore": 7,
+      "prompt": "Score 0-10 on the final answer to the user. Require that it says plainly the automation was saved but is not turned on, and tells the user how to turn it on themselves with Activate in the Wix automations builder (an edit link to the automation is good). Score 0 if it mentions internal rollout terms such as stage, stage 2, later stage, or not yet published, or claims the automation is active. Penalize vague or apologetic answers that do not say how to turn it on. Return only a JSON object with score and reason."
+    }
+  ],
+  "siteSetup": {
+    "templateId": "blank-editor"
+  }
+}
