@@ -13,8 +13,8 @@ Generation creates briefs, not published posts.
 
 `KEYWORD_RESEARCH` means keyword research is running or already done; the
 status alone does not say which. When the research finishes, the flow usually
-moves to `CONTENT_PLAN` on its own (seen in production flows and in this
-recipe's evaluation runs), but it can also stay parked at `KEYWORD_RESEARCH`
+moves to `CONTENT_PLAN` on its own, but it can also stay parked at
+`KEYWORD_RESEARCH`
 after the research is ready. A
 **Create Content Plan** request is the fallback for a flow that stays paused,
 used only as [step 3](#3-wait-for-the-keyword-research) says: a release before
@@ -279,10 +279,10 @@ See [Create Content Plan](https://dev.wix.com/docs/api-reference/business-manage
 
 Same single-GET execution and nested response as step 2, using the same flow
 ID and returning after each check, one at a time. Typical status progression:
-`CONTENT_PLAN` → `SUCCESS`. Generating the briefs took 20 to 50 seconds in
-observed runs, often more checks than the research wait: keep checking while
-the status is `CONTENT_PLAN`, up to about 60 checks (an estimate is fine),
-before reporting the flow as incomplete. Read candidates in a subsequent execution after observing
+`CONTENT_PLAN` → `SUCCESS`. Generating the briefs is usually quick, often
+under a minute; keep checking while the status is `CONTENT_PLAN`, up to about
+60 checks as a safety margin (an estimate is fine), before reporting the flow
+as incomplete. Read candidates in a subsequent execution after observing
 `SUCCESS`.
 
 ### 6. Read the briefs
