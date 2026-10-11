@@ -14,12 +14,11 @@ Generation creates briefs, not published posts.
 `KEYWORD_RESEARCH` means keyword research is running or already done; the
 status alone does not say which. When the research finishes, the flow usually
 moves to `CONTENT_PLAN` on its own, but it can also stay parked at
-`KEYWORD_RESEARCH`
-after the research is ready. A
+`KEYWORD_RESEARCH` after the research is ready. A
 **Create Content Plan** request is the fallback for a flow that stays paused,
 used only as [step 3](#3-wait-for-the-keyword-research) says: a release before
-the research is ready is refused with HTTP `428` and must not be retried in a
-loop.
+the research is ready gets the [not-ready `428`](#4-release-the-flow) and must
+not be retried in a loop.
 
 Use the selected site's authorization context. Trigger and Create Content Plan
 are writes requiring **Manage SEO Settings**; execute them when the user has
@@ -183,17 +182,17 @@ step 3 describes. Completion time varies.
 
 Keep checking the flow status (the step 2 request), one request at a time:
 wait for each reply before the next check, and wait 15 seconds between checks
-if your client can. Requests sent together count as one check. Research
-usually finishes within a minute or two; when it does, generation usually starts
-on its own:
+if your client can. Requests sent together count as one check. Number the
+checks out loud as you go ("check 7 of 60") so the count survives a long
+wait; count only checks that return `KEYWORD_RESEARCH`. Research usually
+finishes within a minute or two; when it does, generation usually starts on
+its own:
 
 - `CONTENT_PLAN`: skip Create Content Plan; continue with step 5.
 - `SUCCESS`: go to step 6.
-- Still `KEYWORD_RESEARCH` after about 20 checks in a row, whatever the
-  spacing, or the user says it has been there for five minutes or more: check
-  the research once. The count is a guide, not an exact rule: a few checks
-  early or late is fine, but don't check it within the first few checks,
-  because it is usually not ready then:
+- Still `KEYWORD_RESEARCH` at check 20, or the user says it has been there for
+  five minutes or more: check the research once. Not before check 20; it is
+  usually not ready sooner:
 
   ```
   GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items
@@ -211,22 +210,17 @@ It takes no parameters and returns the site's most recent research. Keep only
 
 | Response | Next action |
 | --- | --- |
-| `404` `NOT_FOUND: No Keyword research for given content plan` | Not ready yet. The request is correct; do not change it or look up docs. Make about 10 more flow status checks before you check the research again. |
-| Other `keywordResearchId` than the flow's | Earlier research. Make about 10 more flow status checks before you check the research again; the limit below still applies. |
+| `404` `NOT_FOUND: No Keyword research for given content plan` | Not ready yet. The request is correct; do not change it or look up docs. Check the research again at check 30, 40 and 50. |
+| Other `keywordResearchId` than the flow's | Earlier research. Check the research again at check 30, 40 and 50, as for a `404`. |
 | Flow's `keywordResearchId`, at least one item | Ready. Call Create Content Plan once (step 4). |
 | Any other error | Report it and stop. |
 
-After about 60 status checks, check the research one last time; if it is
-still not ready, report the flow ID as incomplete. If you lose exact count,
-estimate; stopping a few checks early or late is fine. These counts are rough
-heuristics, not measured limits. Most flows leave `KEYWORD_RESEARCH` on their
-own long before about 20 checks, so the counts only matter for a flow that
-stays parked; for that flow, checking the research a little late costs only a
-few extra status checks, and checking it too early is harmless because an
-early release is refused with HTTP `428`.
-Calling Create Content Plan before the research is ready returns HTTP `428`
-("Keyword research is still running") and leaves the flow waiting; keep
-checking instead of retrying the release.
+At check 60, check the research one last time; if it is still not ready,
+report the flow ID as incomplete. These counts are heuristics, not measured
+limits: most flows leave `KEYWORD_RESEARCH` on their own well before check 20,
+so they only matter for a flow that stays parked. A release before the
+research is ready gets the [not-ready `428`](#4-release-the-flow) and the flow
+keeps waiting; keep checking instead of retrying the release.
 See [List Keyword Research Items](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-keyword-research-v1/list-keyword-research-items).
 
 ### 4. Release the flow
@@ -259,7 +253,10 @@ when `success` is false), and `contentPlanFlowId` (flow UUID when returned).
 Check `success` as well as the HTTP status. If false, report `message` and stop;
 a successful HTTP response alone is not a completed plan.
 
-HTTP `428` with `FLOW_NOT_READY_FOR_CONTENT_PLAN` means the flow can't be
+The not-ready response is HTTP `428` with code
+`FLOW_NOT_READY_FOR_CONTENT_PLAN`. While the research is still running its
+`message` reads "Keyword research is still running"; in other cases the
+`message` differs, but the code is the same. Either way the flow can't be
 released right now. Do not call Create Content Plan again right away; check the
 same flow's status once and follow it:
 
@@ -393,8 +390,8 @@ durable across generations.
   Create Content Plan (step 4).
 - Call Create Content Plan as soon as the status is `KEYWORD_RESEARCH`, before
   the flow's keyword research items exist.
-- Check the keyword research items within the first few status checks at
-  `KEYWORD_RESEARCH`, well before the ~20-check guide in step 3.
+- Check the keyword research items before check 20 at `KEYWORD_RESEARCH`
+  (step 3).
 - Read candidates before `SUCCESS`.
 - Retry after `PENDING_REQUIREMENTS`.
 - Ask for a site ID.
