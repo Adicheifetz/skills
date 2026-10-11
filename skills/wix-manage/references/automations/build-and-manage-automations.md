@@ -85,10 +85,7 @@ Semantic review (you, not code) — required for every action before acceptance;
 
 Request: `{automation: <full object>, validationSettings?}`. Validate the complete candidate
 you intend to save; an unsaved object doesn't need an id. For creation, set `origin: "USER"`,
-a real `name`, and `configuration.status: "INACTIVE"`. For updates, preserve the fetched
-`origin`, `settings` and status unless a status change was requested. For activation, validate
-the candidate with `configuration.status: "ACTIVE"`. Never rewrite an installed automation's
-origin or deactivate a live automation merely to validate it.
+a real `name`, and `configuration.status: "INACTIVE"`.
 
 `validationSettings.actionIds` validates just the listed actions — useful while configuring node
 by node. `skipProviderValidations: true` skips app-specific checks — acceptable for intermediate
@@ -280,8 +277,7 @@ this list is the union; run those too for the node types you used.
     code ≤ 1000, filter expression ≤ 5000, `skipActionExpression`/delay/rate-limit expressions ≤ 1000.
     Step count: ≤ 45 actions of any type — at 45 the builder blocks adding or duplicating steps.
     Count before duplicating downstream steps into each branch.
-16. On create: `origin: "USER"`, no `settings` (never `hidden` or `readonly`). On update:
-    `origin` and `settings` sent back exactly as fetched; status unchanged unless requested.
+16. On create: `origin: "USER"`, no `settings` (never `hidden` or `readonly`).
 17. Full Validate Automation returns no `CRITICAL` errors, and you can explain every `WARNING`.
 
 ## 5. Test Automation — only with explicit authorization

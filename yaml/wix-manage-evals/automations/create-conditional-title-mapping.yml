@@ -1,7 +1,7 @@
 {
   "name": "automations/create-conditional-title-mapping",
   "description": "Nested fallback expressions map missing and nonempty contact names correctly.",
-  "triggerPrompt": "Create an automation named Personal welcome task. When a new contact is created, create a task titled Welcome followed by their first name. If the first name is absent or empty, use Welcome new friend instead. Go ahead and save this automation.",
+  "triggerPrompt": "Create an automation named Personal welcome note. When a new contact is created, show a form message in my Inbox for that contact, with the form name Welcome followed by their first name. If the first name is absent or empty, use Welcome new friend instead. Go ahead and save this automation.",
   "tags": [
     "automations"
   ],
@@ -39,7 +39,7 @@
     {
       "type": "llm_judge",
       "minScore": 7,
-      "prompt": "Score 0-10. Require a task title mapping that preserves the first name when present and handles both missing and empty values with the exact fallback Welcome new friend. Derive the field from the actual schema/enrichment, preserve the trigger contact ID mapping, and use valid bracket syntax with semicolon function arguments and encoded string literals. Literal placeholder text, undefined, a hardcoded name, or always taking the fallback fails. All named requirements are mandatory: score 0 for a semantic mismatch even if the automation saved successfully. Return only a JSON object with score and reason."
+      "prompt": "Score 0-10. Require a Show in Inbox (inbox-send-message) step whose formMessage.title mapping preserves the first name when present and handles both missing and empty values with the exact fallback Welcome new friend. Derive the field from the actual schema/enrichment, preserve the trigger contact ID mapping, and use valid bracket syntax with semicolon function arguments and encoded string literals. Literal placeholder text, undefined, a hardcoded name, or always taking the fallback fails. All named requirements are mandatory: score 0 for a semantic mismatch even if the automation saved successfully. Return only a JSON object with score and reason."
     },
     {
       "type": "llm_judge",

@@ -16,8 +16,8 @@ docs URL to get raw markdown. When a field name here and the docs disagree, the 
 
 - Catalogs: Resolve Triggers / Resolve Actions. Oracle: **Validate Automation** — Create and
   Update do **not** validate.
-- Persist: Create `INACTIVE` → Get read-back; activate only when asked. Updates need the current
-  `revision` and are **live** on an active automation. Procedures (create and read-back
+- Persist: Create `INACTIVE` → Get read-back; activate only when asked.
+  Procedures (create and read-back
   — builder drafts are invisible publicly): [Build and Manage Wix Automations — included validation procedure](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) §3.
 - **Later stages only — not in stage 2:** **Test Automation runs actions for real** — only with explicit user authorization.
 - Resolve responses are large: page small, filter by exact keys, never paste a raw catalog.
