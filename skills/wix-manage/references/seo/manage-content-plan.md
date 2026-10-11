@@ -13,8 +13,9 @@ Generation creates briefs, not published posts.
 
 `KEYWORD_RESEARCH` means keyword research is running or already done; the
 status alone does not say which. When the research finishes, the flow usually
-moves to `CONTENT_PLAN` on its own, but it can also stay parked at
-`KEYWORD_RESEARCH` after the research is ready. A
+moves to `CONTENT_PLAN` on its own (seen in production flows and in this
+recipe's evaluation runs), but it can also stay parked at `KEYWORD_RESEARCH`
+after the research is ready. A
 **Create Content Plan** request is the fallback for a flow that stays paused,
 used only as [step 3](#3-wait-for-the-keyword-research) says: a release before
 the research is ready is refused with HTTP `428` and must not be retried in a
@@ -31,11 +32,9 @@ discussed earlier in the conversation. To finish it or read its results:
 
 1. Find its actual `contentPlanFlowId` in the conversation or a previous
    trigger/status response. A site ID is not a flow ID, even though both are
-   UUIDs. If the ID is missing, make no API call. Never submit a placeholder,
-   and do not offer a new flow or a different site as an alternative to
-   recovering the ID. If the user reports the flow stuck at `KEYWORD_RESEARCH`
-   (not a plan you are generating now), your reply must first give all three
-   points below, in this order, before you ask for the ID:
+   UUIDs. If the ID is missing and the user reports an existing flow stuck at
+   `KEYWORD_RESEARCH` (not a plan you are generating now), make no API call.
+   Tell the user:
    - `KEYWORD_RESEARCH` means keyword research is running or done. The flow
      usually moves to `CONTENT_PLAN` on its own when it finishes; if it stays
      at `KEYWORD_RESEARCH`, the status alone does not show whether the
@@ -47,8 +46,10 @@ discussed earlier in the conversation. To finish it or read its results:
      (`POST https://www.wixapis.com/promote/seo/v1/create-content-plan`).
      Releasing earlier is refused with HTTP `428`.
 
-   Then ask for the flow ID and end the turn. For any other missing ID, just
-   ask for it and end the turn.
+   Then ask for the flow ID and end the turn. Never submit a placeholder. Do
+   not offer a new flow or a different site as an alternative to recovering
+   the ID. If the ID is missing in any other case, also make no API call: ask
+   for it and end the turn.
 2. Read that flow with
    `GET https://www.wixapis.com/promote/seo/v1/content-plan-flows/{contentPlanFlowId}`.
    Read `contentPlanFlow.status`; see the response and status table in
@@ -194,9 +195,9 @@ on its own:
   early or late is fine, but don't check it within the first few checks,
   because it is usually not ready then:
 
-```
-GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items
-```
+  ```
+  GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items
+  ```
 
 It takes no parameters and returns the site's most recent research. Keep only
 `keywordResearchId` and the length of the `keywordResearchItems` array:
