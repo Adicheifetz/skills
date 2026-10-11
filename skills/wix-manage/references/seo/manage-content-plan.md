@@ -29,9 +29,11 @@ discussed earlier in the conversation. To finish it or read its results:
 
 1. Find its actual `contentPlanFlowId` in the conversation or a previous
    trigger/status response. A site ID is not a flow ID, even though both are
-   UUIDs. If the ID is missing and the user reports an existing flow stuck at
-   `KEYWORD_RESEARCH` (not a plan you are generating now), make no API call.
-   Tell the user:
+   UUIDs. If the ID is missing, make no API call: ask for the flow ID and end
+   the turn. Never submit a placeholder, and do not offer a new flow or a
+   different site as an alternative to recovering the ID. If the user also
+   reports the flow stuck at `KEYWORD_RESEARCH` (not a plan you are generating
+   now), first tell them:
    - `KEYWORD_RESEARCH` means keyword research is running or done. The flow
      usually moves to `CONTENT_PLAN` on its own when it finishes; if it stays
      at `KEYWORD_RESEARCH`, the status alone does not show whether the
@@ -43,9 +45,7 @@ discussed earlier in the conversation. To finish it or read its results:
      (`POST https://www.wixapis.com/promote/seo/v1/create-content-plan`).
      Releasing earlier is refused with HTTP `428`.
 
-   Then ask for the flow ID and end the turn. Never submit a placeholder. Do
-   not offer a new flow or a different site as an alternative to recovering
-   the ID.
+   Then ask for the flow ID and end the turn.
 2. Read that flow with
    `GET https://www.wixapis.com/promote/seo/v1/content-plan-flows/{contentPlanFlowId}`.
    Read `contentPlanFlow.status`; see the response and status table in
@@ -184,8 +184,8 @@ on its own:
 
 - `CONTENT_PLAN`: skip Create Content Plan; continue with step 5.
 - `SUCCESS`: go to step 6.
-- Still `KEYWORD_RESEARCH` after about 20 checks in a row (roughly two
-  minutes), or the user says it has been there for two minutes or more: check
+- Still `KEYWORD_RESEARCH` after about 20 checks in a row, whatever the
+  spacing, or the user says it has been there for two minutes or more: check
   the research once. The count is a guide, not an exact rule: a few checks
   early or late is fine, but don't check it within the first few checks,
   because it is usually not ready then:
@@ -206,18 +206,17 @@ It takes no parameters and returns the site's most recent research. Keep only
 
 | Response | Next action |
 | --- | --- |
-| `404` `NOT_FOUND: No Keyword research for given content plan` | Not ready yet. The request is correct; do not change it or look up docs. Make about 10 more flow status checks (roughly another minute) before you check the research again. |
+| `404` `NOT_FOUND: No Keyword research for given content plan` | Not ready yet. The request is correct; do not change it or look up docs. Make about 10 more flow status checks before you check the research again. |
 | Other `keywordResearchId` than the flow's | Earlier research. Make about 10 more flow status checks before you check the research again; the limit below still applies. |
 | Flow's `keywordResearchId`, at least one item | Ready. Call Create Content Plan once (step 4). |
 | Any other error | Report it and stop. |
 
-After about 60 status checks (roughly five minutes), check the research one
-last time; if it is still not ready, report the flow ID as incomplete. If you
-lose exact count, estimate; stopping a few checks early or late is fine. These
-counts are heuristics from
-flows observed in September 2026: research took 14 to 76 seconds, and 20
-checks took one to two minutes when sent back to back (about five minutes at
-15-second spacing, which also covers it). Retune them if that timing changes.
+After about 60 status checks, check the research one last time; if it is
+still not ready, report the flow ID as incomplete. If you lose exact count,
+estimate; stopping a few checks early or late is fine. These counts hold
+whatever the spacing: in flows observed in September 2026, research took 14 to
+76 seconds, which about 20 checks cover both back to back and at 15-second
+spacing. Retune them if that timing changes.
 Calling Create Content Plan before the research is ready returns HTTP `428`
 ("Keyword research is still running") and leaves the flow waiting; keep
 checking instead of retrying the release.
@@ -341,6 +340,8 @@ link; do not merely say that each brief contains a URL. Avoid repeating SEO
 titles and descriptions unless requested. If the answer must be shortened,
 label the displayed subset and total explicitly instead of claiming to show all
 topics. These are AI-generated suggestions; do not promise rankings or traffic.
+The table belongs in your final reply to the user: never end the generation
+with only a count, a summary, or a promise to show the topics later.
 Assess the returned topics before recommending them: if they are repetitive,
 mostly restate the site name, or lack a clear connection to the site's business,
 say so plainly. Successful generation does not establish editorial quality.
