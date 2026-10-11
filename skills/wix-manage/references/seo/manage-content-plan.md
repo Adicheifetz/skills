@@ -11,8 +11,10 @@ the asynchronous job that generates those briefs. Its `contentPlanFlowId` is
 a flow UUID, distinct from the site's ID, and its `status` reports progress.
 Generation creates briefs, not published posts.
 
-`KEYWORD_RESEARCH` means keyword research has started, not finished. When the
-research finishes, the flow usually moves to `CONTENT_PLAN` on its own. A
+`KEYWORD_RESEARCH` means keyword research is running or already done; the
+status alone does not say which. When the research finishes, the flow usually
+moves to `CONTENT_PLAN` on its own, but it can also stay parked at
+`KEYWORD_RESEARCH` after the research is ready. A
 **Create Content Plan** request is the fallback for a flow that stays paused,
 used only as [step 3](#3-wait-for-the-keyword-research) says: a release before
 the research is ready is refused with HTTP `428` and must not be retried in a
@@ -172,7 +174,8 @@ fallback) → `SUCCESS`.
 | `CANCELED` | Canceled and cannot be resumed. Report it and stop. |
 | `UNKNOWN` | No usable status. Inspect the response and report uncertainty instead of guessing progress. |
 
-Check every few seconds using separate calls. Completion time varies.
+Check about every 15 seconds if your client can, using separate calls, as
+step 3 describes. Completion time varies.
 
 ### 3. Wait for the keyword research
 
@@ -255,7 +258,8 @@ a successful HTTP response alone is not a completed plan.
 HTTP `428` with `FLOW_NOT_READY_FOR_CONTENT_PLAN` has two causes; read
 `message` to tell them apart:
 
-- `message` starts with "Keyword research is still running": the flow is still
+- `message` contains "still running" (match case-insensitively; the wording
+  can vary slightly): the flow is still
   at `KEYWORD_RESEARCH` and nothing changed. The research hasn't finished, so
   go back to [step 3](#3-wait-for-the-keyword-research), and release once only
   after it is ready.
