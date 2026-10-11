@@ -163,6 +163,9 @@ resource, finish setup). Report its `title`/`message` and the `ctaUrl`, and don'
 3. **Read back** with Get Automation on the same site. Confirm the trigger, the root id, and the
    set of action ids/types match what you sent (string literals come back URI-encoded, as sent).
    If you used an override schema, Get with `fields: ["OVERRIDE_SCHEMA"]` ([Automations API Catalog](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-api-catalog) §2).
+   Run the Get as a separate call once Create has returned (not batched into the same script),
+   and keep its response body as returned: the returned `automation` is the evidence, so don't
+   replace it with a summary you assemble from selected fields.
 4. Hand off: name, status (inactive), id, and the edit link
    `https://manage.wix.com/dashboard/<metaSiteId>/triggers/edit/<automationId>`. Ask the user to
    review it in the builder; its main button on an inactive automation, **Activate**, turns it on.
