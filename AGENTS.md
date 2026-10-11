@@ -11,6 +11,6 @@ automated checks. What they cover, one line each:
 - **Writing API skills** — verify every API detail against official docs via the Wix MCP (or distill from a successful agent run); public APIs only, no internal service names; mutating flows ask the user first.
 - **Skill evaluation** — PRs touching wix-manage references or yaml run the automated eval gate: coverage → schema → execution; treat it as a loop, not a one-time check.
 - **PR checklist** — the pre-open checklist; walk it before every PR.
-- **Codex plugin** — Codex gets the skills through `scripts/build-codex-plugin.mjs` (`yarn build:codex`), which adds the Codex-only files in `codex/overlay/<skill>/` on top of `skills/`. Change those files, not `skills/`, for anything only Codex should see.
+- **Codex plugin** — Codex gets the skills through `scripts/build-codex-plugin.mjs` (`yarn build:codex`), which adds the Codex-only files in `codex/overlay/<skill>/` on top of `skills/` and uses `codex/mcp.json` (WixREADME off, since the overlay ships the README). Change those files, not `skills/`, for anything only Codex should see.
 
 No fork PRs for `wix-manage` changes (the eval bot can't run on forks). Descriptions ≤ 1024 chars.

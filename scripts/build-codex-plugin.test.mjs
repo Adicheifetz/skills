@@ -48,3 +48,12 @@ test('the manifest lists every packaged skill, each with a SKILL.md', () => {
   assert.ok(existsSync(join(out, manifest.mcpServers)));
   assert.ok(existsSync(join(out, manifest.interface.logo)));
 });
+
+test('the Codex package connects to the MCP without WixREADME; the shared config is unchanged', () => {
+  const manifest = JSON.parse(readFileSync(join(out, '.codex-plugin/plugin.json'), 'utf8'));
+  const codexServers = JSON.parse(readFileSync(join(out, manifest.mcpServers), 'utf8')).mcpServers;
+  const sharedServers = JSON.parse(readFileSync(join(ROOT, '.mcp.json'), 'utf8')).mcpServers;
+
+  assert.equal(codexServers['wix-mcp'].url, 'https://mcp.wix.com/mcp?disableTools=WixREADME');
+  assert.equal(sharedServers['wix-mcp'].url, 'https://mcp.wix.com/mcp');
+});

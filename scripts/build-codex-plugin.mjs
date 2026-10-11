@@ -4,6 +4,9 @@
  * Codex-only files in codex/overlay/<skill>/ applied on top, plus the manifest, MCP config and
  * assets. The shared skills/ folder is never modified, so other clients don't see the overlay.
  *
+ * The MCP config comes from codex/mcp.json. It turns WixREADME off, because the overlay ships
+ * the README in wix-manage instead.
+ *
  * Overlay rules, per skill:
  * - start-here.md is inserted into the skill's SKILL.md right after its first `# ` heading.
  * - Every other file is added to the skill. An overlay may only add files, never replace one.
@@ -77,7 +80,7 @@ export function buildCodexPlugin({ root = ROOT, out = join(ROOT, 'codex/dist/wix
     join(out, '.codex-plugin/plugin.json'),
     `${JSON.stringify({ ...manifest, skills: skillPaths }, null, 2)}\n`
   );
-  cpSync(join(root, manifest.mcpServers), join(out, manifest.mcpServers));
+  cpSync(join(root, 'codex/mcp.json'), join(out, manifest.mcpServers));
   cpSync(join(root, 'assets'), join(out, 'assets'), { recursive: true });
   return out;
 }
