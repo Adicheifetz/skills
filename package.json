@@ -12,7 +12,8 @@
     "url": "https://github.com/wix/skills/issues"
   },
   "scripts": {
-    "version": "node .github/scripts/sync-plugin-versions.mjs && git add .claude-plugin/plugin.json .codex-plugin/plugin.json .cursor-plugin/plugin.json plugin.json gemini-extension.json skills/wix-headless-kit/install/pins.json"
+    "version": "node .github/scripts/sync-plugin-versions.mjs && git add .claude-plugin/plugin.json .codex-plugin/plugin.json .cursor-plugin/plugin.json plugin.json gemini-extension.json skills/wix-headless-kit/install/pins.json",
+    "build:codex": "node scripts/build-codex-plugin.mjs --zip"
   },
   "files": [
     "skills/**",

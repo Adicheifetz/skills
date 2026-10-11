@@ -19,3 +19,6 @@ Thumbs.db
 
 # Safety net — every package already ignores this, but a new one might not yet.
 node_modules/
+
+# The Codex plugin package built by scripts/build-codex-plugin.mjs.
+/codex/dist/

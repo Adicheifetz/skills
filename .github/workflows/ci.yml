@@ -272,6 +272,10 @@ jobs:
             exit 1
           fi
 
+      # Unconditional: any change to a skill the Codex plugin ships can break its overlay.
+      - name: Codex plugin build — test
+        run: node --test scripts/build-codex-plugin.test.mjs
+
       - name: Summary
         run: |
           echo "evalforge: ${{ needs.detect.outputs.evalforge }}"
