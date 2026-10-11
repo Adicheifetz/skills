@@ -9,6 +9,11 @@ user to connect Wix to this chat first. It walks the run of
 SKILL.md step by step and names, for each, the Wix API call the CLI or the script performs and the
 file beside this skill that carries the contract; where a script can run where you are, it says so.
 
+As in SKILL.md's run, keep the site working at every step so the user can try it as it grows.
+Steps only the site owner can take never hold a flow back: drafted content is live, and anything
+that takes money reaches Wix's checkout before payments are connected. The owner's steps go in the
+closing with their links, as next steps the user can take or ask for.
+
 ## Where these skills are
 
 This skill is one of a set, and the guide reads from three of them:
@@ -29,13 +34,22 @@ This skill is one of a set, and the guide reads from three of them:
 Installed, they sit beside each other wherever your client keeps them: under `.agents/skills/` after
 `npx skills add` or a similar skills folder, or in a plugin's folder. A skill your client offers you
 by name is read from there, or through the client's skill tool when it is served rather than a file,
-with no install, clone or online read. Online, they are
-published alongside each other under the same names (the registry also serves each without its
-`wix-` prefix, `headless-templates` for `wix-headless-templates`, which is the `base` its manifest
-shows; both forms resolve), each with a manifest of its files, and in the
+with no install, clone or online read. List them first, through that tool or the folder: a catalog
+shown at the start can leave skills out. Online, they are published alongside each other under the
+same names (the registry also serves each without its `wix-` prefix, `headless-templates` for
+`wix-headless-templates`, which is the `base` its manifest shows; both forms resolve), and in the
 `wix/skills` repository on GitHub under `skills/{skill}/`; a sandbox that reaches GitHub has the
-whole set on disk from a clone. Online pages are read with the Wix MCP's `ReadFullDocsArticle`
-when it is connected: a client's web fetch may open only URLs the user gave or a search returned.
+whole set on disk from a clone. Online pages are read with the Wix MCP's `ReadFullDocsArticle` when
+it is connected: a client's web fetch may open only URLs the user gave or a search returned.
+
+Online, a skill's files are found through its manifest,
+`https://www.wix.com/skills/{skill}.manifest.json` (for the templates,
+`headless-templates.manifest.json`): every file it holds, by path, with its size in bytes. Open it
+once before the first file and take each path from it: the files this guide names by pattern
+(`{solution}/rest/*.ts`, `*-core.ts`), and the files an import points to. A path the manifest
+doesn't list is a wrong path; find the file there before writing anything in its place. A copy you
+hold, served or on disk, is current when its size in bytes matches the manifest's; a file whose size
+differs is read online.
 
 What such a run does not produce: the Astro build and its release. Those need a machine with the
 CLI. Everything else the kit does to a site, it does through calls you can make, the frontend
@@ -83,8 +97,8 @@ Restaurants, Donations, FAQ), goes on with the Apps Installer:
 traps the script encodes. Read `SEED.md` before the first create: it maps the brief's words to the
 fields, and the script's builder functions turn those fields into each request, so the bodies you
 send are the ones they build. A call `SEED.md` only names is made through `{MANAGE}`'s recipe for
-it. Keep the script's rules: create, never delete, and report what the site already held. Entities you
-draft for the run are live like real ones, and the closing names them as placeholders.
+it. Keep the script's rules: create, never delete, and report what the site already held. The closing
+names entities you drafted as placeholders.
 
 A photo already in the site's Media Manager, such as one the user uploaded, goes in by its file id
 (`imageMediaId` in `SEED.md`), as it is: an import by URL would copy it. A photo on a site the user
@@ -106,8 +120,7 @@ it (add to cart, the cart, book, submit) works on the live site. A backend with 
 half a run.
 
 A payment (a cart, a paid booking, a ticket, a plan, a donation) ends in Wix's hosted checkout,
-reached through a redirect session, and is wired on the first pass, payments connected or not
-(SKILL.md's run: the site keeps working at every step).
+reached through a redirect session, and is wired on the first pass, payments connected or not.
 
 The Astro pages cannot be released here: that is a run with a machine and a CLI login, which
 attaches to this site (`guides/existing-site.md`) rather than making a new one. What ships from here
@@ -146,8 +159,8 @@ with `{TEMPLATES}/shared/app/wix/sdk.ts` for the client wiring): those files cal
 modules the page imports, and they are verified. Copy the form of the call, not the file. A page
 that talks to Wix over plain `fetch`, with no SDK, takes them from the REST twins instead:
 `{TEMPLATES}/shared/rest/client.ts` (the visitor token and the request) and
-`{TEMPLATES}/{solution}/rest/*.ts` (the calls). Read those files by name; the manifest and the
-solution's whole `INSTRUCTIONS.md` are not needed to find them. The cores,
+`{TEMPLATES}/{solution}/rest/*.ts` (the calls), each importing its helpers by their real paths.
+The cores,
 `{TEMPLATES}/{solution}/app/wix/{solution}/*-core.ts`, hold the rules the page needs and nothing else
 does: which fields to read, how a price or a duration is formatted, which slot is bookable, how an
 id is read. Copy those core functions into the page as they are, with only the types removed, and
