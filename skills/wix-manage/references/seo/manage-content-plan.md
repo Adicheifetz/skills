@@ -31,11 +31,11 @@ discussed earlier in the conversation. To finish it or read its results:
 
 1. Find its actual `contentPlanFlowId` in the conversation or a previous
    trigger/status response. A site ID is not a flow ID, even though both are
-   UUIDs. If the ID is missing, make no API call: ask for the flow ID and end
-   the turn. Never submit a placeholder, and do not offer a new flow or a
-   different site as an alternative to recovering the ID. If the user also
-   reports the flow stuck at `KEYWORD_RESEARCH` (not a plan you are generating
-   now), first tell them:
+   UUIDs. If the ID is missing, make no API call. Never submit a placeholder,
+   and do not offer a new flow or a different site as an alternative to
+   recovering the ID. If the user reports the flow stuck at `KEYWORD_RESEARCH`
+   (not a plan you are generating now), your reply must first give all three
+   points below, in this order, before you ask for the ID:
    - `KEYWORD_RESEARCH` means keyword research is running or done. The flow
      usually moves to `CONTENT_PLAN` on its own when it finishes; if it stays
      at `KEYWORD_RESEARCH`, the status alone does not show whether the
@@ -47,7 +47,8 @@ discussed earlier in the conversation. To finish it or read its results:
      (`POST https://www.wixapis.com/promote/seo/v1/create-content-plan`).
      Releasing earlier is refused with HTTP `428`.
 
-   Then ask for the flow ID and end the turn.
+   Then ask for the flow ID and end the turn. For any other missing ID, just
+   ask for it and end the turn.
 2. Read that flow with
    `GET https://www.wixapis.com/promote/seo/v1/content-plan-flows/{contentPlanFlowId}`.
    Read `contentPlanFlow.status`; see the response and status table in
@@ -188,7 +189,7 @@ on its own:
 - `CONTENT_PLAN`: skip Create Content Plan; continue with step 5.
 - `SUCCESS`: go to step 6.
 - Still `KEYWORD_RESEARCH` after about 20 checks in a row, whatever the
-  spacing, or the user says it has been there for two minutes or more: check
+  spacing, or the user says it has been there for five minutes or more: check
   the research once. The count is a guide, not an exact rule: a few checks
   early or late is fine, but don't check it within the first few checks,
   because it is usually not ready then:
@@ -257,18 +258,15 @@ when `success` is false), and `contentPlanFlowId` (flow UUID when returned).
 Check `success` as well as the HTTP status. If false, report `message` and stop;
 a successful HTTP response alone is not a completed plan.
 
-HTTP `428` with `FLOW_NOT_READY_FOR_CONTENT_PLAN` has two causes; read
-`message` to tell them apart:
+HTTP `428` with `FLOW_NOT_READY_FOR_CONTENT_PLAN` means the flow can't be
+released right now. Do not call Create Content Plan again right away; check the
+same flow's status once and follow it:
 
-- `message` contains "still running" (match case-insensitively; the wording
-  can vary slightly): the flow is still
-  at `KEYWORD_RESEARCH` and nothing changed. The research hasn't finished, so
-  go back to [step 3](#3-wait-for-the-keyword-research), and release once only
-  after it is ready.
-- Any other `message`: the flow is no longer at `KEYWORD_RESEARCH`, for example
-  because generation already started. Do not call Create Content Plan again;
-  check the same flow's status and follow the status table (`CONTENT_PLAN`:
-  continue with step 5; `SUCCESS`: go to step 6).
+- Still `KEYWORD_RESEARCH`: the research hasn't finished. Go back to
+  [step 3](#3-wait-for-the-keyword-research), and release once only after it is
+  ready.
+- `CONTENT_PLAN`: generation already started; continue with step 5.
+- `SUCCESS`: go to step 6.
 
 On success, retain the returned `contentPlanFlowId` for the next status check
 and candidate read. This response is not the list of briefs: continue to steps
@@ -334,7 +332,9 @@ published posts. Do not read `candidate.title`, `candidate.keyword`, or
 fields. If a nested field is absent, report it as unavailable and inspect the
 raw candidate before making another request. Report the actual returned
 titles and available keywords/supporting page URLs. Do not invent briefs or
-claim completion from the release response.
+claim completion from the release response. Reading the candidates is not the
+end of the task: your final reply must list them as
+[Present the result](#present-the-result) describes.
 See [List Blog Post Candidates](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-blog-post-candidate-v1/list-blog-post-candidates).
 
 ### Present the result
