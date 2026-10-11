@@ -11,8 +11,8 @@ pending activation has stopped.
 
 1. Resolve the requested name with one Query Automations call filtered by that exact name
    (below); don't page through other automations. If the ID is already supplied, go to Get.
-   If several match, open your answer by listing each match's full returned ID and asking
-   which one the user means; don't report a single status. If none match, say so and ask the
+   If several match, open your answer by listing each match's full returned ID, then end with
+   a direct question such as "Which one do you mean?"; don't report a single status. If none match, say so and ask the
    user to check the name or site; never guess an ID.
 2. Get the matching returned ID and read `configuration.status`.
 3. Answer briefly and completely in one reply. Start with the automation's exact name, its

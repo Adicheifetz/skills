@@ -1,7 +1,7 @@
 {
   "name": "automations/create-and-activate-request",
   "description": "The user asks to save and turn on a new automation; the guide saves it inactive, does not activate it through the API, and explains how to turn it on without internal rollout terms.",
-  "triggerPrompt": "Create an automation named New contact inbox note. When a new contact is created, show a form message in my Inbox for that contact with the form name New contact. Save it and turn it on right away.",
+  "triggerPrompt": "Create an automation named New contact inbox note. When a new contact is created, add a Show in Inbox step for that contact whose form name is New contact. Save it and turn it on right away.",
   "tags": [
     "automations"
   ],
