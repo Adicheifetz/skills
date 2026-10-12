@@ -185,6 +185,8 @@ curl -X DELETE \
 
 ### Delete a published item permanently
 
+> Permanent deletion is irreversible. Confirm with the user before calling Unpublish Data Item with `copyToDraft: false` or deleting a draft, unless the request already names the items to remove.
+
 To permanently delete a published item, call **Unpublish Data Item** with `copyToDraft: false` to remove it from the published collection. Then query the paired drafts collection for that item ID. Delete the draft only if the query returns it; when no draft exists, skip the DELETE call. This handles both PUBLISHED and CHANGED items.
 
 ```bash
@@ -278,8 +280,8 @@ At the REST level, every read/author/publish/unpublish call here goes through th
 | PUBLISHED / CHANGED | Remove from live collection, keep as draft (→ DRAFT) | **Unpublish Data Item** — `POST https://www.wixapis.com/wix-data/v2/items/unpublish`, `copyToDraft:true` | Write Data Items |
 | PUBLISHED / CHANGED | Remove from live collection without a draft | **Unpublish Data Item** — `POST https://www.wixapis.com/wix-data/v2/items/unpublish`, `copyToDraft:false` | Write Data Items |
 | CHANGED | Revert to live version (discard edit) | `DELETE https://www.wixapis.com/wix-data/v2/items/{id}?dataCollectionId=<drafts id>` | Write Data Items |
-| PUBLISHED / CHANGED | Permanently delete | `POST https://www.wixapis.com/wix-data/v2/items/unpublish` with `copyToDraft:false` (published id), then delete any remaining draft from the drafts collection | Write Data Items |
-| DRAFT (never published) | Permanently delete | `DELETE https://www.wixapis.com/wix-data/v2/items/{id}?dataCollectionId=<drafts id>` | Write Data Items |
+| PUBLISHED / CHANGED | Permanently delete (confirm first unless the request names the item) | `POST https://www.wixapis.com/wix-data/v2/items/unpublish` with `copyToDraft:false` (published id), then query and delete any remaining draft | Write Data Items |
+| DRAFT (never published) | Permanently delete (confirm first unless the request names the item) | `DELETE https://www.wixapis.com/wix-data/v2/items/{id}?dataCollectionId=<drafts id>` | Write Data Items |
 | plain, no plugin | Enable workflow | `POST https://www.wixapis.com/wix-data/v2/collections/add-draft-items-plugin` | Manage Data Collections |
 
 ---
@@ -287,7 +289,7 @@ At the REST level, every read/author/publish/unpublish call here goes through th
 ## Agent gotchas
 
 - **Never write item data directly to the published collection while Draft Items is installed.** Create and edit items in the paired drafts collection, then call **Publish Data Item Draft** to publish. Lifecycle calls such as publish still take the published collection ID.
-- **Choose the permanent-delete path from the item's state.** For PUBLISHED or CHANGED items, call Unpublish Data Item with the published collection ID and `copyToDraft: false`, then delete any remaining draft from the paired drafts collection. For a DRAFT that was never published, delete it directly from the paired drafts collection; Unpublish Data Item would return `NOT_FOUND`.
+- **Choose the permanent-delete path from the item's state, and confirm first.** Permanent deletion is irreversible: confirm with the user before Unpublish Data Item with `copyToDraft: false` or a draft DELETE unless the request already names the items to remove. For PUBLISHED or CHANGED items, call Unpublish Data Item with the published collection ID and `copyToDraft: false`, then query and delete any remaining draft from the paired drafts collection. For a DRAFT that was never published, delete it directly from the paired drafts collection; Unpublish Data Item would return `NOT_FOUND`.
 - **Resolve the drafts collection from the plugin.** Read `draftItemsPluginOptions.draftsCollectionId` off the published collection's Draft Items plugin rather than assuming a `__drafts` suffix.
 - **Status is server-authoritative.** Derive DRAFT/PUBLISHED/CHANGED from the published + drafts surfaces (or the value the API returns). Never compute it locally, and never render an optimistic status before the write confirms (**confirm-then-render**).
 - **Pass the *published* collection id** to `publish-draft` and `unpublish` — not the drafts collection id. Author and edit drafts against the drafts collection id.
