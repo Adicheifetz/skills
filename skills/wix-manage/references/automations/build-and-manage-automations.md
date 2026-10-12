@@ -171,7 +171,8 @@ resource, finish setup). Report its `title`/`message` and the `ctaUrl`, and don'
    example: "Saved **<name>** as inactive (ID `<automationId>`). Click **Activate** in the
    builder to turn it on: `https://manage.wix.com/dashboard/<metaSiteId>/triggers/edit/<automationId>`".
    Then say what it does, and ask the user to review it in the builder. If the user asked to
-   turn it on, activate it first (step 5) and lead with the active state instead.
+   turn it on, activate it first (step 5) and make the first line the active state instead:
+   "Saved **<name>** and turned it on (ID `<automationId>`): <edit link>".
 5. Activate only on request — see "Activation status, activate, deactivate" below.
 
 ### Update
