@@ -231,11 +231,14 @@ It takes no parameters and returns the site's most recent research. Keep only
 | Flow's `keywordResearchId`, at least one item | Ready. Call Create Content Plan once (step 4). |
 | Any other error | Report it and stop. |
 
-At check 60, check the research one last time; if it is still not ready,
-report the flow ID as incomplete. Most flows leave `KEYWORD_RESEARCH` on their
-own well before check 20. A release before the research is ready gets the
-[not-ready `428`](#4-release-the-flow) and the flow keeps waiting; keep
-checking instead of retrying the release.
+At check 60, check the research again. If it is still not ready: with the
+15-second wait, report the flow ID as incomplete. If your checks ran back to
+back without that wait, 60 of them cover only about a minute and a half, which
+slower research can outlast: keep checking, check the research again every 20
+checks, and report the flow ID as incomplete only at check 240. Most flows
+leave `KEYWORD_RESEARCH` on their own well before check 20. A release before
+the research is ready gets the [not-ready `428`](#4-release-the-flow) and the
+flow keeps waiting; keep checking instead of retrying the release.
 See [List Keyword Research Items](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-keyword-research-v1/list-keyword-research-items).
 
 ### 4. Release the flow
@@ -293,8 +296,9 @@ Same single-GET execution and nested response as step 2, using the same flow
 ID and returning after each check, one at a time. Typical status progression:
 `CONTENT_PLAN` → `SUCCESS`. Generating the briefs is usually quick, often
 under a minute; keep checking while the status is `CONTENT_PLAN`, up to about
-60 checks as a safety margin (an estimate is fine), before reporting the flow
-as incomplete. Read candidates in a subsequent execution after observing
+60 checks as a safety margin (about 240 if your checks run back to back without
+the 15-second wait; an estimate is fine), before reporting the flow as
+incomplete. Read candidates in a subsequent execution after observing
 `SUCCESS`.
 
 ### 6. Read the briefs
