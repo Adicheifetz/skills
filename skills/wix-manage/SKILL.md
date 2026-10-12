@@ -407,6 +407,9 @@ List, count, and find the sites in a Wix account. Covers the namespace filter fo
 ### [Read Account or Site Context](references/sites/read-site-context.md)
 Probe a Wix site or account for full context in one call — installed apps by display name, locale, currency, timezone, and status. Account token + siteId targets one site; account token alone returns up to 10; site-scoped token alone returns the site it is scoped to.
 
+### [Send Feedback to Wix](references/sites/send-feedback-to-wix.md)
+Relay the user's feedback about building with Wix — the APIs, docs, recipes, Wix MCP and tooling — to Wix, attributed to the authenticated user. Covers when to offer it, how to compose a message Wix can act on, and the call that sends it. Use when the user asks to report something to Wix, is frustrated with a Wix API or flow, or a recipe's flow fell short. Not a support channel, and not for the user's own site content.
+
 ### [Site Import](references/sites/site-import.md)
 Drive the Wix Site Import agent to migrate an existing store or site from another platform (Shopify, WooCommerce, Magento, or any URL) into Wix — as a brand-new site or into the user's existing one — or to import from CSV/TSV export files with no source site. Use this skill whenever the user wants to import, migrate, or clone a store/site into Wix, mentions moving off Shopify/WooCommerce/Magento, or gives a source store URL and asks to bring it into Wix. Covers starting the import, polling progress, answering the agent's mid-import questions, handling deploy/failure/auth-expiry states, and sending post-deploy follow-up changes.
 
@@ -442,7 +445,7 @@ Query and list products from a Wix Store using the Catalog V1 Query Products end
 Manages pre-order settings for product variants using V3 Inventory API. Covers enabling/disabling pre-orders, setting messages, configuring limits, and handling trackQuantity requirements.
 
 ### [Update Product with Options (Catalog V3)](references/stores/update-product-with-options.md)
-Modifies existing products and variants using Catalog V3 Products API. Covers adding/removing option choices, variant-specific pricing, product visibility (hide, unhide, or show a product in the storefront — a product-level `visible` update, never a delete), and revision-based updates to prevent conflicts.
+Start here for existing Catalog V3 product updates, including digital products that fail at add-to-cart with ITEM_NOT_FOUND_IN_CATALOG. Includes name lookup, Get Product, and PATCH in one flow, plus importing a supplied PDF and attaching it to the existing variant. Covers options, variant prices and SKUs, product visibility (hide/unhide through `visible`, never delete), description edits that preserve Rich Content, and revision-based updates. Read another recipe only for a field or operation this flow does not cover.
 
 ### [Stores Dashboard Navigation](references/stores/stores-dashboard-navigation.md)
 "Builds direct links to Wix Stores and eCommerce dashboard pages on manage.wix.com — products list, edit a specific product, categories, inventory, orders list, a specific order, abandoned checkouts, gift cards, shipping and tax settings. Pairs each main Stores/eCommerce entity with its read API so you can fetch an entity and hand back a 'view it in your dashboard' link. Use when the user asks where something is in the Wix dashboard, wants a direct link to a dashboard page, or you need a dashboard URL to include with the result of an API operation."
