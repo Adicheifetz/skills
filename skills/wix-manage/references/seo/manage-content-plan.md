@@ -24,6 +24,41 @@ Use the selected site's authorization context. Trigger and Create Content Plan
 are writes requiring **Manage SEO Settings**; execute them when the user has
 requested generation or explicitly confirmed it.
 
+A question about an existing flow stuck at `KEYWORD_RESEARCH` without its
+flow ID is answered by
+[Troubleshoot a flow stuck at KEYWORD_RESEARCH](#troubleshoot-a-flow-stuck-at-keyword_research).
+
+## Troubleshoot a flow stuck at KEYWORD_RESEARCH
+
+When the user reports an existing flow stuck at `KEYWORD_RESEARCH` and has not
+given its `contentPlanFlowId`, make no API call. Your reply must contain all
+five points below, in this order; a reply that only asks for the ID is
+incomplete:
+1. Ask for the flow's actual `contentPlanFlowId`, even when the user polls
+   the API themselves: you need it to check and release the flow.
+2. `KEYWORD_RESEARCH` is not a bug or a failure: it means keyword research
+   is running or done. The flow usually moves to `CONTENT_PLAN` on its own
+   when it finishes; if it stays at `KEYWORD_RESEARCH`, the status alone
+   does not show whether the research is ready, so polling the flow will
+   not tell them. If they say it has been there for five minutes or more,
+   the research has most likely finished and the flow is parked.
+3. With the flow ID, first check the research
+   (`GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items`)
+   for items with the flow's `keywordResearchId`.
+4. Only if they exist, release the flow once with Create Content Plan
+   (`POST https://www.wixapis.com/promote/seo/v1/create-content-plan`),
+   which is on the Blog Post Candidate service, not the Content Plan Flow
+   service they are polling. Releasing earlier is refused with HTTP `428`.
+5. If the items are still missing after that long a wait, the flow should
+   be reported as incomplete rather than waited on indefinitely.
+
+Points 3 and 4 belong in this reply even though they run only once the ID
+arrives: they tell the user what will happen next. Name both endpoints, but
+write no request body or URL with a placeholder ID, and never submit one. Do
+not offer a new flow or a different site as an alternative to recovering the
+ID. Then end the turn and wait for the ID. With the ID, continue with [Resume
+or read an existing flow](#resume-or-read-an-existing-flow).
+
 ## Resume or read an existing flow
 
 An existing flow is a job already started by a previous trigger, including one
@@ -32,35 +67,11 @@ discussed earlier in the conversation. To finish it or read its results:
 1. Find its actual `contentPlanFlowId` in the conversation or a previous
    trigger/status response. A site ID is not a flow ID, even though both are
    UUIDs. If the ID is missing and the user reports an existing flow stuck at
-   `KEYWORD_RESEARCH` (not a plan you are generating now), make no API call.
-   Your reply must contain all five points below, in this order; a reply
-   that only asks for the ID is incomplete:
-   1. Ask for the flow's actual `contentPlanFlowId`, even when the user polls
-      the API themselves: you need it to check and release the flow.
-   2. `KEYWORD_RESEARCH` is not a bug or a failure: it means keyword research
-      is running or done. The flow usually moves to `CONTENT_PLAN` on its own
-      when it finishes; if it stays at `KEYWORD_RESEARCH`, the status alone
-      does not show whether the research is ready, so polling the flow will
-      not tell them. If they say it has been there for five minutes or more,
-      the research has most likely finished and the flow is parked.
-   3. With the flow ID, first check the research
-      (`GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items`)
-      for items with the flow's `keywordResearchId`.
-   4. Only if they exist, release the flow once with Create Content Plan
-      (`POST https://www.wixapis.com/promote/seo/v1/create-content-plan`),
-      which is on the Blog Post Candidate service, not the Content Plan Flow
-      service they are polling. Releasing earlier is refused with HTTP `428`.
-   5. If the items are still missing after that long a wait, the flow should
-      be reported as incomplete rather than waited on indefinitely.
-
-   Points 3 and 4 belong in this reply even though they run only once the ID
-   arrives: they tell the user what will happen next. Name both endpoints,
-   but write no request body or URL with a placeholder ID, and never submit
-   one. Do not offer a new flow or a different site as an
-   alternative to recovering the ID. Then end the turn and wait for the ID.
-
-   In any other case with a missing ID, also make no API call: ask for it and
-   end the turn.
+   `KEYWORD_RESEARCH` (not a plan you are generating now), make no API call
+   and reply as [Troubleshoot a flow stuck at
+   KEYWORD_RESEARCH](#troubleshoot-a-flow-stuck-at-keyword_research) says. In
+   any other case with a missing ID, also make no API call: ask for it and end
+   the turn.
 2. Read that flow with
    `GET https://www.wixapis.com/promote/seo/v1/content-plan-flows/{contentPlanFlowId}`.
    Read `contentPlanFlow.status`; see the response and status table in
