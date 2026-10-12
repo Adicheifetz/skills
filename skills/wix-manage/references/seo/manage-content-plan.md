@@ -53,9 +53,10 @@ discussed earlier in the conversation. To finish it or read its results:
    5. If the items are still missing after that long a wait, the flow should
       be reported as incomplete rather than waited on indefinitely.
 
-   Do not add the later steps in this recipe: they need the ID. Name the
-   endpoints, but write no request body or URL with a placeholder ID, and
-   never submit one. Do not offer a new flow or a different site as an
+   Points 3 and 4 belong in this reply even though they run only once the ID
+   arrives: they tell the user what will happen next. Name both endpoints,
+   but write no request body or URL with a placeholder ID, and never submit
+   one. Do not offer a new flow or a different site as an
    alternative to recovering the ID. Then end the turn and wait for the ID.
 
    In any other case with a missing ID, also make no API call: ask for it and
