@@ -111,9 +111,26 @@ Update or patch against the **drafts** collection (`articles__drafts`). See [CMS
 
 ### Edit a PUBLISHED item → produces CHANGED
 
-Editing a live item does **not** overwrite the live copy — it stages a **pending draft**, leaving the published version untouched until published. The live item then has a pending draft (state **CHANGED**).
+**PUT and PATCH against the published collection fail while the Draft Items plugin is installed.** Create a draft of the published item, then edit that draft in the paired drafts collection. The published version remains live and unchanged until the draft is published.
 
-**Create the draft first, then edit it.** To edit a published item, explicitly create the draft via the **create-draft** flow (`createDataItemDraft`) rather than relying on an implicit draft-on-update. Create-draft seeds a full draft copy of the currently-published item into the drafts collection under the same item id; you then apply your edits to that draft. This is the more reliable path — a bare partial update straight to the drafts collection risks producing a draft that is missing the fields you didn't touch. So: create-draft for the published item id, then Update/Patch that draft on the drafts collection (`articles__drafts`).
+1. Call [Create Data Item Draft](https://dev.wix.com/docs/api-reference/business-solutions/cms/data-items/create-data-item-draft) with the published collection ID and item ID. It returns `dataItem`, a full draft copy with the same item ID; `dataItem.dataCollectionId` identifies the paired drafts collection. The item is now CHANGED.
+2. Update or patch the returned draft using the drafts collection ID. Use Patch Data Item to preserve fields you did not change; Update Data Item replaces the draft's entire payload.
+3. Call Publish Data Item Draft with the published collection ID to make the edits live.
+
+```bash
+# Create a draft of a PUBLISHED item; the lifecycle call takes the published collection ID.
+curl -X POST 'https://www.wixapis.com/wix-data/v2/items/create-draft' \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: <AUTH>' \
+  -d '{"dataCollectionId":"articles","dataItemId":"<id>"}'
+# Patch the resulting draft; use its returned dataCollectionId, not the published collection ID.
+curl -X PATCH 'https://www.wixapis.com/wix-data/v2/items/<id>' \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: <AUTH>' \
+  -d '{"dataCollectionId":"<draftsCollectionId>","patch":{"dataItemId":"<id>","fieldModifications":[{"fieldPath":"body","action":"SET_FIELD","setFieldOptions":{"value":"Revised article body"}}]}}'
+```
+
+For a CHANGED item, edit its existing draft directly. Create Data Item Draft returns `ALREADY_EXISTS` if a draft already exists; query the paired drafts collection when the item's state is unknown.
 
 ### Publish a pending draft (DRAFT/CHANGED → PUBLISHED)
 
@@ -163,12 +180,12 @@ curl -X POST \
 }'
 ```
 
-`copyToDraft` controls the two "keep vs discard" variants:
+`copyToDraft` controls whether the published data is copied into the drafts collection:
 
 | `copyToDraft` | Behavior | Use for |
 |---------------|----------|---------|
-| `true` (default) | Removes the live copy, creates a draft seeded with the previously-published data. Any existing pending draft for that id is **overwritten**. | "Unpublish and keep changes" |
-| `false` | Removes the live copy **without** creating a draft. No `dataItem` returned. | "Unpublish and discard" |
+| `true` (default) | Removes the live copy and copies its data into a draft. Any existing pending draft for that ID is **overwritten**, discarding its unpublished edits. | Take the item offline and retain the previously-published content as a draft. |
+| `false` | Removes the live copy **without** creating a draft. Any existing pending draft is **preserved unchanged**. No `dataItem` is returned. | Remove the live version while leaving any pending draft intact. |
 
 - Response (`copyToDraft: true`) carries the **new draft**, not the removed live item.
 - Returns `NOT_FOUND` if no published item exists with that id.
@@ -187,24 +204,28 @@ curl -X DELETE \
 
 > Permanent deletion is irreversible. Confirm with the user before calling Unpublish Data Item with `copyToDraft: false` or deleting a draft, unless the request already names the items to remove.
 
-To permanently delete a published item, call **Unpublish Data Item** with `copyToDraft: false` to remove it from the published collection. Then query the paired drafts collection for that item ID. Delete the draft only if the query returns it; when no draft exists, skip the DELETE call. This handles both PUBLISHED and CHANGED items.
+To permanently delete a published item, call **Unpublish Data Item** with `copyToDraft: false` to remove it from the published collection. This preserves any existing pending draft, so query the paired drafts collection for that item ID next. Delete the draft only if the query returns it; when no draft exists, skip the DELETE call. For a CHANGED item, this deletes its preserved pending draft. For a PUBLISHED item with no pending draft, unpublishing completes the deletion.
 
 ```bash
+# Stop on HTTP failures, malformed query responses, or failed deletes.
+set -euo pipefail
 # remove the published version without creating a draft
-curl -X POST 'https://www.wixapis.com/wix-data/v2/items/unpublish' \
+curl --fail --silent --show-error -X POST 'https://www.wixapis.com/wix-data/v2/items/unpublish' \
   -H 'Content-Type: application/json' \
   -H 'Authorization: <AUTH>' \
   -d '{"dataCollectionId":"articles","dataItemId":"<id>","copyToDraft":false}'
 # Query the paired drafts collection for this ID. Use the draftsCollectionId read from the plugin.
 ITEM_ID='<id>'
 DRAFTS_COLLECTION_ID='<draftsCollectionId>'
-drafts=$(curl -sS -X POST 'https://www.wixapis.com/wix-data/v2/items/query' \
+drafts=$(curl --fail --silent --show-error -X POST 'https://www.wixapis.com/wix-data/v2/items/query' \
   -H 'Content-Type: application/json' \
   -H 'Authorization: <AUTH>' \
   -d "{\"dataCollectionId\":\"$DRAFTS_COLLECTION_ID\",\"consistentRead\":true,\"query\":{\"filter\":{\"_id\":\"$ITEM_ID\"},\"paging\":{\"limit\":1}}}")
+# Require a valid dataItems array; a failed query must not be treated as an empty result.
+draft_count=$(printf '%s' "$drafts" | jq -er '.dataItems | if type == "array" then length else error("Expected dataItems array") end')
 # Delete only when the query found the draft; an empty dataItems array means there is nothing to delete.
-if printf '%s' "$drafts" | jq -e --arg id "$ITEM_ID" '.dataItems | any(.id == $id)' >/dev/null; then
-  curl -X DELETE "https://www.wixapis.com/wix-data/v2/items/$ITEM_ID?dataCollectionId=$DRAFTS_COLLECTION_ID" \
+if [ "$draft_count" -gt 0 ]; then
+  curl --fail --silent --show-error -X DELETE "https://www.wixapis.com/wix-data/v2/items/$ITEM_ID?dataCollectionId=$DRAFTS_COLLECTION_ID" \
     -H 'Authorization: <AUTH>'
 fi
 ```
@@ -278,7 +299,7 @@ At the REST level, every read/author/publish/unpublish call here goes through th
 | — | Create new draft (→ DRAFT) | `POST https://www.wixapis.com/wix-data/v2/items` on the drafts collection | Write Data Items |
 | DRAFT / CHANGED | Publish (→ PUBLISHED) | `POST https://www.wixapis.com/wix-data/v2/items/publish-draft` (published id) | Write Data Items |
 | PUBLISHED / CHANGED | Remove from live collection, keep as draft (→ DRAFT) | **Unpublish Data Item** — `POST https://www.wixapis.com/wix-data/v2/items/unpublish`, `copyToDraft:true` | Write Data Items |
-| PUBLISHED / CHANGED | Remove from live collection without a draft | **Unpublish Data Item** — `POST https://www.wixapis.com/wix-data/v2/items/unpublish`, `copyToDraft:false` | Write Data Items |
+| PUBLISHED / CHANGED | Remove live copy without creating a draft; preserve any existing draft | **Unpublish Data Item** — `POST https://www.wixapis.com/wix-data/v2/items/unpublish`, `copyToDraft:false` | Write Data Items |
 | CHANGED | Revert to live version (discard edit) | `DELETE https://www.wixapis.com/wix-data/v2/items/{id}?dataCollectionId=<drafts id>` | Write Data Items |
 | PUBLISHED / CHANGED | Permanently delete (confirm first unless the request names the item) | `POST https://www.wixapis.com/wix-data/v2/items/unpublish` with `copyToDraft:false` (published id), then query and delete any remaining draft | Write Data Items |
 | DRAFT (never published) | Permanently delete (confirm first unless the request names the item) | `DELETE https://www.wixapis.com/wix-data/v2/items/{id}?dataCollectionId=<drafts id>` | Write Data Items |
