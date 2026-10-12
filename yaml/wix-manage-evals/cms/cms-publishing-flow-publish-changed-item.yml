@@ -41,12 +41,9 @@ siteSetup:
               update: ANYONE
               remove: ANYONE
               read: ANYONE
-      - label: Enable draft workflow
-        method: post
-        url: https://www.wixapis.com/wix-data/v2/collections/add-draft-items-plugin
-        body:
-          dataCollectionId: News
-          publishPluginConflictAction: COPY_DRAFT_ITEMS_WITH_DRAFT_STATUS
+            plugins: [
+              type: DRAFT_ITEMS
+            ]
       - label: Seed the existing published item
         method: post
         url: https://www.wixapis.com/wix-data/v2/items
