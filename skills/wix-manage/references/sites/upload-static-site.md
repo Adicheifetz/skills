@@ -1,14 +1,31 @@
 ---
 name: "Upload a Website or HTML Files"
-description: Publish a user's ready-made website — an index.html, a static build, or a zip exported from an AI builder or any other tool — as a live Wix site. Covers every way to get there — publishing straight into the user's Wix account when you hold their identity, publishing anonymously with a save link when you don't, and handing the user the Wix Headless drop page, or releasing it as a Wix Headless project — and how to get the user's identity through the Wix CLI. Use whenever the user wants to upload, publish, deploy, or host their own HTML/CSS/JS as a NEW site, including files generated for them earlier in the conversation, or to update a site published this way (replace its files on the same site and URL, or change it from the site's Dev Machine, a remote shell Wix provides per headless site). Not for migrating a live store/site from another platform by URL or from CSV exports (use Site Import), not for adding HTML or custom code into an existing Wix site, and not for uploading images or documents to a site's media files.
+description: Create and update a Wix Headless website by uploading its files — an index.html, a static build, a zip exported from an AI builder or any other tool, or pages you write for the user — as a live site in the user's Wix account. Covers every route: uploading with the user's identity (curl with a Wix CLI token, or the Wix MCP), publishing anonymously with a save link when you don't hold it, and the Wix Headless drop page; then updating the same site and URL, and connecting a Wix backend (stores, bookings, forms) through the headless skill. Use when the user wants to upload, publish, deploy or host HTML/CSS/JS as a new Wix site, their own or written for them, or to change a site published this way, including from the site's Dev Machine, a remote shell Wix provides per headless site. Not for migrating a live store/site from another platform by URL or from CSV exports (use Site Import), not for adding HTML or custom code into an existing Wix site, and not for uploading images or documents to a site's media files.
 ---
 
 # Upload a Website or HTML Files
 
-The user has a finished website — hand-written HTML, a static build, a zip, a
-project an AI builder exported — and wants it live on Wix. Every route below ends
-the same way: a headless site in the user's Wix account that serves those files
-at a `*.wix-site-host.com` URL.
+A website goes live on Wix as a Wix Headless site: its files are uploaded to a
+site in the user's Wix account and served at a `*.wix-site-host.com` URL. The
+files are ones the user has (hand-written HTML, a static build, a zip, a project
+an AI builder exported) or ones you write for them as you upload. Later changes
+upload to [the same site](#change-it-later), and the URL stays.
+
+The flow: pick the route that fits where you run, create the site, upload the
+files, and give the user the live URL. Later changes go to the same site, and a
+backend, when the site needs one, comes once it is live.
+
+- [What decides the route](#what-decides-the-route): which route fits where you run
+- [Before the calls](#before-the-calls): the user's token, the Wix MCP, the attribution slug
+- [Create the site](#create-the-site): one call, the site in the user's account
+- Upload the files [with curl](#drop-with-curl) or [through the Wix MCP](#drop-through-the-wix-mcp)
+- [Change it later](#change-it-later): edits on the same site and URL
+- [Connect a backend](#connect-a-backend): stores, bookings, forms and more through the headless skill
+- [The Dev Machine](#the-dev-machine): a remote shell Wix runs per headless site, for an agent whose own shell does not reach Wix; a project that needs a build is built there
+- [Images](#images): how images reach the site
+- [Publish anonymously](#publish-anonymously): no login, a temporary site the user claims or saves
+- [The drop page](#the-drop-page): the user uploads the files when no route reaches Wix
+- [Limits and failures](#limits-and-failures), [Send feedback to Wix](#send-feedback-to-wix), [Route the request correctly](#route-the-request-correctly)
 
 ## What decides the route
 
@@ -63,7 +80,7 @@ page whole. A web fetch is the fallback.
 
 ## Create the site
 
-The [Create Headless Site](create-headless-site.md) call with no Wix Business
+One account-level call creates the headless site, with no Wix Business
 Solutions. Name it after the page's `<title>` and keep `"origin": "drop"`.
 
 ```bash
@@ -206,13 +223,13 @@ DM=https://www.wixapis.com/headless-remote-project
 curl -sS -X POST "$DM/v1/dev-machines/get-or-create" -H "Authorization: $SITE_TOKEN" -H 'Content-Type: application/json' -d '{}'
 # {"devMachine":{"id":"…","status":"READY","seed":{"origin":"STATIC_SITE"},"expirationDate":"…","codeBehindLiveSite":false}}
 
-# a command; waitSeconds 0 to 25, timeoutSeconds up to 1800 (default 600), outputTailLength up to 250000
+# a command; waitSeconds 0 to 25, timeoutSeconds up to 1800 (default 600), outputTailLength up to 250000 (20,000 when omitted)
 curl -sS -X POST "$DM/v1/dev-machines/execute-command" -H "Authorization: $SITE_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"command":"sed -i \"s/Welcome/Hello/\" public/index.html && CI=1 wix build && CI=1 wix release 2>&1 | tail -3","timeoutSeconds":900,"waitSeconds":25}'
+  -d '{"command":"sed -i \"s/Welcome/Hello/\" public/index.html && CI=1 wix build && CI=1 wix release 2>&1 | tail -3","timeoutSeconds":900,"waitSeconds":25,"outputTailLength":60000}'
 # {"execution":{"id":"…","status":"COMPLETED","shellResult":{"exitCode":0,"timedOut":false,"stdout":"…","stderr":""}}}
 
 # a command still RUNNING when the wait ran out
-curl -sS "$DM/v1/executions/$EXECUTION_ID?waitSeconds=25" -H "Authorization: $SITE_TOKEN"
+curl -sS "$DM/v1/executions/$EXECUTION_ID?waitSeconds=25&outputTailLength=60000" -H "Authorization: $SITE_TOKEN"
 ```
 
 In a script, a whole file goes in through the `files` param, so its text is never
@@ -233,9 +250,9 @@ async function run() {
   const command = `cat > public/about.html <<'WIXEOF'\n${page.content}\nWIXEOF\n`
     + 'CI=1 wix build > /dev/null && CI=1 wix release 2>&1 | tail -3';
   let execution = (await wix.request({ ...site, method: 'POST', url: `${base}/v1/dev-machines/execute-command`,
-    body: { command, timeoutSeconds: 900, waitSeconds: 25 } })).data.execution;
+    body: { command, timeoutSeconds: 900, waitSeconds: 25, outputTailLength: 60000 } })).data.execution;
   while (execution.status === 'RUNNING') {
-    execution = (await wix.request({ ...site, method: 'GET', url: `${base}/v1/executions/${execution.id}?waitSeconds=25` })).data.execution;
+    execution = (await wix.request({ ...site, method: 'GET', url: `${base}/v1/executions/${execution.id}?waitSeconds=25&outputTailLength=60000` })).data.execution;
   }
   return { status: execution.status, exitCode: execution.shellResult?.exitCode, tail: execution.shellResult?.stdout };
 }
@@ -246,6 +263,11 @@ async function run() {
   `shellResult.exitCode` and `timedOut`.
 - **A change** is a command that writes the file: `sed -i` for a line, a heredoc
   for a whole file. One command can write several files.
+- **Output** comes back as the last `outputTailLength` characters of each stream,
+  20,000 when the field is omitted; `stdoutTruncated: true` says the start was cut.
+  Pass it on the command and on every poll, as above. A read through `ExecuteWixAPI`
+  also meets the tool's own cut at about 24,000 characters, which keeps the start:
+  read a file longer than that in pieces (`sed -n '1,200p' FILE`, then the next range).
 - **Publishing** is `CI=1 wix build && CI=1 wix release`, to the same `siteUrl`.
   Once a site has been released from its machine, keep changing it there: a drop
   would replace the live site and leave the machine's code behind
@@ -299,11 +321,15 @@ On the same `metaSiteId`, never a new site. Each drop replaces every file, and
   site and leave the machine's code behind.
 - **With a shell that reaches Wix**, edit the files and drop the full set with
   `curl`.
-- **Through the MCP**, change the site in one `ExecuteWixAPI` script: download
-  what it serves, edit in code, and drop the full set back. Only the edit is
-  written; images travel back as they are. When your files travel as files, a
-  new zip of the whole site through the upload tool works as well. A full
-  rewrite of the text bundle is for a site rewritten wholesale.
+- **Through the MCP**, by the kind of change:
+  - **An edit to files the site serves** (a price, a line, a link): one
+    `ExecuteWixAPI` script downloads what it serves, edits in code, and drops the
+    full set back. Only the edit is written; images travel back as they are.
+  - **New or rewritten files**: when your files travel as files, zip the whole
+    site, images included, and send it through the upload tool. When they don't,
+    the script carries them in its `files` param and adds them to the download
+    before the drop.
+  - **A site rewritten wholesale**: a full text bundle through the upload tool.
 
 For a site from an earlier conversation, find its `metaSiteId` with
 [Query Sites](#claim-it-into-the-users-account), matching the name or `viewUrl`.
@@ -340,7 +366,7 @@ the same site, appId and URL.
 **A mock that shows a business solution: publish it, then ask before connecting.**
 Any control on the page that promises what static files can't deliver —
 something to buy, book, order, join, submit or pay — is a Wix Business Solution
-the page pretends to have. First get the site live from what the user gave you.
+the page pretends to have. First get the site live from the pages as they are.
 Then, with the live URL, name each such control, the solution that would make it
 work, and what connecting it involves: what gets created from the page's own
 content (the products, services or form), and that the site's later changes move
@@ -493,7 +519,7 @@ workaround.
 
 ## Route the request correctly
 
-- **A new site from the user's files**: [What decides the route](#what-decides-the-route).
+- **A new site from files, the user's or ones you write**: [What decides the route](#what-decides-the-route).
 - **A change to a site published this way**: the [same site](#change-it-later);
   upload and release while it's anonymous.
 - **An anonymous site the user wants to keep**: [claim it](#claim-it-into-the-users-account), or the save link.
@@ -504,5 +530,5 @@ workaround.
   custom code in the editor.
 - **Images, videos or documents for a site's media**: [Upload Media to Wix](../media/upload-media-to-wix.md).
 
-Don't create the site from a template: that makes an empty site, not a copy of
-the user's files.
+Don't create the site from a template: that makes an empty site, not the site's
+files.

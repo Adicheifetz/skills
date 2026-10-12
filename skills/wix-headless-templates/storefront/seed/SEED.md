@@ -99,7 +99,7 @@ to a file if you want it later). `.seed-exit` and `seed-result.json` are written
   create only; an existing category keeps what it has.
 - `quantity` — tracked stock, a non-negative integer. For stock that isn't counted (made to
   order, print on demand, unlimited) use `"inStock": true` **instead** of `quantity`; sending
-  both is rejected.
+  both is rejected. A product with no stock given, drafted or the user's own, is `"inStock": true`.
   Right after the bulk create, a product's own stock summary can still read `OUT_OF_STOCK`
   while its inventory items are already stocked; the items are what a buyer's add is checked
   against. A product **without options** can still end up with no item (a create that ran while
@@ -107,16 +107,18 @@ to a file if you want it later). `.seed-exit` and `seed-result.json` are written
   Inventory Items call (`productId`, its single `variantId`, and `inStock: true` or the
   `quantity`), where `ALREADY_EXISTS` means the item is already there. A seed made call by call
   reads the items (Query Inventory Items) and creates only the missing ones.
-- `currency` — 3-letter ISO code. Set it **only when the brief names one**: a sentence about
-  currency ("prices in euros") or a price written with its unit ("9 dollars", "$9", "€20"). Do **not** infer it from a language, a country, or an address
-  — an unrequested switch silently reprices the whole catalog. The seed applies it before
-  creating anything, because a product's price is stored in the site currency at create time.
-  For a few seconds afterwards product reads can still report the old currency; that lag is
+- `currency` — 3-letter ISO code. Set it **only when the user names one**, in the brief or on their
+  own pages: a sentence about currency ("prices in euros") or a price written with its unit ("9
+  dollars", "$9", "€20"). On a site this run created it is set without asking; a store the user
+  already runs is asked first. Do **not** infer it from a language, a country, or an address — an
+  unrequested switch silently reprices the whole catalog. The seed applies it before creating
+  anything, because a product's price is stored in the site currency at create time. For a few
+  seconds afterwards product reads can still report the old currency; that lag is
   expected and self-resolves, so don't re-verify it or retry.
 
 **Default to 3 products** when you draft the catalog yourself — the seed shows the shape, not a
-full inventory; the owner adds the rest in the dashboard. **Make those 3 exercise the shipped
-UI**: give at least one product a color option and put one product on sale — truthfully to the
+full inventory; the owner adds the rest in the dashboard. The closing names drafted products as
+placeholders. **Make those 3 exercise the shipped UI**: give at least one product a color option and put one product on sale — truthfully to the
 business (a ceramics studio has glaze colors; a bakery doesn't). When the brief mentions gift
 wrap, engraving, a message card, pre-orders, or "coming soon" stock, seed ONE product with that
 modifier and ONE pre-order item so the surfaces exist to design against; never add them to a
@@ -143,7 +145,8 @@ a new site (a dozen products: "Baseball Cap", "Ceramic Flower Vase", "Crew T-Shi
 live shop lists them next to the owner's, so they are never silent: the result's `preexisting[]` names
 every product the plan did not name (`{ id, name, slug }`), and the closing message says so with the
 Manage products link (`dashboardProductsUrl` in the result) so the owner removes them there if they
-want to. Categories are idempotent by name — a re-run reuses "Donuts" instead of creating a second one.
+want to. After a currency change their prices keep the same numbers in the new currency, and the
+closing says so. Categories are idempotent by name — a re-run reuses "Donuts" instead of creating a second one.
 
 **Images are confirmed, not assumed.** `imagesAttached` counts the attaches the API reported as
 successful; `imageFailures: [{ name, error }]` names the products left without an image and why.
@@ -161,6 +164,8 @@ duplicated. Never hand-patch ids to "fill the gap".
 
 Two things this module does not seed (dashboard-only — tell the merchant): **SKUs** and
 **subscription plans** (the storefront renders them when the merchant adds them).
+Shipping isn't seeded either; when the brief asks for it, `wix-manage`'s
+`references/ecommerce/ecom-shipping.md` sets it up.
 
 ## Escape hatch — individual functions
 
@@ -168,6 +173,19 @@ Two things this module does not seed (dashboard-only — tell the merchant): **S
 ordering: `installStoresApp`, `readAllProducts`, `bulkCreateProducts`,
 `createCategories(ctx, names, details?)`, `addProductsToCategories`, `attachProductImages` — plus
 `makeCtx()` for the auth context.
+
+A seed made call by call sends the body `bulkCreateProducts` builds
+(`POST /stores/v3/bulk/products-with-inventory/create`); the description is rich-text nodes, as
+`mkDesc` turns them out:
+
+```json
+{ "returnEntity": true, "products": [{
+    "name": "Hearth Candle", "productType": "PHYSICAL", "physicalProperties": {},
+    "description": { "nodes": [{ "type": "PARAGRAPH", "id": "d0", "paragraphData": {},
+      "nodes": [{ "type": "TEXT", "id": "", "textData": { "text": "Hand-poured soy wax.", "decorations": [] } }] }] },
+    "variantsInfo": { "variants": [{ "price": { "actualPrice": { "amount": "28" } },
+      "physicalProperties": {}, "inventoryItem": { "inStock": true } }] } }] }
+```
 
 ## Reference
 

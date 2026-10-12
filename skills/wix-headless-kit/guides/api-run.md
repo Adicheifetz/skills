@@ -9,6 +9,11 @@ user to connect Wix to this chat first. It walks the run of
 SKILL.md step by step and names, for each, the Wix API call the CLI or the script performs and the
 file beside this skill that carries the contract; where a script can run where you are, it says so.
 
+As in SKILL.md's run, keep the site working at every step so the user can try it as it grows.
+Steps only the site owner can take never hold a flow back: drafted content is live, and anything
+that takes money reaches Wix's checkout before payments are connected. The owner's steps go in the
+closing with their links, as next steps the user can take or ask for.
+
 ## Where these skills are
 
 This skill is one of a set, and the guide reads from three of them:
@@ -27,15 +32,25 @@ This skill is one of a set, and the guide reads from three of them:
   exact shape before writing a call.
 
 Installed, they sit beside each other wherever your client keeps them: under `.agents/skills/` after
-`npx skills add` or a similar skills folder, or in a plugin's folder; a skill your client
-offers you by name is one of these. Read them from disk when they are there, with no install, clone
-or online read. Online, they are
-published alongside each other under the same names (the registry also serves each without its
-`wix-` prefix, `headless-templates` for `wix-headless-templates`, which is the `base` its manifest
-shows; both forms resolve), each with a manifest of its files, and in the
+`npx skills add` or a similar skills folder, or in a plugin's folder. A skill your client offers you
+by name is read from there, or through the client's skill tool when it is served rather than a file,
+with no install, clone or online read. List them first, through that tool or the folder: a catalog
+shown at the start can leave skills out. Online, they are published alongside each other under the
+same names (the registry also serves each without its `wix-` prefix, `headless-templates` for
+`wix-headless-templates`, which is the `base` its manifest shows; both forms resolve), and in the
 `wix/skills` repository on GitHub under `skills/{skill}/`; a sandbox that reaches GitHub has the
-whole set on disk from a clone. Online pages are read with the Wix MCP's `ReadFullDocsArticle`
-when it is connected: a client's web fetch may open only URLs the user gave or a search returned.
+whole set on disk from a clone. Online pages are read with the Wix MCP's `ReadFullDocsArticle` when
+it is connected: a client's web fetch may open only URLs the user gave or a search returned.
+
+Online, a skill's files are found through its manifest,
+`https://www.wix.com/skills/{skill}.manifest.json` (for the templates,
+`headless-templates.manifest.json`): every file it holds, by path, with its size in bytes. A
+folder's URL lists its files, and `<folder>/_content` returns them in one response. Open it once
+before the first file and take each path from it: the files this guide names by pattern
+(`{solution}/rest/*.ts`, `*-core.ts`), and the files an import points to. A path the manifest
+doesn't list is a wrong path; find the file there before writing anything in its place. A copy you
+hold, served or on disk, is current when its size in bytes matches the manifest's; a file whose size
+differs is read online.
 
 What such a run does not produce: the Astro build and its release. Those need a machine with the
 CLI. Everything else the kit does to a site, it does through calls you can make, the frontend
@@ -79,42 +94,34 @@ Restaurants, Donations, FAQ), goes on with the Apps Installer:
 ## 4. The seed
 
 `seed-{solution}.mjs` is a sequence of REST calls, and `SEED.md` is its contract: the plan shape
-(what to create, how many, which images), the order the entities need, and the traps the script
-encodes (a Bookings service needs a category to be visible and takes resource ids, not staff ids;
-a Forms field is registered by its `validation` block; a product's choice photos are linked after
-the gallery holds them; right after a bulk create a product's own stock summary can still read
-`OUT_OF_STOCK` while its inventory items are already stocked, so check the items (Query Inventory
-Items) and create only the missing ones, as `SEED.md` says, where `ALREADY_EXISTS` means stocked; stock that isn't counted, such as "made to order", is
-`inStock: true`, never a missing quantity, which leaves the product unbuyable). Read `SEED.md`
-before the first create call: it maps the brief's words to the fields. Those fields are the
-script's input, not the request: the body each create sends is built in the script (for products,
-`bulkCreateProducts` in `seed-store.mjs`: the description as rich-text nodes from `mkDesc`,
-`productType` with `physicalProperties`, the stock as `inventoryItem`), so read that function before
-the first create. On a site this run created, the store's currency is `SEED.md`'s `currency` rule,
-the one the brief or the user's own pages state (a page priced "$68" is USD), set before the
-products and without asking; a confirmation before a currency change is for a store the user
-already runs. Then read the script for any call `SEED.md` only names, and make the same
-calls through `{MANAGE}`'s recipe for each (services, products, posts, events, collections). Keep
-the script's rules: create, never delete, and report what the site already held. A photo already in
-the site's Media Manager, such as one the user uploaded, goes in by its file id (`imageMediaId` in
-`SEED.md`), as it is: an import by URL would copy it. A photo on a site the user dropped is served
-with the drop, not from the Media Manager: it goes in by its live URL, imported once through
-`{MANAGE}/references/media/upload-media-to-wix.md`, and the file id the import returns is what the
-product or service takes. An `imagePrompt` is generated through
-`{MANAGE}/references/media/generate-image-with-ai.md` (`POST /runwareschemaless/v1/request`, the body
-`generateImage` in `{TEMPLATES}/shared/seed/images.mjs` builds), then imported through
+(what to create, how many, which images), the order the entities need, the request bodies and the
+traps the script encodes. Read `SEED.md` before the first create: it maps the brief's words to the
+fields, and the script's builder functions turn those fields into each request, so the bodies you
+send are the ones they build. A call `SEED.md` only names is made through `{MANAGE}`'s recipe for
+it. Keep the script's rules: create, never delete, and report what the site already held. The closing
+names entities you drafted as placeholders.
+
+A photo already in the site's Media Manager, such as one the user uploaded, goes in by its file id
+(`imageMediaId` in `SEED.md`), as it is: an import by URL would copy it. A photo on a site the user
+dropped is served with the drop, not from the Media Manager: it goes in by its live URL, imported
+once through `{MANAGE}/references/media/upload-media-to-wix.md`, and the file id the import returns
+is what the entity takes. An `imagePrompt` is generated through
+`{MANAGE}/references/media/generate-image-with-ai.md` (`POST /runwareschemaless/v1/request`, the
+body `generateImage` in `{TEMPLATES}/shared/seed/images.mjs` builds), then imported through
 `upload-media-to-wix.md`, and the file id goes on the entity, as for a dropped photo; this is the
-seed's default for every product and service. An entity stays text-only only when generation or the
-import fails; say which. The scripts read
-a response body directly; `ExecuteWixAPI`'s `wix.request` returns `{ status, data }`, and the body
-is `data`. A generated image is billed when it is generated, so a read of the wrong level discards
-a paid image.
+seed's default for every entity that shows a picture. An entity stays text-only only when generation
+or the import fails; say which. The scripts read a response body directly; `ExecuteWixAPI`'s
+`wix.request` returns `{ status, data }`, and the body is `data`. A generated image is billed when
+it is generated, so a read of the wrong level discards a paid image.
 
 ## 5. The frontend
 
 The run is not done until the pages use what the backend holds: every control the page shows for
 it (add to cart, the cart, book, submit) works on the live site. A backend with untouched pages is
 half a run.
+
+A payment (a cart, a paid booking, a ticket, a plan, a donation) ends in Wix's hosted checkout,
+reached through a redirect session, and is wired on the first pass, payments connected or not.
 
 The Astro pages cannot be released here: that is a run with a machine and a CLI login, which
 attaches to this site (`guides/existing-site.md`) rather than making a new one. What ships from here
@@ -153,16 +160,14 @@ with `{TEMPLATES}/shared/app/wix/sdk.ts` for the client wiring): those files cal
 modules the page imports, and they are verified. Copy the form of the call, not the file. A page
 that talks to Wix over plain `fetch`, with no SDK, takes them from the REST twins instead:
 `{TEMPLATES}/shared/rest/client.ts` (the visitor token and the request) and
-`{TEMPLATES}/{solution}/rest/*.ts` (the calls; for a store, `storefront/rest/cart.ts` and
-`storefront/rest/catalog.ts`). Read those files by name; the manifest and the solution's whole
-`INSTRUCTIONS.md` are not needed to find them. The
-cores beside them (`*-core.ts`) hold the rules the page needs and nothing else does: which fields
-to read, how a price or a duration is formatted, which slot is bookable, how an id is read. Copy
-those core functions into the page as they are, with only the types removed (`cart-core.ts`'s
-`toLine` and `toCart`, the price formatter, `rawId`), and run every API response through them: a
-raw field read by hand is where a page breaks (a product name is a translatable object, a cart
-line's quantity is `quantityInfo.confirmedQuantity`). What you write is the markup, the rendering
-of what the cores return, and the event handlers.
+`{TEMPLATES}/{solution}/rest/*.ts` (the calls), each importing its helpers by their real paths.
+The cores,
+`{TEMPLATES}/{solution}/app/wix/{solution}/*-core.ts`, hold the rules the page needs and nothing else
+does: which fields to read, how a price or a duration is formatted, which slot is bookable, how an
+id is read. Copy those core functions into the page as they are, with only the types removed, and
+run every API response through them: a raw field read by hand is where a page breaks (a name can be
+a translatable object, a quantity a nested one). What you write is the markup, the rendering of what
+the cores return, and the event handlers.
 
 **A call those files don't cover** is confirmed before it is written, the way `{DOCS}` describes:
 the method's SDK page, and when the page and the package disagree, the package's own type
@@ -170,14 +175,31 @@ declarations (the `@wix/auto_sdk_{solution}_<module>` package the solution packa
 its `index.d.ts`) are the truth. Two shapes that recur, as examples of what the types settle and
 the kit's files already encode: SDK query methods return a query builder finished with `.find()`;
 and an entity's id arrives as `_id` on some objects and `id` on others (the kit reads both,
-`rawId`). Dates travel as local wall-clock strings in the business time zone. A page cannot be
-opened here, so a wrong shape fails silently in the browser. Check the data code before the upload:
-get a real response through `ExecuteWixAPI` for each call the page makes, run the page's data code
-on it in your sandbox's Node, and look for names, prices and quantities in the output, not
-`[object Object]` or `undefined`. The cart's calls run as a visitor, which `wix.request` (the
-owner) is not: in the script, mint a visitor token with the site's public client id as
-`shared/rest/client.ts` does (`POST https://www.wixapis.com/oauth2/token`, `grantType: "anonymous"`),
-send the cart calls with it through `fetch`, add one product and read the cart back.
+`rawId`). Dates travel as local wall-clock strings in the business time zone.
+
+**The check**, before every upload: a page cannot be opened here, so a wrong shape fails silently in
+the browser. In one `ExecuteWixAPI` script, make each control's calls the way the page makes them,
+as a visitor, with the bodies from `{solution}/rest/*.ts`. Then read the solution's cores,
+`{TEMPLATES}/{solution}/app/wix/{solution}/*-core.ts` (online, that folder's `_content` returns them
+in one response), and run each response through them in your sandbox's Node, as the page does:
+
+```js
+async function () {
+  const api = "https://www.wixapis.com", clientId = "<appId>";
+  const post = (path, body, token) => fetch(api + path, { method: "POST",
+    headers: { "Content-Type": "application/json", ...(token && { Authorization: token }) },
+    body: JSON.stringify(body) }).then(async (r) => ({ path, status: r.status, data: await r.json() }));
+  const { data: { access_token: token } } = await post("/oauth2/token", { clientId, grantType: "anonymous" });
+  const results = [];
+  // each call the control makes, in order: results.push(await post(path, body, token));
+  // a payment's last call is the redirect session the solution's rest/*.ts creates
+  return results;
+}
+```
+
+Done when every call returns 200, the cores turn each response into the names, prices, quantities or
+times the page shows, and a payment's redirect session returns a URL. The upload waits for that: a
+failing call is fixed first, on the site or in the page. The closing reports the check.
 
 ## 6. Closing
 
