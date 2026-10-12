@@ -175,7 +175,10 @@ Example response, showing the public flow fields (optional fields may be absent)
 
 Read `contentPlanFlow.status`, not a top-level `status`. If it is missing,
 inspect the response instead of silently looping. Always use this generation's
-flow ID; if it stays `CREATED`, report the ID and observed status without
+flow ID. A new flow can stay `CREATED` for a while before it starts: keep
+checking through `CREATED`, `SITE_ANALYSIS` and `SITE_SUMMARY`. Only if it is
+still `CREATED` after about 60 checks (about 240 if your checks run back to
+back without the 15-second wait), report the ID and observed status without
 inventing missing business prerequisites.
 See [Get Content Plan Flow](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-content-plan-flow-v1/get-content-plan-flow).
 
@@ -209,7 +212,10 @@ if your client can. Requests sent together count as one check. Keep a
 running count of the checks that return `KEYWORD_RESEARCH` in your own notes
 so it survives a long wait; it's for you, not the user, who only needs a short
 progress line such as "still researching keywords". The check numbers below
-stand in for elapsed time, because most clients cannot read a clock. They are
+stand in for elapsed time, because most clients cannot read a clock; if yours
+can, use the time instead: about five minutes at `KEYWORD_RESEARCH` in place of
+check 20, and about 15 minutes in place of the last check before reporting the
+flow incomplete. They are
 estimates from a small number of test runs, where research finished within
 about 80 seconds and generation then usually started on its own, not a
 documented limit:
@@ -282,10 +288,7 @@ Check `success` as well as the HTTP status. If false, report `message` and stop;
 a successful HTTP response alone is not a completed plan.
 
 The not-ready response is HTTP `428`. Detect it by the HTTP status alone; you
-don't need to parse its body. (Its error text names
-`FLOW_NOT_READY_FOR_CONTENT_PLAN`, and while the research is still running it
-says "Keyword research is still running", but the next step below doesn't
-depend on either.) An HTTP `428` means the flow can't be released right now. Do not call Create Content Plan again right away; check the
+don't need to parse its body. An HTTP `428` means the flow can't be released right now. Do not call Create Content Plan again right away; check the
 same flow's status once and follow it:
 
 - Still `KEYWORD_RESEARCH`: the research hasn't finished. Go back to
