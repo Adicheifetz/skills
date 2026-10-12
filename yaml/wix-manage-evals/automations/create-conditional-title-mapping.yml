@@ -1,7 +1,7 @@
 {
   "name": "automations/create-conditional-title-mapping",
   "description": "Nested fallback expressions map missing and nonempty contact names correctly.",
-  "triggerPrompt": "Create an automation named Personal welcome note. When a new contact is created, add a Show in Inbox step for that contact whose form name is Welcome followed by their first name. If the first name is absent or empty, use Welcome new friend instead. Go ahead and save this automation.",
+  "triggerPrompt": "Set up an automation called \"Personal welcome note\": whenever someone new is added to my contacts, I want a note about them to show up in my Wix Inbox with the title \"Welcome\" followed by their first name. If we don't have their first name, the title should be \"Welcome new friend\" instead. Go ahead and save it.",
   "tags": [
     "automations"
   ],

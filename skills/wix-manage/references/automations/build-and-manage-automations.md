@@ -1,11 +1,11 @@
 ---
 name: "Build and Manage Wix Automations"
-description: "Inspect Wix automations and create inactive linear automations using installed actions with schema-defined mappings and the included validation checklist."
+description: "Inspect Wix automations and their on/off status, create linear automations from the site’s installed triggers and actions, and turn automations on or off on request."
 ---
 
 **Topic guides not yet published:** Automations Feasibility and Planning; Automations Entity and Provider Configuration; Automations Item Selection; Automations Email Actions; Automations Conditions; Automations Delays Variables and Branches; Automations Schemas and Scheduling. References marked “not yet published” refer to procedures that are not in this stage; the general API reference does not contain them. Do not attempt a workflow that requires one of them.
 
-This stage supports read-only inspection and creation of inactive, immediate, linear APP_DEFINED automations with schema-defined inputs. Configuration updates, deletion, activation/deactivation, execution tests, email/opaque widgets, entity pickers, schedules, conditions and special steps are outside this stage. Do not perform those workflows with this skill. This guide has no update or status-change procedure (the lock, revision and live-edit checks those need are not in it), so never call Update Automation or change a status, even when the user explicitly asks to turn the automation on or a read-back shows something to fix: create it with `configuration.status: "INACTIVE"`, tell the user to click **Activate** in the builder (edit link), and report anything that needs fixing instead of patching it. Validation and its numbered checklist are included in this guide. “Stage” and “not yet published” describe how this skill is being rolled out; never mention them to the user. Explain a limit in product terms: what can’t be done through the API here and where the user can do it instead (for example, **Activate** in the automations builder).
+This stage supports read-only inspection, creation of immediate, linear APP_DEFINED automations with schema-defined inputs, and turning an automation on or off when the user asks ([Automations Activation Status](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-activation-status)). Configuration updates of saved automations, deletion, execution tests, email/opaque widgets, entity pickers, schedules, conditions and special steps are outside this stage. Do not perform those workflows with this skill. Validation and its numbered checklist are included in this guide. “Stage” and “not yet published” describe how this skill is being rolled out; never mention them to the user. Explain a limit in product terms: what can’t be done through the API here and where the user can do it instead (for example, in the automations builder).
 
 # Build and Manage Wix Automations
 
@@ -22,7 +22,7 @@ the expression guide; it is not a condition node.
 | Configure trigger payload and filters | [Automations Trigger Configuration](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-trigger-configuration) |
 | Check action semantics and effective schemas | [Automations Action Configuration](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-action-configuration) |
 | Type-safe input formulas, literal escaping and ancestor variables | [Automations Mapping Expressions](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-mapping-expressions) |
-| Inspect current status without changing it | [Automations Activation Status](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-activation-status) |
+| Check status, or turn an automation on or off | [Automations Activation Status](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-activation-status) |
 
 ## Create and verify
 
@@ -40,10 +40,11 @@ the expression guide; it is not a condition node.
    included here so references from other guides can be followed without an unpublished page.
    Items for out-of-scope node types are not permission to create those types.
 5. Save only with the user's authorization. Report the returned ID, inactive status and
-   verified content. Do not activate or execute a test as part of creation.
+   verified content. If the user asked to turn it on, activate it after the read-back as
+   [Automations Activation Status](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-activation-status) describes, then report it active. Do not run a test.
 
-The included procedure keeps only the headings of its update, activation and execution-test
-sections; those workflows are published in a later stage, and the stage limits above take precedence.
+The included procedure keeps only the headings of its update and execution-test sections;
+those workflows are published in a later stage, and the stage limits above take precedence.
 
 
 # Validation and Verification
@@ -55,8 +56,9 @@ user it exists. This file owns the create procedure. API shapes: [Automations AP
 
 - Climb the ladder in order: **§4 renderability checklist → Validate Automation → Create →
   Get Automation read-back.**
-- **§4 gates Create.** `VALID` alone does not prove the
-  builder can draw, edit and re-save the automation.
+- **§4 gates Create and activation.** `VALID` alone does not prove the
+  builder can draw, edit and re-save the automation. Status-only deactivation follows §3 and
+  must not be blocked by unrelated configuration errors.
 - Create and Update do not validate; an unvalidated or unsaved automation is **not created**.
 - **Later stages only — not in stage 2:** Test Automation executes actions for real.
 
@@ -81,7 +83,9 @@ Semantic review (you, not code) — required for every action before acceptance;
 
 Request: `{automation: <full object>, validationSettings?}`. Validate the complete candidate
 you intend to save; an unsaved object doesn't need an id. For creation, set `origin: "USER"`,
-a real `name`, and `configuration.status: "INACTIVE"`.
+a real `name`, and `configuration.status: "INACTIVE"`. For activation, validate the candidate with
+`configuration.status: "ACTIVE"`. Never rewrite an installed automation's origin or deactivate a live
+automation merely to validate it.
 
 `validationSettings.actionIds` validates just the listed actions — useful while configuring node
 by node. `skipProviderValidations: true` skips app-specific checks — acceptable for intermediate
@@ -147,7 +151,8 @@ resource, finish setup). Report its `title`/`message` and the `ctaUrl`, and don'
 3. At most 2–3 attempts per class. If an error comes back unchanged, re-read the reference that
    owns that construct rather than trying variations.
 4. Still failing → stop. Tell the user exactly which node and why, and what you need from them.
-   Don't save an INVALID configuration.
+   Don't save an INVALID configuration or activate it. Status-only deactivation is still
+   allowed under §3; stopping future runs does not require repairing the automation first.
 
 ## 3. Persistence, read-back and honest reporting
 
@@ -165,8 +170,9 @@ resource, finish setup). Report its `title`/`message` and the `ctaUrl`, and don'
 4. Hand off, leading with the outcome. Make the first line of your answer the saved state, for
    example: "Saved **<name>** as inactive (ID `<automationId>`). Click **Activate** in the
    builder to turn it on: `https://manage.wix.com/dashboard/<metaSiteId>/triggers/edit/<automationId>`".
-   Then say what it does, and ask the user to review it in the builder.
-5. Do not activate through the API in this stage, even if the user asks: tell them to click **Activate** in the builder (edit link above).
+   Then say what it does, and ask the user to review it in the builder. If the user asked to
+   turn it on, activate it first (step 5) and lead with the active state instead.
+5. Activate only on request — see "Activation status, activate, deactivate" below.
 
 ### Update
 
@@ -189,7 +195,8 @@ resource, finish setup). Report its `title`/`message` and the `ctaUrl`, and don'
 
 ### Activation status, activate, deactivate
 
-> **Later stages only:** activating and deactivating are not available in stage 2; this section is published in stage 3. To read the current status, use [Automations Activation Status](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-activation-status).
+Read or change status only as [Automations Activation Status](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-activation-status) describes; this guide adds no status
+procedure of its own. Deactivation does not require repairing the configuration.
 
 ### Reporting rules
 
@@ -202,7 +209,7 @@ resource, finish setup). Report its `title`/`message` and the `ctaUrl`, and don'
 
 ## 4. Builder-renderability checklist — the single pre-save gate
 
-Use this gate before Create.
+Use this gate before Create and activation, not status-only deactivation.
 Creation restrictions ("never add", conservative feature support) do not require rewriting
 existing builder-supported nodes during an unrelated update. Preserve those nodes and their
 metadata; use the owning reference's preservation rules and full Validate. A failing item is a

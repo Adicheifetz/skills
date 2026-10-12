@@ -454,7 +454,7 @@ Start here for existing Catalog V3 product updates, including digital products t
 ## Automations
 
 ### [Build and Manage Wix Automations](references/automations/build-and-manage-automations.md)
-Inspect Wix automations and create inactive linear automations using installed actions with schema-defined mappings and the included validation checklist.
+Inspect Wix automations and their on/off status, create linear automations from the site’s installed triggers and actions, and turn automations on or off on request.
 
 <details>
 <summary>Internal skills (loaded on demand by Build and Manage Wix Automations — do NOT use directly)</summary>
@@ -475,7 +475,7 @@ Inspect Wix automations and create inactive linear automations using installed a
   Write builder-compatible automation mapping expressions, literals and data references.
 
 - [Automations Activation Status](references/automations/activation-status.md)
-  Read an automation’s current ACTIVE or INACTIVE status and distinguish it from historical run outcomes.
+  Read an automation’s current ACTIVE or INACTIVE status, and activate or deactivate it when the user asks.
 
 </details>
 

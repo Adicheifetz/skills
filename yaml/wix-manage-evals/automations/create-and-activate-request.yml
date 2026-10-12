@@ -1,7 +1,7 @@
 {
   "name": "automations/create-and-activate-request",
-  "description": "The user asks to save and turn on a new automation; the guide saves it inactive, does not activate it through the API, and explains how to turn it on without internal rollout terms.",
-  "triggerPrompt": "Create an automation named New contact inbox note. When a new contact is created, add a Show in Inbox step for that contact whose form name is New contact. Save it and turn it on right away.",
+  "description": "The user asks to save and turn on a new automation; the guide creates it inactive, reads it back, activates it through the activation procedure and confirms it is active.",
+  "triggerPrompt": "Set up an automation called \"New contact inbox note\": whenever someone new is added to my contacts, I want a note about them to show up in my Wix Inbox with the title \"New contact\". Save it and turn it on right away.",
   "tags": [
     "automations"
   ],
@@ -16,6 +16,12 @@
       "tool": "ReadFullDocsArticle",
       "params": {
         "articleUrl": "https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-api-catalog"
+      }
+    },
+    {
+      "tool": "ReadFullDocsArticle",
+      "params": {
+        "articleUrl": "https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-activation-status"
       }
     },
     {
@@ -39,12 +45,17 @@
     {
       "type": "llm_judge",
       "minScore": 7,
-      "prompt": "Score 10 only when the tool trace shows a Create Automation request whose body sets configuration.status INACTIVE with trigger contacts-new_contact_was_created and one APP_DEFINED inbox-send-message step whose formMessage.title is New contact and whose contactId maps the trigger contactId, then a separate Get Automation call for the automation ID the agent reports, made after the Create. Tool response bodies may be abbreviated or missing in what you see: judge the requests and the final answer, and do not fail a run only because a response body is not shown. Score 0 if the trace creates it ACTIVE, sends any Update or status change that activates it, runs Test Automation, creates it more than once, or makes unrelated writes. Refusing to save it at all also scores 0: the user asked to save it, so save it inactive. Return only a JSON object with score and reason."
+      "prompt": "Score 10 only when the tool trace shows, in order: a Create Automation request whose body sets configuration.status INACTIVE with trigger contacts-new_contact_was_created and one APP_DEFINED inbox-send-message step whose formMessage.title is New contact and whose contactId maps the trigger contactId; a Get Automation call for the created ID; a Validate Automation call on the candidate with configuration.status ACTIVE; an Update Automation request for that ID that carries its revision and origin, plus settings exactly as the Get returned them if present, and changes only configuration.status to ACTIVE; and a Get Automation call after the Update. Tool response bodies may be abbreviated or missing in what you see: judge the requests and the final answer, and do not fail a run only because a response body is not shown. Score 0 if the automation is never activated, if the Update changes anything besides the status, if the trace runs Test Automation, creates the automation more than once, or makes unrelated writes. Return only a JSON object with score and reason."
     },
     {
       "type": "llm_judge",
       "minScore": 7,
-      "prompt": "Score 0-10 on the final answer to the user. Require that it says plainly the automation was saved but is not turned on, and tells the user how to turn it on themselves with Activate in the Wix automations builder (an edit link to the automation is good). Score 0 if it mentions internal rollout terms such as stage, stage 2, later stage, or not yet published, or claims the automation is active. Penalize vague or apologetic answers that do not say how to turn it on. Return only a JSON object with score and reason."
+      "prompt": "Score 0-10. Inspect the actual tool trace. Require a direct path with bounded discovery, real catalog IDs, no guessed endpoints, no private tools and no unrequested side effects. Penalize recovered wrong-shaped requests, an Update rejected for missing origin or settings or a stale revision, Validate retried without a change, probing calls, redundant confirmation after the explicit request to turn it on right away, and creating the automation more than once. Identify each friction and the likely docs or API gap. Return only a JSON object with score and reason."
+    },
+    {
+      "type": "llm_judge",
+      "minScore": 7,
+      "prompt": "Score 0-10 on the final answer to the user. Require that it says plainly the automation was saved and is now turned on, with its name and ID (an edit link to the automation is good). Score 0 if it says the automation is inactive or that the user must turn it on themselves, or if it mentions internal rollout terms such as stage, stage 2, later stage, or not yet published. Penalize vague answers that do not say whether it is on. Return only a JSON object with score and reason."
     }
   ],
   "siteSetup": {

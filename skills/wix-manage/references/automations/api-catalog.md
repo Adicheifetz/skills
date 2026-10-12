@@ -17,7 +17,7 @@ docs URL to get raw markdown. When a field name here and the docs disagree, the 
 - Catalogs: Resolve Triggers / Resolve Actions. Oracle: **Validate Automation** — Create and
   Update do **not** validate.
 - Persist: Create `INACTIVE` → Get read-back; activate only when asked.
-  Procedures (create and read-back
+  Procedures (create, activate, read-back
   — builder drafts are invisible publicly): [Build and Manage Wix Automations — included validation procedure](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) §3.
 - **Later stages only — not in stage 2:** **Test Automation runs actions for real** — only with explicit user authorization.
 - Resolve responses are large: page small, filter by exact keys, never paste a raw catalog.
@@ -43,11 +43,13 @@ docs URL to get raw markdown. When a field name here and the docs disagree, the 
 - **Errors**: 401 = token expired/invalid (refresh, don't retry blindly). 403 = missing scope, app
   not installed, or — on Create/Update of an automation that validated — a step the public API
   can't create (e.g. the code-variable step, §4 of Automations Delays Variables and Branches (not yet published)). A timeout or 5xx is
-  **unknown**, not a verdict — retry a bounded number of times.
+  **unknown**, not a verdict — retry read-only calls (Get, Query, Resolve, Validate) a bounded
+  number of times. Never blindly retry Create or Update: Query or Get first to see whether the
+  write landed ([Build and Manage Wix Automations — included validation procedure](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) §3, Reporting rules).
 
 ## 2. Automations V2 (`automationsV2`) — base `/automations-service/v2/automations`
 
-> Stage 2 supports Query, Get, Validate and inactive Create here. Update, Delete and status changes below are future-stage reference material; do not call them in this stage.
+> Stage 2 supports Query, Get, Validate, inactive Create, and Update only to activate or deactivate ([Automations Activation Status](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-activation-status)). Configuration updates, Delete and Test Automation below are future-stage reference material; do not call them in this stage.
 
 | Purpose  | REST                                                        | SDK                                       |
 | -------- | ----------------------------------------------------------- | ----------------------------------------- |
@@ -70,7 +72,7 @@ triggerKey}, rootActionIds, actions}` → created `automation` (has `id`, `revis
   request them: `fields: ["OVERRIDE_SCHEMA"]` (REST `?fields=OVERRIDE_SCHEMA`). Without it their
   absence is not data loss (Create's response omits them too).
   Request overrides before complete-object updates and status changes too, not just creation read-back.
-- **Later stages only — not in stage 2:** **Update** — published in stage 3.
+- **Update**: in this stage, only to change `configuration.status` (activate / deactivate) as [Automations Activation Status](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-activation-status) describes. Send `{automation}` exactly as fetched with `fields: ["OVERRIDE_SCHEMA"]` — `id`, current `revision`, `name`, `configuration`, plus `origin` and `settings` — with only the status changed. Without `origin` and `settings` it fails `INVALID_ORIGIN_TYPE`; a stale `revision` is rejected. Capture the returned id: a preinstalled automation's site override can change it. Configuration updates are published in stage 3.
 - **Later stages only — not in stage 2:** **Delete** — published in stage 3.
 - **Query**: `{query{filter, sort, cursorPaging{limit ≤ 500, cursor}}}` → `automations[]`,
   `pagingMetadata.cursors.next`. Returns only automations of apps installed on the site (incl.
@@ -182,7 +184,9 @@ offset: N}}})`. Actions: `resolveActions` with small pages; keep only `appId`, `
 Discovery hints:
 
 - Search by concept with a keyword ladder ("chat" → "message"). Common aliases: send a chat
-  message = `send-message` (Inbox; not `inbox-send-message`); email to anyone, incl. the site
+  message to the contact = `send-message` (not `inbox-send-message`); a note about a contact in
+  the site owner's Inbox, nothing sent to the contact = `inbox-send-message` ("Show in Inbox");
+  email to anyone, incl. the site
   owner = `triggered-emails` (never the deprecated `send-mail` / "Get an email"); task =
   `createTask`; labels = `addLabelsToContact` / `remove_labels_to_contact`; create a contact =
   `contacts-create_contact` (for triggers whose payload has no contact, e.g. webhooks).

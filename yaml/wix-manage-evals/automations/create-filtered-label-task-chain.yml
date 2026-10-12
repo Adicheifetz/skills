@@ -1,7 +1,7 @@
 {
   "name": "automations/create-filtered-label-task-chain",
   "description": "A static-key trigger filter and two chained app-defined actions persist in builder-readable shapes.",
-  "triggerPrompt": "Create an automation named VIP label follow-up. Run it only when the contact label with key custom.vip-follow-up (shown as VIP follow-up) is added to a contact, not for any other label. Then add a Show in Inbox step for that contact whose form name is Call new VIP, and after it a second Show in Inbox step for the same contact whose form name is Send VIP welcome gift. Go ahead and save this automation.",
+  "triggerPrompt": "Set up an automation called \"VIP label follow-up\" that runs only when a contact gets my \"VIP follow-up\" label (its key is custom.vip-follow-up), not any other label. When that happens, I want a note about that contact in my Wix Inbox titled \"Call new VIP\", and after that a second note for the same contact titled \"Send VIP welcome gift\". Go ahead and save it.",
   "tags": [
     "automations"
   ],
