@@ -242,6 +242,8 @@ curl -X GET \
 }
 ```
 
+**Response**: the full updated item, in the same `dataItem` envelope as insert (see [Insert Data Item](#insert-data-item)).
+
 ## Patch Data Item (Partial Update - Single Item)
 
 **Endpoint**: `PATCH https://www.wixapis.com/wix-data/v2/items/{dataItemId}`
@@ -278,6 +280,8 @@ Unlike Update, this only modifies the specified fields — all other fields rema
   }
 }
 ```
+
+**Response**: the patched item, in the same `dataItem` envelope as insert (see [Insert Data Item](#insert-data-item)).
 
 ## Bulk Update Items
 
