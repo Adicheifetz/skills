@@ -1,7 +1,7 @@
 name: cms/cms-publishing-flow-remove-published-item
 description: >-
   Verifies the agent removes a published item into drafts for later restoration and permanently
-  deletes another item from both the published and drafts collections.
+  deletes both a CHANGED item and a draft-only item from the correct CMS collections.
 triggerPrompt: >-
   In my News collection, take the item titled "Temporary Pause" off the live site but keep it so I
   can restore it later. Permanently delete the item titled "Retired Notice" and the unpublished
@@ -72,6 +72,14 @@ siteSetup:
         body:
           dataCollectionId: News
           dataItemId: 22222222-2222-4222-8222-222222222222
+      - label: Seed the pending edit on the item to permanently delete
+        method: post
+        url: https://www.wixapis.com/wix-data/v2/items
+        body:
+          dataCollectionId: News__drafts
+          dataItem:
+            id: 22222222-2222-4222-8222-222222222222
+            data: { title: Retired Notice - pending edit }
       - label: Seed a never-published draft
         method: post
         url: https://www.wixapis.com/wix-data/v2/items
@@ -90,10 +98,11 @@ assertions:
     prompt: |
       The user asked the agent to remove "Temporary Pause" from the live News collection while
       retaining it for restoration, permanently delete "Retired Notice", and permanently delete
-      the never-published draft "Draft Preview". The first two items were initially published in
-      News; Draft Preview exists only in the paired drafts collection. The collection has the Draft
-      Items plugin and its paired drafts collection is News__drafts. Evaluate the Wix API tool-call
-      trace, post-change data, and final response.
+      the never-published draft "Draft Preview". "Retired Notice" was CHANGED before the run: its
+      published version and a pending draft with the same item ID were both present. Draft Preview
+      exists only in the paired drafts collection. The collection has the Draft Items plugin and its
+      paired drafts collection is News__drafts. Evaluate the Wix API tool-call trace, post-change
+      data, and final response.
 
       Pass only if all of the following hold:
       - The agent resolves the paired drafts collection from the Draft Items plugin, or uses the
@@ -101,13 +110,13 @@ assertions:
       - It calls Unpublish Data Item for "Temporary Pause" with `dataCollectionId: News` and
         `copyToDraft: true` (or omits `copyToDraft`, whose default is true).
       - It calls Unpublish Data Item for "Retired Notice" with `dataCollectionId: News` and
-        `copyToDraft: false`, then deletes any remaining item with that id from the paired drafts
-        collection if one remains.
+        `copyToDraft: false`, then calls DELETE for item ID
+        `22222222-2222-4222-8222-222222222222` using the paired drafts collection ID.
       - It deletes "Draft Preview" directly from the paired drafts collection without calling
         Unpublish Data Item for that ID.
-      - Post-change reads show "Temporary Pause" absent from News and present in News__drafts,
-        while "Retired Notice" and "Draft Preview" are absent from both collections. Any other
-        seeded items remain unchanged.
+      - Post-change reads show "Temporary Pause" absent from News and present in the paired drafts
+        collection, while "Retired Notice" and "Draft Preview" are absent from both collections.
+        Any other seeded items remain unchanged.
       - The final response accurately confirms these observed results and that "Temporary Pause"
         can be restored by publishing its draft.
 
@@ -122,11 +131,12 @@ assertions:
       Judge the tool-call path for this task. A clean path reads the publishing-flow skill, resolves
       the News plugin metadata and drafts collection, performs the two unpublish calls with the
       correct `copyToDraft` settings, deletes a remaining Retired Notice draft only if present,
-      directly deletes Draft Preview from the drafts collection, and queries both collections
-      afterward to verify all outcomes.
+      queries the paired drafts collection after unpublishing Retired Notice, deletes its returned
+      pending draft using that collection ID, directly deletes Draft Preview from the drafts
+      collection, and queries both collections afterward to verify all outcomes.
       Penalize non-2xx Wix API calls even if recovered, using the wrong collection ID or
-      `copyToDraft` value, calling unpublish for Draft Preview, deleting the retained item,
-      unnecessary exploratory calls, or claiming success without post-write reads. The user
-      explicitly authorized these mutations, so the
+      `copyToDraft` value, failing to delete the found Retired Notice draft, calling unpublish for
+      Draft Preview, deleting the retained item, unnecessary exploratory calls, or claiming success
+      without post-write reads. The user explicitly authorized these mutations, so the
       requested writes are not a quality issue. Score 0-10 and return ONLY
       {"score":<0-10>,"reason":"<specific deductions, or 'clean path'>"}.
