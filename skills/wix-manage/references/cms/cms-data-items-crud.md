@@ -6,6 +6,11 @@ description: "Add, query, update, and delete items in CMS collections. Use this 
 
 This recipe covers basic Create, Read, Update, Delete (CRUD) operations for Wix CMS data items.
 
+> **Response envelope — read this before parsing any response.**
+> - **Single-item responses** (insert, get, update, patch, delete) wrap the item in **`dataItem`**: `{ "dataItem": { "id": "...", "dataCollectionId": "...", "data": { ... } } }`
+> - **Query responses** wrap results in **`dataItems`** plus `pagingMetadata` — there is **no `items` key**. Parsing `response.items` returns `undefined` (not an error!) and silently looks like an empty collection.
+> - Item fields are nested under each element's **`data`** object; the element id is **`id`** (the flat `_id` lives inside `data`).
+
 ## Prerequisites
 
 1. Wix CMS enabled on the site
@@ -155,6 +160,35 @@ Before inserting or updating items, you need to know the collection's field name
 }
 ```
 
+**Response**:
+```json
+{
+  "dataItems": [
+    {
+      "id": "item-guid-1",
+      "dataCollectionId": "Products",
+      "data": {
+        "_id": "item-guid-1",
+        "_createdDate": { "$date": "2024-01-15T10:00:00.000Z" },
+        "_updatedDate": { "$date": "2024-01-15T10:00:00.000Z" },
+        "title": "Wireless Headphones",
+        "price": 149.99,
+        "inStock": true
+      }
+    }
+  ],
+  "pagingMetadata": {
+    "count": 1,
+    "offset": 0,
+    "tooManyToCount": false,
+    "cursors": {},
+    "hasNext": false
+  }
+}
+```
+
+> **Common error**: Query results are under **`dataItems`**, NOT `items`. Reading `response.items` yields `undefined` — the code still runs, returns an empty list, and looks exactly like "the collection is empty". If a query returns no items but you expect some, dump the **raw response body** and check you are reading `response.dataItems` with each item's fields under `item.data`.
+
 ## Get Single Item
 
 **Endpoint**: `GET /wix-data/v2/items/{itemId}?dataCollectionId={collectionId}`
@@ -163,6 +197,22 @@ Before inserting or updating items, you need to know the collection's field name
 curl -X GET \
 'https://www.wixapis.com/wix-data/v2/items/abc123?dataCollectionId=Products' \
 -H 'Authorization: <AUTH>'
+```
+
+**Response** (same `dataItem` envelope as insert):
+```json
+{
+  "dataItem": {
+    "id": "abc123",
+    "dataCollectionId": "Products",
+    "data": {
+      "_id": "abc123",
+      "_createdDate": { "$date": "2024-01-15T10:00:00.000Z" },
+      "_updatedDate": { "$date": "2024-01-15T10:00:00.000Z" },
+      "title": "Wireless Headphones"
+    }
+  }
+}
 ```
 
 ## Update Data Item
@@ -339,6 +389,10 @@ curl -X DELETE \
 'https://www.wixapis.com/wix-data/v2/items/abc123?dataCollectionId=Products' \
 -H 'Authorization: <AUTH>'
 ```
+
+**Response**: the deleted item, in the same `dataItem` envelope as insert.
+
+To delete by field value (e.g. by `title`), query first (see [Query Data Items](#query-data-items)) to resolve the item id, then delete by id.
 
 ## Bulk Delete Items
 
