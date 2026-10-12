@@ -185,9 +185,10 @@ wait for each reply before the next check, and wait 15 seconds between checks
 if your client can. Requests sent together count as one check. Keep a
 running count of the checks that return `KEYWORD_RESEARCH` in your own notes
 so it survives a long wait; it's for you, not the user, who only needs a short
-progress line such as "still researching keywords". In observed runs, research
-finished within about 80 seconds, and generation then usually starts on its
-own:
+progress line such as "still researching keywords". In a small number of test
+runs, research finished within about 80 seconds, and generation then usually
+started on its own; these check numbers are estimates from those runs, not a
+documented limit:
 
 - `CONTENT_PLAN`: skip Create Content Plan; continue with step 5.
 - `SUCCESS`: go to step 6.
