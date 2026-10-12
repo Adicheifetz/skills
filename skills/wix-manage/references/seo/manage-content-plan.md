@@ -208,18 +208,17 @@ wait for each reply before the next check, and wait 15 seconds between checks
 if your client can. Requests sent together count as one check. Keep a
 running count of the checks that return `KEYWORD_RESEARCH` in your own notes
 so it survives a long wait; it's for you, not the user, who only needs a short
-progress line such as "still researching keywords". In a small number of test
-runs, research finished within about 80 seconds, and generation then usually
-started on its own; these check numbers are estimates from those runs, not a
+progress line such as "still researching keywords". The check numbers below
+stand in for elapsed time, because most clients cannot read a clock. They are
+estimates from a small number of test runs, where research finished within
+about 80 seconds and generation then usually started on its own, not a
 documented limit:
 
 - `CONTENT_PLAN`: skip Create Content Plan; continue with step 5.
 - `SUCCESS`: go to step 6.
 - Still `KEYWORD_RESEARCH` at check 20, or the user says it has been there for
-  five minutes or more: check the research once. Check 20 is the one trigger:
-  it comes at least about 80 seconds in even when checks run back to back, and
-  about five minutes in at 15-second spacing, so either way the research has
-  had its observed time to finish. Not before check 20:
+  five minutes or more: check the research once. Not before check 20 while
+  you are checking the flow yourself:
 
   ```
   GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items
@@ -243,10 +242,10 @@ It takes no parameters and returns the site's most recent research. Keep only
 | Any other error | Report it and stop. |
 
 At check 60, check the research again. If it is still not ready: with the
-15-second wait, report the flow ID as incomplete. If your checks ran back to
-back without that wait, 60 of them cover only about a minute and a half, which
-slower research can outlast: keep checking, check the research again every 20
-checks, and report the flow ID as incomplete only at check 240. Most flows
+15-second wait, report the flow ID as incomplete. Checks that run back to
+back without that wait cover far less time, so slower research can outlast 60
+of them: keep checking, check the research again every 20 checks, and report
+the flow ID as incomplete only at check 240. Most flows
 leave `KEYWORD_RESEARCH` on their own well before check 20. A release before
 the research is ready gets the [not-ready `428`](#4-release-the-flow) and the
 flow keeps waiting; keep checking instead of retrying the release.
@@ -422,8 +421,9 @@ durable across generations.
   Create Content Plan (step 4).
 - Call Create Content Plan as soon as the status is `KEYWORD_RESEARCH`, before
   the flow's keyword research items exist.
-- Check the keyword research items before check 20 at `KEYWORD_RESEARCH`
-  (step 3).
+- Check the keyword research items before check 20 while you are checking a
+  flow at `KEYWORD_RESEARCH` yourself (step 3). A flow the user reports at
+  `KEYWORD_RESEARCH` for five minutes or more is checked once right away.
 - Read candidates before `SUCCESS`.
 - Retry after `PENDING_REQUIREMENTS`.
 - Ask for a site ID.
