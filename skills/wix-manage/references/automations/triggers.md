@@ -110,6 +110,10 @@ The builder writes some filters by itself when the trigger panel opens; save the
 MUST:
 
 - `id` = the catalog filter `id`; `fieldKey` = `staticFieldKey` character for character, `[0]` included.
+  Read both from the trigger's full `filters[]`: Get Trigger By App Id And Key (§2 step 4), or a
+  Resolve Triggers result without `basicFieldsOnly`. A compact listing (`basicFieldsOnly`, a
+  `fields` projection, or your own local strip of the catalog) has no filter definitions; if your
+  copy lacks `filters[]`, fetch the trigger — never invent an `id` or `fieldKey`.
 - Values are ALWAYS a literal array, even for one value (`["x"]`). Types match the field: strings quoted, numbers/booleans bare.
 - `;` between arguments, double quotes only, no spaces, one non-empty expression per filter (an empty/missing `filterExpression` is a builder error), max 5 filters.
 - String literals inside `{{…}}` (values and the `var` path) are URI-encoded like every bracket literal ([Automations Mapping Expressions](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-mapping-expressions) §1).
