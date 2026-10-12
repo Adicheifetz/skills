@@ -44,7 +44,7 @@ siteSetup:
         body:
           dataCollectionId: News
           draftItemsOptions: {}
-          publishPluginConflictAction: FAIL_WHEN_PUBLISH_INSTALLED
+          publishPluginConflictAction: COPY_DRAFT_ITEMS_WITH_DRAFT_STATUS
       - label: Seed published item to retain as a draft
         method: post
         url: https://www.wixapis.com/wix-data/v2/items
