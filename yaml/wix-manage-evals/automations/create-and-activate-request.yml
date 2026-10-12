@@ -50,7 +50,7 @@
     {
       "type": "llm_judge",
       "minScore": 7,
-      "prompt": "Score 0-10. Inspect the actual tool trace. Require a direct path with bounded discovery, real catalog IDs, no guessed endpoints, no private tools and no unrequested side effects. Penalize recovered wrong-shaped requests, an Update rejected for missing origin or settings or a stale revision, Validate retried without a change, probing calls, redundant confirmation after the explicit request to turn it on right away, and creating the automation more than once. Identify each friction and the likely docs or API gap. Return only a JSON object with score and reason."
+      "prompt": "Score 0-10. Inspect the actual tool trace. Require a direct path with bounded discovery, real catalog IDs, no guessed endpoints, no private tools and no unrequested side effects. The documented path is a full Validate of the INACTIVE candidate, Create with status INACTIVE, Get, Validate the ACTIVE candidate, Update only the status, then Get: do not count those steps as redundant or as extra side effects. Action IDs and namespaces are chosen by the caller, not read from the catalog, so a generated action ID or namespace is not hard-coding. Penalize recovered wrong-shaped requests, an Update rejected for missing origin or settings or a stale revision, Validate retried without a change, probing calls, redundant confirmation after the explicit request to turn it on right away, and creating the automation more than once. Identify each friction and the likely docs or API gap. Return only a JSON object with score and reason."
     },
     {
       "type": "llm_judge",

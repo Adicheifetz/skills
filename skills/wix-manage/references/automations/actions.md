@@ -86,6 +86,7 @@ MUST (builder renderability — the `GENERIC` form drops, rewrites or flags anyt
 - Entity-selector fields: real ids of the right kind and shape (§1 of Automations Entity and Provider Configuration (not yet published)).
 - `{{…}}` only in fields with `dynamicValuesOptions.enabled` (or an `identityType` field), per [Automations Mapping Expressions](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-mapping-expressions) §4: number/boolean hold exactly one expression of that type; date-time a single date-time expression or ISO literal; strings may mix text and expressions. An **array-typed** `var()` in a string field is flagged as a format mismatch.
 - Don't copy volatile values: dates → `now()`/payload dates; ids → resolved at build time, never from examples.
+- Keep what the user describes for one field in that field. A subject described as "Order received, then the customer's first name" is one `subject` string mixing text and expressions (`"Order received {{var(…)}}"`); don't split its values into other fields, such as a message's `fields` rows.
 
 Value kinds:
 
@@ -108,7 +109,7 @@ Trigger fields have no prefix; action outputs use the step's `namespace` (e.g. `
 
 Optional inputs with no `default` (e.g. `isDueDate`, `onlyWhenAvailable`): omit them unless the request needs them. A deprecated defaulted input (e.g. `labelIds: []` on add-label) may be omitted.
 
-Process: (1) fetch the effective schema (§4) → (2) classify required vs optional; map optional fields only with a real source → (3) source each required field from payload, upstream outputs or the user; ask for user-specific content (text, recipient, which entity) → (4) build → (5) self-check against the list above → (6) Validate Automation.
+Process: (1) fetch the effective schema (§4) before you write a mapping or any script that saves one — never guess an action's field names → (2) classify required vs optional; map optional fields only with a real source → (3) source each required field from payload, upstream outputs or the user; ask for user-specific content (text, recipient, which entity) → (4) build → (5) self-check against the list above → (6) Validate Automation.
 
 ### 5.3 Validation errors on actions
 

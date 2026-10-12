@@ -171,7 +171,10 @@ resource, finish setup). Report its `title`/`message` and the `ctaUrl`, and don'
 
 1. §4 checklist passes and the final full Validate is `VALID` (or understood warnings).
 2. Create Automation with `origin: "USER"`, `configuration.status: "INACTIVE"`, no `settings`.
-   Capture `id`.
+   Capture `id`. Send Create as its own call, after a separate full Validate call has returned
+   `VALID` (or understood warnings) — never in the same script as that Validate or as discovery.
+   Send it once per candidate: if a Create's outcome is unknown, Query Automations before
+   resending it (Reporting rules below). A Create that was never sent is not an attempt.
 3. **Read back** with Get Automation on the same site. Confirm the trigger, the root id, and the
    set of action ids/types match what you sent (string literals come back URI-encoded, as sent).
    If you used an override schema, Get with `fields: ["OVERRIDE_SCHEMA"]` ([Automations API Catalog](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-api-catalog) §2).
@@ -181,6 +184,8 @@ resource, finish setup). Report its `title`/`message` and the `ctaUrl`, and don'
 4. Hand off, leading with the outcome. Make the first line of your answer the saved state, for
    example: "Saved **<name>** as inactive (ID `<automationId>`). Click **Activate** in the
    builder to turn it on: `https://manage.wix.com/dashboard/<metaSiteId>/triggers/edit/<automationId>`".
+   That first line MUST name the automation, its status and its ID together; don't move the ID
+   to a later line, because a reader may see only the first line.
    Then say what it does, and ask the user to review it in the builder. If the user asked to
    turn it on, activate it first (step 5) and make the first line the active state instead:
    "Saved **<name>** and turned it on (ID `<automationId>`): <edit link>".
