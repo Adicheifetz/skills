@@ -28,15 +28,14 @@ Status does not show whether past runs succeeded. There is no separate
   user's history supports an unpublished builder draft as the cause, ask the owner to publish or
   discard it rather than reproducing its edits.
 
-**Calls** (base `https://www.wixapis.com/automations-service/v2/automations`; auth as in
-[Automations API Catalog](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-api-catalog) §1). A status question needs only Query and Get — no catalogs, Validate or writes.
+**Calls** (auth as in [Automations API Catalog](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-api-catalog) §1). A status question needs only Query and Get — no catalogs, Validate or writes.
 
-- Find by name: `POST <base>/query` with
+- Find by name: `POST https://www.wixapis.com/automations-service/v2/automations/query` with
   `{"query":{"filter":{"name":"<automation name>"},"cursorPaging":{"limit":25}}}` → `automations[]`
   with each `id` and exact `name`. If the user supplied the ID, skip this.
-- Read: `GET <base>/<automationId>` → `automation.configuration.status`. Add
+- Read: `GET https://www.wixapis.com/automations-service/v2/automations/<automationId>` → `automation.configuration.status`. Add
   `?fields=OVERRIDE_SCHEMA` before activating or deactivating.
-- Activate / deactivate: `PATCH <base>/<automationId>` with
+- Activate / deactivate: `PATCH https://www.wixapis.com/automations-service/v2/automations/<automationId>` with
   `{"automation": <the object exactly as fetched, with only configuration.status changed>}` — it
   carries `id`, the current `revision`, `origin` and any `settings` the Get returned.
 

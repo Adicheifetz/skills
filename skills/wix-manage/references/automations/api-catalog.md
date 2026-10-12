@@ -38,8 +38,10 @@ docs URL to get raw markdown. When a field name here and the docs disagree, the 
 '@wix/automations'`, used through a `createClient` Wix client with an auth strategy.
 - **Secrets**: NEVER print, log, echo or store tokens, API keys, app secrets or auth headers — not
   in chat, files or error reports. Redact them from any request you show.
-- **Site lock**: resolve the target `metaSiteId` once, confirm it with the user before the first
-  write, and use it for every call, read-back and link. If anything points at another site, stop.
+- **Site lock**: resolve the target `metaSiteId` once and use it for every call, read-back and
+  link. Ask the user to confirm it before the first write only when more than one site is in
+  context or the request doesn't make clear which; a site fixed by the request or session is
+  confirmed. If anything points at another site, stop.
 - **Errors**: 401 = token expired/invalid (refresh, don't retry blindly). 403 = missing scope, app
   not installed, or — on Create/Update of an automation that validated — a step the public API
   can't create (e.g. the code-variable step, §4 of Automations Delays Variables and Branches (not yet published)). A timeout or 5xx is

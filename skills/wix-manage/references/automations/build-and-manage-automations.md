@@ -24,6 +24,14 @@ the expression guide; it is not a condition node.
 | Type-safe input formulas, literal escaping and ancestor variables | [Automations Mapping Expressions](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-mapping-expressions) |
 | Check status, or turn an automation on or off | [Automations Activation Status](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-activation-status) |
 
+## Check what the site supports (read-only)
+
+For "does my site support X / what would I need", resolve the trigger once and scan the action
+catalog once ([Automations API Catalog](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-api-catalog) §6), inspect the chosen schemas, and report the pair
+and the inputs the user would supply. If something isn't found, report it as that section says
+(scan evidence, "not found in the installed catalog", closest related entries). Don't build,
+validate or save a candidate to answer this.
+
 ## Create and verify
 
 1. Keep the requested site fixed. Discover the installed catalogs and inspect the exact
@@ -31,8 +39,11 @@ the expression guide; it is not a condition node.
    task is not one that creates it. If no suitable installed action exists, report the gap.
 2. Map the user's values and compatible payload fields. Ask for missing required values;
    never invent IDs or use a display name where an ID is required. An ID or key the user
-   supplies (for example a label key for a trigger filter) may be used as given. If a field
-   requires an opaque widget, or an entity lookup by name, stop at the scope limit above.
+   supplies (for example a label key for a trigger filter) may be used as given. If an action
+   is an opaque widget (a `WIDGET_COMPONENT` action whose `inputSchema` does not fully describe
+   the request; [Automations Action Configuration](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-action-configuration) §3), or a field needs an entity looked up by name, stop
+   at the scope limit above. A `WIDGET_COMPONENT` action whose schema does describe the
+   request is hand-authored as that guide's §5.2 explains.
 3. Construct a linear graph using the model and expression guides. Keep actions within
    45 nodes. Set `origin: "USER"`, no `settings`, and `configuration.status: "INACTIVE"`.
 4. Follow **Validation and Verification below**: its §4 checklist is the actual hard gate,
@@ -251,7 +262,7 @@ this list is the union; run those too for the node types you used.
    **Later stages only — email is outside stage 2:** New email steps have a provider-generated mapping used once and persisted before content edits; no fabricated opaque-widget mapping; unrelated existing ones unchanged
    (except the documented site-owner audience replacement).
 9. `inputMapping`: only schema keys (an existing email/widget step's mapping passes through unchanged), types and
-   enums match, every required/visible field mapped, entity-selector fields hold ids, formulas
+   enums match, every required field mapped (optional ones per [Automations Action Configuration](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-action-configuration) §5.2), entity-selector fields hold ids, formulas
    only in `dynamicValuesOptions.enabled` fields.
 10. No "Create a contact" action (`contacts-create_contact`) when the trigger payload already has
     an `identityType: "contact"` field — the builder marks it "can't create a contact" and blocks

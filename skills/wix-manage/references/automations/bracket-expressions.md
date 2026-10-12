@@ -75,7 +75,7 @@ Valid first arguments: a comparison (`eq`, `gt`, `stringEq`, `dateBefore`, `star
 In number and boolean target fields BOTH branches must return exactly the field's type — a number literal/var/function for a number field. A nested `if` as a branch counts as "any" and is flagged there: wrap it (`toNumber(if(…))`) or, for booleans, use `and`/`or`. Nested `if` is fine in string fields.
 
 - ✅ `{{if(stringEq(var("status");"active");"Active";"Inactive")}}`
-- ✅ fallback: `{{if(isEmptyString(var("contact.name.first"));"there";var("contact.name.first"))}}`
+- ✅ fallback when the value is missing or empty: `{{if(or(isEmpty(var("contact.name.first"));isEmptyString(var("contact.name.first")));"there";var("contact.name.first"))}}`
 - ❌ `{{if(var("status");…)}}` when `status` is a string · ❌ `{{if("active";…)}}`
 
 ## 4. Field-type rules (what the builder accepts per target field)
