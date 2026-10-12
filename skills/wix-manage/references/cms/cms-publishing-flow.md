@@ -246,6 +246,7 @@ curl -X POST 'https://www.wixapis.com/wix-data/v2/collections/add-draft-items-pl
   -H 'Authorization: <AUTH>' \
   -d '{
         "dataCollectionId": "articles",
+        "draftItemsOptions": {},
         "publishPluginConflictAction": "FAIL_WHEN_PUBLISH_INSTALLED"
   }'
 ```

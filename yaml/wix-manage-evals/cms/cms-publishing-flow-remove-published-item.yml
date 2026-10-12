@@ -43,6 +43,7 @@ siteSetup:
         url: https://www.wixapis.com/wix-data/v2/collections/add-draft-items-plugin
         body:
           dataCollectionId: News
+          draftItemsOptions: {}
           publishPluginConflictAction: FAIL_WHEN_PUBLISH_INSTALLED
       - label: Seed published item to retain as a draft
         method: post
