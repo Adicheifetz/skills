@@ -39,7 +39,11 @@ validate or save a candidate to answer this.
    task is not one that creates it. If no suitable installed action exists, report the gap.
 2. Map the user's values and compatible payload fields. Ask for missing required values;
    never invent IDs or use a display name where an ID is required. An ID or key the user
-   supplies (for example a label key for a trigger filter) may be used as given. If an action
+   supplies (for example a label key for a trigger filter) may be used as given; never call a
+   create or find-or-create endpoint (such as Find or Create Label) to check or replace it,
+   and if Validate warns that it doesn't exist, keep it and say so in your answer. If Validate
+   returns a CRITICAL error for it instead, don't save: tell the user it wasn't found and ask
+   them to confirm it. If an action
    is an opaque widget (a `WIDGET_COMPONENT` action whose `inputSchema` does not fully describe
    the request; [Automations Action Configuration](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-action-configuration) §3), or a field needs an entity looked up by name, stop
    at the scope limit above. A `WIDGET_COMPONENT` action whose schema does describe the
