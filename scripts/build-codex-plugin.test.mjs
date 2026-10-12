@@ -57,3 +57,30 @@ test('the Codex package connects to the MCP without WixREADME; the shared config
   assert.equal(codexServers['wix-mcp'].url, 'https://mcp.wix.com/mcp?disableTools=WixREADME');
   assert.equal(sharedServers['wix-mcp'].url, 'https://mcp.wix.com/mcp');
 });
+
+test('the package has an Agent Plugins manifest with the Codex interface', () => {
+  const legacyManifest = JSON.parse(readFileSync(join(out, '.codex-plugin/plugin.json'), 'utf8'));
+  const portableManifest = JSON.parse(readFileSync(join(out, 'plugin.json'), 'utf8'));
+  const allowedFields = ['$schema', 'name', 'version', 'description', 'author', 'homepage', 'repository', 'license', 'keywords', 'extensions'];
+
+  assert.equal(portableManifest.$schema, 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json');
+  assert.deepEqual(Object.keys(portableManifest).filter((field) => !allowedFields.includes(field)), []);
+  assert.match(portableManifest.name, /^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/);
+  assert.equal(portableManifest.version, legacyManifest.version);
+  assert.deepEqual(portableManifest.extensions['com.openai'].interface, legacyManifest.interface);
+});
+
+test('the Codex interface fits the listing limits', () => {
+  const { interface: listing } = JSON.parse(readFileSync(join(ROOT, '.codex-plugin/plugin.json'), 'utf8'));
+
+  assert.ok(listing.shortDescription.length <= 30, `shortDescription is ${listing.shortDescription.length} characters`);
+  assert.ok(listing.defaultPrompt.length <= 3, `${listing.defaultPrompt.length} default prompts`);
+});
+
+test('the Agent Plugins MCP config matches the legacy one', () => {
+  const legacyServers = JSON.parse(readFileSync(join(out, '.mcp.json'), 'utf8')).mcpServers;
+  const portableConfig = JSON.parse(readFileSync(join(out, 'mcp.json'), 'utf8'));
+
+  assert.equal(portableConfig.$schema, 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json');
+  assert.deepEqual(portableConfig.mcpServers['wix-mcp'], { type: 'streamable-http', url: legacyServers['wix-mcp'].url });
+});

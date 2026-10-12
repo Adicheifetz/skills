@@ -7,6 +7,9 @@
  * The MCP config comes from codex/mcp.json. It turns WixREADME off, because the overlay ships
  * the README in wix-manage instead.
  *
+ * The package carries the manifest and MCP config twice: the Agent Plugins format (plugin.json,
+ * mcp.json at the root) and the legacy Codex one (.codex-plugin/plugin.json, .mcp.json).
+ *
  * Overlay rules, per skill:
  * - start-here.md is inserted into the skill's SKILL.md right after its first `# ` heading.
  * - Every other file is added to the skill. An overlay may only add files, never replace one.
@@ -23,6 +26,8 @@ import { fileURLToPath } from 'url';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const START_HERE = 'start-here.md';
+const AGENT_PLUGINS_SCHEMAS = 'https://agent-plugins.org/schemas/1.0.0';
+const PORTABLE_MANIFEST_FIELDS = ['name', 'version', 'description', 'author', 'homepage', 'repository', 'license', 'keywords'];
 
 function listFiles(dir) {
   return readdirSync(dir).flatMap((entry) => {
@@ -59,6 +64,27 @@ function applyOverlay(overlayDir, skillDir) {
   }
 }
 
+export function toPortableManifest(manifest) {
+  const fields = PORTABLE_MANIFEST_FIELDS.filter((field) => field in manifest).map((field) => [field, manifest[field]]);
+  return {
+    $schema: `${AGENT_PLUGINS_SCHEMAS}/plugin.schema.json`,
+    ...Object.fromEntries(fields),
+    extensions: { 'com.openai': { interface: manifest.interface } },
+  };
+}
+
+export function toPortableMcpConfig(mcpConfig) {
+  const servers = Object.entries(mcpConfig.mcpServers).map(([name, server]) => [
+    name,
+    server.type === 'http' ? { ...server, type: 'streamable-http' } : server,
+  ]);
+  return { $schema: `${AGENT_PLUGINS_SCHEMAS}/mcp.schema.json`, mcpServers: Object.fromEntries(servers) };
+}
+
+function writeJson(path, value) {
+  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
+}
+
 export function buildCodexPlugin({ root = ROOT, out = join(ROOT, 'codex/dist/wix') } = {}) {
   const manifest = JSON.parse(readFileSync(join(root, '.codex-plugin/plugin.json'), 'utf8'));
   rmSync(out, { recursive: true, force: true });
@@ -76,11 +102,11 @@ export function buildCodexPlugin({ root = ROOT, out = join(ROOT, 'codex/dist/wix
     skillPaths.push(`./skills/${name}`);
   }
 
-  writeFileSync(
-    join(out, '.codex-plugin/plugin.json'),
-    `${JSON.stringify({ ...manifest, skills: skillPaths }, null, 2)}\n`
-  );
-  cpSync(join(root, 'codex/mcp.json'), join(out, manifest.mcpServers));
+  const mcpConfig = JSON.parse(readFileSync(join(root, 'codex/mcp.json'), 'utf8'));
+  writeJson(join(out, '.codex-plugin/plugin.json'), { ...manifest, skills: skillPaths });
+  writeJson(join(out, manifest.mcpServers), mcpConfig);
+  writeJson(join(out, 'plugin.json'), toPortableManifest(manifest));
+  writeJson(join(out, 'mcp.json'), toPortableMcpConfig(mcpConfig));
   cpSync(join(root, 'assets'), join(out, 'assets'), { recursive: true });
   return out;
 }
