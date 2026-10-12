@@ -1,6 +1,6 @@
 {
   "name": "automations/deactivate-request",
-  "description": "The user asks to turn off an active automation whose task step would not validate on this site; the guide turns it off with a status-only update, without validating first or repairing the step.",
+  "description": "The user asks to turn off an active automation whose task step has an invalid input mapping; the guide turns it off with a status-only update, without validating first or repairing the step.",
   "triggerPrompt": "Please turn off my Contact Follow-up automation.",
   "tags": [
     "automations"
@@ -73,7 +73,8 @@
                       "actionKey": "createTask",
                       "inputMapping": {
                         "contactId": "{{var(\"contactId\")}}",
-                        "title": "Welcome {{if(or(isEmpty(var(\"contact.name.first\"));isEmptyString(var(\"contact.name.first\")));\"new%20friend\";var(\"contact.name.first\"))}}"
+                        "title": "Welcome {{if(or(isEmpty(var(\"contact.name.first\"));isEmptyString(var(\"contact.name.first\")));\"new%20friend\";var(\"contact.name.first\"))}}",
+                        "notASchemaField": "x"
                       },
                       "postActionIds": []
                     }

@@ -142,7 +142,7 @@ payload schema ([Automations Trigger Configuration](https://dev.wix.com/docs/api
   says which are dynamic); an error means "no dynamic output" — keep the static `outputSchema`.
   Merge into the static schema. A failed bulk item = unknown schema, not empty.
 - **Generate Input Mapping From Intent** (`POST https://www.wixapis.com/v1/actions/generate-input-mapping-from-intent`)
-  is AI-backed — don't call it. Actions you can't map from their schema are outside this stage; explain the limit.
+  is AI-backed — don't call it. For actions you can't map from their schema, tell the user they can't be configured through the API here and can be set up in the automations builder.
 - **Later stages only — email is outside stage 2:** **Email content of an existing Send an email step** — Get / Set Email Content; procedure in Automations Email Actions (not yet published).
 - **Later stages only — email is outside stage 2:** **New Send an email step** — Generate Action Input Mapping; procedure in Automations Email Actions (not yet published).
 

@@ -51,7 +51,7 @@ Status does not show whether past runs succeeded. There is no separate
 4. Explicit activation instructions authorize this change; do not ask again. If the user only
    asked to build or inspect it, obtain authorization before making it eligible for real runs.
 5. Update Automation with the object exactly as fetched, `configuration.status: "ACTIVE"`, and
-   its `revision` (field mask `configuration,name` if your client takes one). Nothing else changes.
+   its `revision`. Nothing else changes.
 6. Capture the returned id (a preinstalled override can change it), Get that id again with
    override schemas, and confirm `configuration.status` is `ACTIVE` and all other requested
    content is unchanged. Report "active" only then.
