@@ -185,8 +185,7 @@ wait for each reply before the next check, and wait 15 seconds between checks
 if your client can. Requests sent together count as one check. Keep a
 running count of the checks that return `KEYWORD_RESEARCH` in your own notes
 so it survives a long wait; it's for you, not the user, who only needs a short
-progress line such as "still researching keywords". If you lose the count or
-are unsure of it, check the research once now and count again from 0. In a small number of test
+progress line such as "still researching keywords". In a small number of test
 runs, research finished within about 80 seconds, and generation then usually
 started on its own; these check numbers are estimates from those runs, not a
 documented limit:
@@ -194,8 +193,10 @@ documented limit:
 - `CONTENT_PLAN`: skip Create Content Plan; continue with step 5.
 - `SUCCESS`: go to step 6.
 - Still `KEYWORD_RESEARCH` at check 20, or the user says it has been there for
-  five minutes or more: check the research once. Check 20 is the one trigger,
-  an estimate from the test runs described above. Not before check 20:
+  five minutes or more: check the research once. Check 20 is the one trigger:
+  it comes at least about 80 seconds in even when checks run back to back, and
+  about five minutes in at 15-second spacing, so either way the research has
+  had its observed time to finish. Not before check 20:
 
   ```
   GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items
