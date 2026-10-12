@@ -38,3 +38,15 @@ assertions:
         only a re-save), OR
       - claims editing the item directly makes it live with no publish step, OR
       - invents statuses/actions that are not part of the draft/publish model.
+  - type: llm_judge
+    minScore: 7
+    maxTokens: 1024
+    prompt: >
+      Judge the tool-call path for the user's request. A clean path reads the publishing-flow skill,
+      resolves the published collection's draftsCollectionId, writes the new item and the existing
+      item's pending edits only to that drafts collection, and publishes each draft by calling
+      Publish Data Item Draft with the published collection ID. Penalize any attempted insert,
+      update, patch, or save against the published collection, a wrong collection ID, a non-2xx Wix
+      API call even if recovered, unnecessary exploratory or duplicate calls, or claiming the
+      changes are live without confirming successful publish calls. Score 0-10 and return ONLY
+      {"score":<0-10>,"reason":"<specific deductions, or 'clean path'>"}.
