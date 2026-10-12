@@ -185,7 +185,7 @@ curl -X DELETE \
 
 ### Delete a published item permanently
 
-To permanently delete a published item, call **Unpublish Data Item** with `copyToDraft: false` to remove it from the published collection. Then delete the item from the paired drafts collection if a draft with that ID remains. This handles both PUBLISHED and CHANGED items; for CHANGED, the existing draft may remain after unpublishing.
+To permanently delete a published item, call **Unpublish Data Item** with `copyToDraft: false` to remove it from the published collection. Then query the paired drafts collection for that item ID. Delete the draft only if the query returns it; when no draft exists, skip the DELETE call. This handles both PUBLISHED and CHANGED items.
 
 ```bash
 # remove the published version without creating a draft
@@ -193,8 +193,18 @@ curl -X POST 'https://www.wixapis.com/wix-data/v2/items/unpublish' \
   -H 'Content-Type: application/json' \
   -H 'Authorization: <AUTH>' \
   -d '{"dataCollectionId":"articles","dataItemId":"<id>","copyToDraft":false}'
-# delete any remaining draft with the same ID
-curl -X DELETE 'https://www.wixapis.com/wix-data/v2/items/<id>?dataCollectionId=articles__drafts' -H 'Authorization: <AUTH>'
+# Query the paired drafts collection for this ID. Use the draftsCollectionId read from the plugin.
+ITEM_ID='<id>'
+DRAFTS_COLLECTION_ID='<draftsCollectionId>'
+drafts=$(curl -sS -X POST 'https://www.wixapis.com/wix-data/v2/items/query' \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: <AUTH>' \
+  -d "{\"dataCollectionId\":\"$DRAFTS_COLLECTION_ID\",\"consistentRead\":true,\"query\":{\"filter\":{\"_id\":\"$ITEM_ID\"},\"paging\":{\"limit\":1}}}")
+# Delete only when the query found the draft; an empty dataItems array means there is nothing to delete.
+if printf '%s' "$drafts" | jq -e --arg id "$ITEM_ID" '.dataItems | any(.id == $id)' >/dev/null; then
+  curl -X DELETE "https://www.wixapis.com/wix-data/v2/items/$ITEM_ID?dataCollectionId=$DRAFTS_COLLECTION_ID" \
+    -H 'Authorization: <AUTH>'
+fi
 ```
 
 If an item was never published and exists only in the drafts collection (DRAFT), delete it directly from the paired drafts collection. Do not call Unpublish Data Item; it returns `NOT_FOUND` when no published item exists.
