@@ -34,7 +34,10 @@ assertions:
 
       Fail if the response:
       - misidentifies WDE0110 (e.g. treats it as a validation, permissions, or wrong-field error), OR
-      - tells the user to enable Velo / call a velo provision endpoint to fix it (that flow was removed), OR
+      - tells the user to enable or check Velo, dev mode or the code editor anywhere in the answer,
+        including fallback or "if it still fails" checklists, or to call a Velo provision endpoint
+        (that flow was removed; installing the CMS app is the whole fix). Quoting the error's own
+        "Wix Code not enabled" text while giving the CMS install as the fix is not a failure, OR
       - invents a different appDefId for Wix CMS, OR
       - omits the installation endpoint or required request-body fields, OR
       - does not address retrying the original insert after the prerequisite is handled, OR

@@ -7,7 +7,7 @@ description: "Add, query, update, and delete items in CMS collections, one at a 
 > These calls need the Wix CMS app on the site (`appDefId` `e593b0bd-b783-45b8-97c2-873d42aacaf4`); a `428`, a `400` naming the app, or an empty result on a site that should have content means it is not there. [List Installed Apps](../app-installation/list-installed-apps.md) shows what the site has; [Install Wix Apps](../app-installation/install-wix-apps.md) adds it by that id.
 
 
-> **Standard call shape (every curl below).** The `<AUTH>` placeholder is shorthand for `Authorization: Bearer <TOKEN>` only. Body-bearing requests also need `Content-Type: application/json`.
+> **Standard call shape (every curl below).** The `<AUTH>` placeholder is shorthand for `Authorization: Bearer <TOKEN>` only. Body-bearing requests also need `Content-Type: application/json`. `https://www.wixapis.com/data/v2/...` (the `publicUrl` that `SearchWixAPISpec` returns for these methods) is an equivalent alias of the `https://www.wixapis.com/wix-data/v2/...` paths used here; either works.
 
 This recipe covers Create, Read, Update, Delete (CRUD) operations for Wix CMS data items, plus count, upsert, truncate, aggregate, and reference-field links.
 
@@ -756,6 +756,11 @@ POST https://www.wixapis.com/apps-installer-service/v1/app-instance/install
 After the installation succeeds, retry the original `POST https://www.wixapis.com/wix-data/v2/items` request. If the
 user only asks what the error means or how to fix it, explain this installation step and ask for
 confirmation before performing the install.
+
+Installing the CMS app is the whole fix. Do **not** tell the user to enable Velo, dev mode or the
+code editor: the Data Items introduction's code-editor note is for app developers, and the generic
+`WD_BAD_REQUEST` entry for `WDE0110` on the error-codes page does not change this remedy. This
+section has everything the answer needs; no further docs reads are required.
 
 | Error | Cause | Solution |
 |-------|-------|----------|

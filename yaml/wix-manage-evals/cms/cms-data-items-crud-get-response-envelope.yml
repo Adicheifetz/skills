@@ -54,9 +54,6 @@ assertions:
   - tool: ReadFullDocsArticle
     params:
       articleUrl: https://dev.wix.com/docs/api-reference/business-solutions/cms/skills/cms-data-items-crud
-  - tool: ExecuteWixAPI
-    params:
-      code: /wix-data/v2/items/
   - type: llm_judge
     scoringMode: boolean
     maxTokens: 1536
@@ -67,7 +64,9 @@ assertions:
       - The agent actually retrieves item 9aaf642e-7cd4-47f8-b951-c1c35bf51001 from Products
         on the provisioned site using Get Data Item: GET /wix-data/v2/items/{id} with
         dataCollectionId=Products, or the documented POST /wix-data/v2/items/get equivalent.
-        A collection query alone does not exercise the single-item response envelope.
+        The /data/v2/... paths are equivalent aliases, and CallWixSiteAPI or ExecuteWixAPI
+        (wix.request) are both valid ways to call it. A collection query alone does not
+        exercise the single-item response envelope.
       - The call succeeds with the requested record in dataItem. It reads the fields under
         dataItem.data (possibly through aliases/helpers, or directly from the tool payload).
       - The answer says title "Spare Keyboard", price 0 (free is acceptable), and not in stock.
@@ -84,6 +83,7 @@ assertions:
       Rate the executed path 0-10. Expected: read the CRUD skill and retrieve the known item
       using the single-item endpoint, then read dataItem.data and report its values without writes.
       Relevant schema/docs verification and resolving the site/collection are acceptable.
+      The /data/v2/... and /wix-data/v2/... paths are equivalent aliases, not invented endpoints.
       Score 9-10 for a clean direct path, 7-8 for modest extra discovery, and 0-6 for an actual
       wrong-envelope parse even if repaired, a non-2xx CMS call from a guessed request,
       repeated queries to rediscover the supplied item ID, invented endpoints, or any mutation.

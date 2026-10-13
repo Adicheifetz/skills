@@ -80,9 +80,6 @@ assertions:
   - tool: ReadFullDocsArticle
     params:
       articleUrl: https://dev.wix.com/docs/api-reference/business-solutions/cms/skills/cms-data-items-crud
-  - tool: ExecuteWixAPI
-    params:
-      code: /wix-data/v2/items/query
   - type: llm_judge
     scoringMode: boolean
     maxTokens: 2048
@@ -92,9 +89,11 @@ assertions:
       prompt: the answer must obtain them from actual service results.
 
       Pass only if all of the following hold:
-      - The agent actually executes POST https://www.wixapis.com/wix-data/v2/items/query against
-        Products on the provisioned site and receives successful responses. Merely writing code
-        or explaining the API is insufficient. It applies both requested inStock/price
+      - The agent actually executes Query Data Items (POST
+        https://www.wixapis.com/wix-data/v2/items/query, or its equivalent alias
+        https://www.wixapis.com/data/v2/items/query) against Products on the provisioned site,
+        through CallWixSiteAPI or ExecuteWixAPI, and receives successful responses. Merely
+        writing code or explaining the API is insufficient. It applies both requested inStock/price
         conditions, either in separate filtered queries or by filtering a complete returned
         result set in code. For a broad query, all pages must be accounted for before claiming
         no matches; a single execution tool call may run multiple requests.
@@ -125,7 +124,8 @@ assertions:
       Expected: read the CRUD skill, resolve the collection if needed, execute queries covering
       both conditions, process dataItems[*].data and report both outcomes without writes.
       Either two filtered queries or one complete query with correct local filtering is valid.
-      Relevant schema/docs verification is acceptable. Score 9-10 for a direct clean path,
+      Relevant schema/docs verification is acceptable. /data/v2/items/query and
+      /wix-data/v2/items/query are equivalent aliases, not invented endpoints. Score 9-10 for a direct clean path,
       7-8 for modest extra discovery or verification, and 0-6 for an actual wrong-envelope
       parse (even if repaired), a non-2xx CMS response from a guessed request, invented endpoints,
       repeated unfiltered/probing queries, or any mutation. Reading response.items and treating
