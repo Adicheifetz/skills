@@ -108,7 +108,9 @@ even if a status request begun within budget finishes at or after the deadline.
 If supported timing/waiting is unavailable, also report incomplete with the
 actual flow ID and last status; never replace elapsed time with rapid polling.
 
-A capability-neutral **status-only** example:
+The first status GET needs no prior check timestamp, but must honor the attempt
+deadline; save its clock observation. The capability-neutral **status-only**
+example below applies to subsequent checks:
 
 1. Validate the actual saved flow UUID and consistent clock observations for
    attempt start and last check. Missing, placeholder or invalid values must not
