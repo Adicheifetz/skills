@@ -263,11 +263,17 @@ async function run() {
   `shellResult.exitCode` and `timedOut`.
 - **A change** is a command that writes the file: `sed -i` for a line, a heredoc
   for a whole file. One command can write several files.
-- **Output** comes back as the last `outputTailLength` characters of each stream,
-  20,000 when the field is omitted; `stdoutTruncated: true` says the start was cut.
-  Pass it on the command and on every poll, as above. A read through `ExecuteWixAPI`
-  also meets the tool's own cut at about 24,000 characters, which keeps the start:
-  read a file longer than that in pieces (`sed -n '1,200p' FILE`, then the next range).
+- **Output** comes back as the end of each stream, up to `outputTailLength`
+  characters; `stdoutTruncated: true` says the start was cut. Pass the field on the
+  command and on every poll, as above. A result that travels through a tool is cut
+  once more by the tool's own limit, which keeps the start. A long file read on the
+  machine can lose either end without saying so.
+- **Reading the skills.** The skills installed on the machine (`.agents/skills/`) are
+  the same files as the online copies at `https://www.wix.com/skills/<skill>/<path>`,
+  which [the docs tool](#before-the-calls) returns whole, and as any copy your client
+  already holds. Read a skill's prose there, or from the machine when the file is short;
+  the kit's scripts name the files to read with both their path and their url. Run the
+  scripts on the machine, where the project is: their output is short by design.
 - **Publishing** is `CI=1 wix build && CI=1 wix release`, to the same `siteUrl`.
   Once a site has been released from its machine, keep changing it there: a drop
   would replace the live site and leave the machine's code behind
