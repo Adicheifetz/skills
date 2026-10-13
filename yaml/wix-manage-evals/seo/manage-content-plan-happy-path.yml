@@ -67,10 +67,12 @@ assertions:
       listed polling, materially unbounded waiting, premature/stale release,
       deadline evasion or fabrication. Cite the exact full-trace violation.
       Unshown working notes/clock declarations are missing evidence, not proof of
-      deadline evasion. A short automatic completion after one finite supported
-      wait, with no release, can pass; missing bookkeeping may warrant a modest
-      deduction, not 0. Do not fail reasonable timing variation or safe earlier
-      nonmutating readiness checks. Identify likely docs/API/provisioning gaps
+      deadline evasion. A short automatic completion after one supported wait for
+      the remaining 15-second cadence before a STATUS GET, with no release, can
+      pass; missing bookkeeping may warrant a modest deduction, not 0. A blind
+      120-second readiness sleep or skipped continuing status checks scores 0
+      even if the flow later reaches SUCCESS. Do not fail reasonable timing variation
+      or safe earlier nonmutating readiness checks. Identify likely docs/API/provisioning gaps
       for other friction.
       Return ONLY {"score":<0-10>,"reason":"<trace frictions and likely gaps, or clean path>"}.
 siteSetup:

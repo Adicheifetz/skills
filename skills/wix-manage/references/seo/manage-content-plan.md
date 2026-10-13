@@ -68,9 +68,10 @@ Use separate executions throughout:
 ## Waiting without losing progress
 
 **One API execution makes one HTTP request and returns.** This procedure uses
-15-second status pacing and a 30-minute monitoring attempt as client policy,
-not an API completion guarantee. Use a date/time capability and a documented
-bounded pause that yields without HTTP calls or busy loops. `updatedAt` can stay
+15-second status pacing, 120-second readiness retries and a 30-minute monitoring
+attempt. These are arbitrary safe client limits, not values derived from API
+latency or rate limits, and not a completion guarantee. Use a date/time capability
+and a documented bounded pause that yields without HTTP calls or busy loops. `updatedAt` can stay
 frozen; HTTP timestamps and request counts are not clocks.
 
 1. Before starting, note the attempt start and fixed deadline in working notes.
@@ -137,17 +138,20 @@ Minimal response example:
 
 Read nested `contentPlanFlow.status`, not top-level `status`. If absent or
 unrecognized, inspect and report uncertainty instead of silently polling.
-Intermediate states may be skipped. Every in-progress state uses the same
-[waiting policy](#waiting-without-losing-progress).
+Intermediate states may be skipped. Queued work does not prove missing
+prerequisites. Every in-progress state uses the same [waiting policy](#waiting-without-losing-progress).
 
 | Status | Action |
 | --- | --- |
-| `CREATED`, `SITE_ANALYSIS`, `SITE_SUMMARY` | Continue paced checks. Queued work does not prove missing prerequisites. |
+| `CREATED` | Continue paced status checks. |
+| `SITE_ANALYSIS` | Continue paced status checks. |
+| `SITE_SUMMARY` | Continue paced status checks. |
 | `KEYWORD_RESEARCH` | Follow readiness below. |
 | `CONTENT_PLAN` | Continue paced checks; skip release. |
 | `SUCCESS` | Read candidates. |
 | `PENDING_REQUIREMENTS` | Stop; report the actual unmet requirement from evidence. Do not invent business data or trigger replacements. |
-| `FAIL`, `CANCELED` | Report the actual ID and failure/cancellation, then stop. |
+| `FAIL` | Report the actual ID and failure, then stop. |
+| `CANCELED` | Report the actual ID and cancellation, then stop. |
 | `UNKNOWN` | Inspect and report uncertainty. |
 
 [Get Content Plan Flow](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-content-plan-flow-v1/get-content-plan-flow).
@@ -155,7 +159,9 @@ Intermediate states may be skipped. Every in-progress state uses the same
 ### 3. Check research readiness
 
 Only while latest status is `KEYWORD_RESEARCH`, execute once at the first
-observation or when the retry interval in the waiting procedure has elapsed:
+observation or when the retry interval in the waiting procedure has elapsed.
+**Do not sleep for 120 seconds before this GET. Continue paced status checks
+between readiness retries; stop readiness checks as soon as a later status is observed.**
 
 ```
 GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items
@@ -194,12 +200,15 @@ Check these conditions in order:
 
 | Condition | Action |
 | --- | --- |
-| Deadline expired while the flow is in progress | Stop incomplete; preserve progress. No recovery call. |
-| Nonempty matching research just returned; no status check since that read | Wait the remaining status interval, then make a fresh same-flow status GET in its own execution. |
-| Fresh `CONTENT_PLAN` or `SUCCESS` | Skip release; follow the status table. |
-| Fresh `KEYWORD_RESEARCH` with a changed research ID | Return to paced readiness checks. |
-| Fresh `KEYWORD_RESEARCH`, same research ID, remaining budget, no previous release | Recheck the deadline, then POST once in a separate execution. |
-| Release already attempted, or any other status | Do not release; follow the status table within the budget. |
+| In-progress monitoring deadline expired | Stop incomplete; preserve progress. |
+| Matching nonempty readiness has not been proved | Do not release; return to readiness checks. |
+| No status check since matching readiness returned | Wait the remaining status interval; make one fresh same-flow status GET. |
+| Fresh status is `CONTENT_PLAN` | Skip release; continue paced status checks. |
+| Fresh status is `SUCCESS` | Skip release; read candidates. |
+| Fresh status is not `KEYWORD_RESEARCH` | Follow the status table; do not release. |
+| Fresh `KEYWORD_RESEARCH` has a changed research ID | Return to readiness checks for that ID. |
+| Release already attempted | Do not release again. |
+| All preceding guards allow release | Recheck the deadline; POST once in a separate execution. |
 
 ```
 POST https://www.wixapis.com/promote/seo/v1/create-content-plan
