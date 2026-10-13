@@ -33,8 +33,10 @@ assertions:
          Missing, empty or mismatched research is not ready; recheck readiness
          about two real minutes later within the bounded waiting budget.
          A single HTTP 428 race is allowed only when matching nonempty research
-         items were already proven. Recheck status and readiness before any
-         further decision; never retry the release in a loop.
+         items were already proven. Recheck the same flow's status: at
+         CONTENT_PLAN, continue paced status checks; at SUCCESS, read candidates.
+         Neither needs another readiness GET. If still KEYWORD_RESEARCH, recheck
+         readiness at the paced cadence without another release.
       5. Observe SUCCESS for that same flow, then GET
          /content-plan-flows/{id}/blog-post-candidates.
       6. Report the actual returned topics, available nested briefData keywords
