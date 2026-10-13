@@ -7,8 +7,13 @@ description: Read and update SEO titles and tags at the right level. For "change
 
 Use the public **SEO APIs** to read and write the titles, descriptions, social
 share tags, canonical links, structured data, and indexing directives of the
-authenticated Wix site. The API selects the site from the caller's
-authorization context; never ask for or send a site ID.
+authenticated Wix site. The SEO request body has no site ID: the API selects
+the site from the caller's authorization context. Keep the already selected
+site context on **every request**, including product discovery and SEO reads
+and writes. If your API client accepts a site-context routing option, pass the
+selected site there; do not put it in the SEO body or ask for an ID already
+available in the conversation. Omitting request context can query a different
+site and return an empty product list.
 
 Writing tags requires the **Manage SEO Settings** permission. Reading tags or
 listing pattern variables does not prove that the caller can write.
@@ -20,15 +25,20 @@ including discovery, schema or docs lookups, reply with one question: does the
 user mean the homepage, another specific page, or a title convention for a page
 type (for example all product pages)? Then stop and wait for the answer. Do not
 pick the homepage on your own, and do not write anything until the user answers.
-A request that already names a page, an item, or a page type is clear: continue.
+There is no safe default for this missing scope: even a site with one page
+does not tell you whether the user means that page or a page-type convention.
+If a follow-up answer is unavailable, leave the tags unchanged and include the
+scope question in your final response. A request that already names a page,
+an item, or a page type is clear: continue.
 
 ## The one rule that must never be skipped
 
-**Every write replaces the target's tags in full, so a Get always immediately
-precedes a Set.** There is no partial update: sending only the tag the user
+**Every write replaces the target's tags in full: read before changing them.**
+There is no partial update: sending only the tag the user
 asked about deletes every other tag that item, pattern, or site had. So before
 any Set, call the matching Get for that exact target, merge the requested change
-into the tags it returns, and send the complete set back.
+into the tags it returns, and send the complete set back. The matching draft
+and publish Sets for a static page reuse that one read and the same payload.
 
 Never write from the user's request alone, and never skip the Get because the
 change looks small, because a list call already returned something, or because
@@ -234,8 +244,8 @@ All paths are relative to `https://www.wixapis.com/promote/seo/v1`.
 
 ## The write sequence
 
-Exactly three calls, in this order, with no extra probing (four when publishing a
-static page; see below):
+After discovering the target, follow this order: one Get, one Set (two matching
+Sets for a static-page publish), then a report. Reporting is not an API call:
 
 1. **Get** the current tags or pattern for the target. Required — see the rule
    above.
@@ -248,13 +258,20 @@ static page; see below):
 
 **Publishing a static page takes one extra call.** `publish: true` updates only
 the published revision and leaves the draft holding the old tags; if the user
-later republishes from the Editor, that stale draft silently reverts the change.
+later republishes from the Editor, the old draft tags are published again.
+The [Set Item SEO Tags limitations](https://dev.wix.com/docs/api-reference/business-management/seo/item-seo-tags-v1/set-item-seo-tags)
+and [Item SEO Tags introduction](https://dev.wix.com/docs/api-reference/business-management/seo/item-seo-tags-v1/introduction)
+describe these separate revisions: saving the same tags to both keeps the
+next full-site publish consistent with this targeted publish.
 So for `STATIC_PAGE` with `publish: true`, send the Set twice: first without
 `publish` (this saves the draft), then the same `tags` and `fieldMask` with
 `publish: true`. Never
-Get after a `publish: true` Set to confirm it: Get and List always return the
-draft, so they show the old values even when the publish succeeded. To confirm
-the live change, check the live page.
+Get after a `publish: true` Set to confirm it: Get and List return only the
+draft, not the published revision. Report the two write outcomes from their
+responses as accepted writes, not an observed live-page result. If the user
+also requests live-page verification, fetch the live
+page's rendered HTML separately and inspect its head; this SEO API has no
+published-revision read. Only claim a live-page check when you performed it.
 
 **A site that was never published has no published revision**, so the
 `publish: true` Set fails on it (the backend reports a missing published

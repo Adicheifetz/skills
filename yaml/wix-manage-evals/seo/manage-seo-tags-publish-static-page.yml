@@ -11,7 +11,11 @@ assertions:
     minScore: 7
     maxTokens: 2048
     prompt: |
-      Require discovery of the homepage ID from API responses, Get Item SEO Tags
+      Require discovery of the homepage ID from API responses. Trace provenance
+      across ALL preceding tool results: a literal ID in a later call is discovered
+      if that exact ID appeared in an earlier discovery response identifying the
+      homepage. A literal with no such response is guessed and must fail.
+      Require Get Item SEO Tags
       for STATIC_PAGE and that ID, then two successful Sets for that target, in
       either order: one with publish true and one with publish false or omitted,
       both with the same complete tags array (every unrelated tag from Get kept,
