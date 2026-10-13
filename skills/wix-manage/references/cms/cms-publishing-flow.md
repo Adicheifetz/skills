@@ -4,6 +4,9 @@ description: "Interact with CMS collections that gate their items behind a draft
 ---
 # CMS Draft & Publish Workflow
 
+> These calls need the Wix CMS app on the site (`appDefId` `e593b0bd-b783-45b8-97c2-873d42aacaf4`); a `428`, a `400` naming the app, or an empty result on a site that should have content means it is not there. [List Installed Apps](../app-installation/list-installed-apps.md) shows what the site has; [Install Wix Apps](../app-installation/install-wix-apps.md) adds it by that id.
+
+
 > **Standard call shape (every curl below).** The `<AUTH>` placeholder is shorthand for `Authorization: Bearer <TOKEN>` only. Body-bearing requests also need `Content-Type: application/json`.
 
 Some CMS collections gate their items behind a **draft/publish workflow** instead of writing straight to the live site. Such a collection has the **Draft Items plugin** installed. Each item is in one of three states — **DRAFT**, **PUBLISHED**, or **CHANGED** (a published item with a pending draft edit) — and edits are staged as drafts until explicitly published.
