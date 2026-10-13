@@ -1,7 +1,7 @@
 {
   "name": "automations/create-llm-output-branch",
   "description": "A typed LLM classification output drives the correct branch.",
-  "triggerPrompt": "Create an automation named Order note routing. For every order, use AI to classify the buyer note as sales or support. Create a task titled Sales follow-up for sales and Support follow-up for support. Go ahead and save it.",
+  "triggerPrompt": "Create an automation named Order note routing. For every order, use AI to classify the buyer note as sales or support. Add a note about the buyer to my Wix Inbox titled Sales follow-up for sales and Support follow-up for support. Go ahead and save it.",
   "tags": [
     "automations"
   ],
@@ -39,7 +39,7 @@
     {
       "type": "llm_judge",
       "minScore": 7,
-      "prompt": "Score 0-10. Use Generate or analyze text rather than autonomous assistant. Prompt references real buyer-note field, and output override schema declares a string classification enum sales/support. Condition references that action namespace and classification field. Correct two task branches, no arbitrary free-text output comparison or invented field. Get with OVERRIDE_SCHEMA proves the override persists. No AI invocation during setup. Score 0 for any missing mandatory result or unsupported success claim. Return only a JSON object with score and reason."
+      "prompt": "Score 0-10. Use Generate or analyze text rather than autonomous assistant. Prompt references real buyer-note field, and output override schema declares a string classification enum sales/support. Condition references that action namespace and classification field. Correct two Inbox note (Show in Inbox, `inbox-send-message`, linked to the trigger's contact) branches, no arbitrary free-text output comparison or invented field. The Create request carries the override schema and is followed by a Get with OVERRIDE_SCHEMA; when that Get body is shown it must still contain the override. Tool response bodies may be abbreviated or missing in what you see: judge from the requests the agent sent, and when a response body is shown it must agree; do not fail a run only because a body is absent. No AI invocation during setup. Score 0 for any missing mandatory result or unsupported success claim. Return only a JSON object with score and reason."
     },
     {
       "type": "llm_judge",
@@ -49,7 +49,7 @@
     {
       "type": "llm_judge",
       "minScore": 7,
-      "prompt": "Score 10 only when successful API responses in the tool trace prove the requested automation was persisted and a subsequent Get read-back of its returned ID contains the requested final configuration and INACTIVE status. Inspect response bodies, not just the agent's summary or submitted request. Missing read-back, a failed save, schema-stripped required node info, or unverified success scores 0. No activation, test execution, deletion, or unrelated writes are allowed unless the user explicitly requested them. A correct blocker explanation is honest but does not pass this successful-persistence scenario. Return only a JSON object with score and reason."
+      "prompt": "Score 10 only when the tool trace shows the save request (Create, or Update for an existing automation) carrying the requested configuration and returning without an error, followed by a Get Automation call for the returned ID. Tool response bodies may be abbreviated or missing in what you see: when a body is not shown, judge from the requests, the absence of errors and the final answer, and do not fail a run only because a body is missing; when a body is shown, it must match the request. The saved automation must be INACTIVE unless the user asked to turn it on. A failed or never-sent save, no Get after it, or a success claim the trace contradicts scores 0. No activation, test execution, deletion, or unrelated writes are allowed unless the user explicitly requested them. A correct blocker explanation is honest but does not pass this successful-persistence scenario. Return only a JSON object with score and reason."
     }
   ],
   "siteSetup": {

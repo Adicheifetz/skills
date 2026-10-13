@@ -1,7 +1,7 @@
 {
   "name": "automations/create-sequential-derived-variables",
   "description": "Derived variables read earlier steps and keep unique keys in the shared namespace.",
-  "triggerPrompt": "Create an automation named Order reserve variables. When an order is placed, store its total as a numeric variable named Order amount. In a later step, store 10 percent of Order amount as a numeric variable named Reserve amount. Wait 2 hours, then create a task whose title includes both saved values. Go ahead and save this automation.",
+  "triggerPrompt": "Create an automation named Order reserve variables. When an order is placed, store its total as a numeric variable named Order amount. In a later step, store 10 percent of Order amount as a numeric variable named Reserve amount. Wait 2 hours, then add a note about the buyer to my Wix Inbox whose title includes both saved values. Go ahead and save this automation.",
   "tags": [
     "automations"
   ],
@@ -39,7 +39,7 @@
     {
       "type": "llm_judge",
       "minScore": 7,
-      "prompt": "Score 0-10. Require two sequential SET_VARIABLES steps, both namespace setVariable, with different stable keys and unique titles Order amount and Reserve amount. First value converts the actual order total to number; second references the first step's key and computes 10 percent without a decimal literal below 1. Any equivalent renderable form passes (e.g. `divide(<key>;10)`, `divide(multiply(<key>;10);100)`, `multiply(<key>;divide(10;100))`); a `0.1` or `.1` literal fails. Each outputMapping key matches outputSchema.properties, has type number and a title, and appears in required. No same-step reference or invented code-variable action. DELAY 2 HOURS then task references both ancestor keys. Read-back must preserve both setVariablesInfo objects. All named requirements are mandatory: score 0 for a semantic mismatch even if the automation saved successfully. Return only a JSON object with score and reason."
+      "prompt": "Score 0-10. Require two sequential SET_VARIABLES steps, both namespace setVariable, with different stable keys and unique titles Order amount and Reserve amount. First value converts the actual order total to number; second references the first step's key and computes 10 percent without a decimal literal below 1. Any equivalent renderable form passes (e.g. `divide(<key>;10)`, `divide(multiply(<key>;10);100)`, `multiply(<key>;divide(10;100))`); a `0.1` or `.1` literal fails. Each outputMapping key matches outputSchema.properties, has type number and a title, and appears in required. No same-step reference or invented code-variable action. DELAY 2 HOURS then an Inbox note (Show in Inbox, `inbox-send-message`, linked to the trigger's contact) whose title references both ancestor keys. The Create request carries both setVariablesInfo objects and is followed by a Get of the returned ID; when that Get body is shown it must still contain both. Tool response bodies may be abbreviated or missing in what you see: judge from the requests the agent sent, and when a response body is shown it must agree; do not fail a run only because a body is absent. All named requirements are mandatory: score 0 for a semantic mismatch even if the automation saved successfully. Return only a JSON object with score and reason."
     },
     {
       "type": "llm_judge",
@@ -49,7 +49,7 @@
     {
       "type": "llm_judge",
       "minScore": 7,
-      "prompt": "Score 10 only when successful API responses in the tool trace prove the requested automation was persisted and a subsequent Get read-back of its returned ID contains the requested final configuration and INACTIVE status. Inspect response bodies, not just the agent's summary or submitted request. Missing read-back, a failed save, schema-stripped required node info, or unverified success scores 0. No activation, test execution, deletion, or unrelated writes are allowed unless the user explicitly requested them. A correct blocker explanation is honest but does not pass this successful-persistence scenario. Return only a JSON object with score and reason."
+      "prompt": "Score 10 only when the tool trace shows the save request (Create, or Update for an existing automation) carrying the requested configuration and returning without an error, followed by a Get Automation call for the returned ID. Tool response bodies may be abbreviated or missing in what you see: when a body is not shown, judge from the requests, the absence of errors and the final answer, and do not fail a run only because a body is missing; when a body is shown, it must match the request. The saved automation must be INACTIVE unless the user asked to turn it on. A failed or never-sent save, no Get after it, or a success claim the trace contradicts scores 0. No activation, test execution, deletion, or unrelated writes are allowed unless the user explicitly requested them. A correct blocker explanation is honest but does not pass this successful-persistence scenario. Return only a JSON object with score and reason."
     }
   ],
   "siteSetup": {

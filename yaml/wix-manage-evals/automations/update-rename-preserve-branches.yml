@@ -39,7 +39,7 @@
     {
       "type": "llm_judge",
       "minScore": 7,
-      "prompt": "Score 0-10. Require lookup and Get of the seeded automation, then rename the same ID and Get again. Final name is Branched welcome renamed. Compare the complete configuration, origin and settings before/after: identical trigger, five action IDs, condition expression/group, true/false edges, 1-hour and 3-hour branch delays, task mappings, namespaces and display names. Only top-level name and server-managed revision/timestamps may change. No Create, Delete, pruning, join, linearization or status change. Missing seed or an unchanged name does not pass. All named requirements are mandatory: score 0 for a semantic mismatch even if the automation saved successfully. Return only a JSON object with score and reason."
+      "prompt": "Score 0-10. Require lookup and Get of the seeded automation, then rename the same ID and Get again. Final name is Branched welcome renamed. Compare the Update request with the configuration, origin and settings the first Get returned (when that body is not shown, with the seeded configuration described here): identical trigger, five action IDs, condition expression/group, true/false edges, 1-hour and 3-hour branch delays, Inbox note mappings, namespaces and display names. Only top-level name and server-managed revision/timestamps may change. No Create, Delete, pruning, join, linearization or status change. Missing seed or an unchanged name does not pass. Tool response bodies may be abbreviated or missing in what you see: judge from the requests the agent sent, and when a response body is shown it must agree; do not fail a run only because a body is absent. All named requirements are mandatory: score 0 for a semantic mismatch even if the automation saved successfully. Return only a JSON object with score and reason."
     },
     {
       "type": "llm_judge",
@@ -49,7 +49,7 @@
     {
       "type": "llm_judge",
       "minScore": 7,
-      "prompt": "Score 10 only when successful API responses in the tool trace prove the requested automation was persisted and a subsequent Get read-back of its returned ID contains the requested final configuration and INACTIVE status. Inspect response bodies, not just the agent's summary or submitted request. Missing read-back, a failed save, schema-stripped required node info, or unverified success scores 0. No activation, test execution, deletion, or unrelated writes are allowed unless the user explicitly requested them. A correct blocker explanation is honest but does not pass this successful-persistence scenario. Return only a JSON object with score and reason."
+      "prompt": "Score 10 only when the tool trace shows the save request (Create, or Update for an existing automation) carrying the requested configuration and returning without an error, followed by a Get Automation call for the returned ID. Tool response bodies may be abbreviated or missing in what you see: when a body is not shown, judge from the requests, the absence of errors and the final answer, and do not fail a run only because a body is missing; when a body is shown, it must match the request. The saved automation must be INACTIVE unless the user asked to turn it on. A failed or never-sent save, no Get after it, or a success claim the trace contradicts scores 0. No activation, test execution, deletion, or unrelated writes are allowed unless the user explicitly requested them. A correct blocker explanation is honest but does not pass this successful-persistence scenario. Return only a JSON object with score and reason."
     }
   ],
   "siteSetup": {
@@ -113,14 +113,25 @@
                   "650c6d61-0000-4000-8000-000000000012": {
                     "id": "650c6d61-0000-4000-8000-000000000012",
                     "type": "APP_DEFINED",
-                    "namespace": "createTask-12",
-                    "displayName": "Create follow-up task",
+                    "namespace": "inbox-send-message-12",
+                    "displayName": "Show follow-up in Inbox",
                     "appDefinedInfo": {
-                      "appId": "146c0d71-352e-4464-9a03-2e868aabe7b9",
-                      "actionKey": "createTask",
+                      "appId": "141fbfae-511e-6817-c9f0-48993a7547d1",
+                      "actionKey": "inbox-send-message",
                       "inputMapping": {
-                        "contactId": "{{var(\"contactId\")}}",
-                        "title": "Welcome new friend"
+                        "silent": false,
+                        "formMessage": {
+                          "title": "Welcome new friend",
+                          "fields": [
+                            {
+                              "label": "First name",
+                              "value": "{{var(\"contact.name.first\")}}"
+                            }
+                          ]
+                        },
+                        "direction": "PARTICIPANT_TO_BUSINESS",
+                        "messageType": "FORM",
+                        "contactId": "{{var(\"contactId\")}}"
                       },
                       "postActionIds": []
                     }
@@ -141,14 +152,25 @@
                   "650c6d61-0000-4000-8000-000000000014": {
                     "id": "650c6d61-0000-4000-8000-000000000014",
                     "type": "APP_DEFINED",
-                    "namespace": "createTask-14",
-                    "displayName": "Create follow-up task",
+                    "namespace": "inbox-send-message-14",
+                    "displayName": "Show follow-up in Inbox",
                     "appDefinedInfo": {
-                      "appId": "146c0d71-352e-4464-9a03-2e868aabe7b9",
-                      "actionKey": "createTask",
+                      "appId": "141fbfae-511e-6817-c9f0-48993a7547d1",
+                      "actionKey": "inbox-send-message",
                       "inputMapping": {
-                        "contactId": "{{var(\"contactId\")}}",
-                        "title": "Welcome {{var(\"contact.name.first\")}}"
+                        "silent": false,
+                        "formMessage": {
+                          "title": "Welcome {{var(\"contact.name.first\")}}",
+                          "fields": [
+                            {
+                              "label": "First name",
+                              "value": "{{var(\"contact.name.first\")}}"
+                            }
+                          ]
+                        },
+                        "direction": "PARTICIPANT_TO_BUSINESS",
+                        "messageType": "FORM",
+                        "contactId": "{{var(\"contactId\")}}"
                       },
                       "postActionIds": []
                     }
