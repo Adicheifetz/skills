@@ -272,6 +272,12 @@ jobs:
             exit 1
           fi
 
+      # Always on and dependency-free (the runner's stock Node): any PR can break the Antigravity
+      # plugin, e.g. by growing a shipped skill's description past 1024 chars, and the check
+      # takes milliseconds.
+      - name: Antigravity plugin manifest validates
+        run: node scripts/validate-antigravity-plugin.mjs
+
       - name: Summary
         run: |
           echo "evalforge: ${{ needs.detect.outputs.evalforge }}"
