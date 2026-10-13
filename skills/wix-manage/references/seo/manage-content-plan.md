@@ -48,11 +48,10 @@ incomplete:
    (`POST https://www.wixapis.com/promote/seo/v1/create-content-plan`),
    which is on the Blog Post Candidate service, not the Content Plan Flow
    service they are polling. Releasing earlier is refused with HTTP `428`.
-5. Use the bounded waiting policy below: pace status checks about 15 seconds
-   apart, retry readiness about two minutes apart, and report incomplete after
-   about 15 minutes without completion, preserving the actual ID and last
-   status. If supported timing or waiting is unavailable, report incomplete
-   and resume later; do not substitute rapid polling for elapsed time.
+5. Follow the [bounded waiting policy](#waiting-without-losing-progress),
+   preserving the actual ID and last status when reporting incomplete. If
+   supported timing or waiting is unavailable, report incomplete and resume
+   later; do not substitute rapid polling for elapsed time.
 
 Points 3 and 4 belong in this reply even though they run only once the ID
 arrives: they tell the user what will happen next. Name both endpoints, but
@@ -121,8 +120,15 @@ Use a supported clock and waiting capability. Save the waiting start time,
 first observed `KEYWORD_RESEARCH` time, last status-check time, last readiness
 check time, actual flow ID, research ID and last status in your notes between
 executions. Start a bounded waiting attempt when triggering or resuming the
-flow. Check status about every 15 seconds and stop after about 15 real minutes
-without completion, including time spent in `CREATED` or `CONTENT_PLAN`.
+flow. This section is the canonical timing policy for every in-progress status:
+
+| Decision | Elapsed-time policy |
+| --- | --- |
+| Status check | About 15 seconds between checks. |
+| First readiness check | After about five minutes at `KEYWORD_RESEARCH`; a user's report of at least that long permits a check now, but does not prove readiness. |
+| Readiness retry | About two minutes after the previous readiness check. |
+| Stop waiting | After about 15 minutes in the same attempt without completion, including time spent in `CREATED` or `CONTENT_PLAN`; transitions do not reset it. |
+
 These are pacing and waiting budgets, not service completion guarantees.
 `createdAt` and `updatedAt` are flow data, not a clock; `updatedAt` can stay
 frozen while parked. Never infer elapsed time from request counts or HTTP fields.
@@ -131,12 +137,24 @@ Prefer a supported wait outside the API execution. When a JavaScript execution
 runtime supports `Date.now`, `setTimeout` and the authenticated `wix.request`
 helper, one bounded wait before one status request is also allowed. The example
 below uses the selected site's authorization context through `scope: "site"`.
-Supply `actualFlowId` from the retained response and `waitStartedAt` and
-`lastStatusCheckedAt` from your saved clock observations; do not reset them
-on each execution. Use this asynchronous function as the execution input:
+Before execution, replace all three marked strings below with the actual flow
+UUID and the saved clock observations in milliseconds since the Unix epoch.
+Keep those observations across executions; do not reset them for each check.
+The guard rejects unfilled or invalid values before any request. Use this
+self-contained asynchronous function as the execution input:
 
 ```js
 async function() {
+  const actualFlowId = "<actual-flow-uuid>";
+  const waitStartedAt = Number("<saved-wait-start-ms>");
+  const lastStatusCheckedAt = Number("<saved-last-status-check-ms>");
+  const now = Date.now();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(actualFlowId)
+      || !Number.isFinite(waitStartedAt) || waitStartedAt <= 0 || waitStartedAt > now
+      || !Number.isFinite(lastStatusCheckedAt)
+      || lastStatusCheckedAt < waitStartedAt || lastStatusCheckedAt > now) {
+    throw new Error("Replace every marked value with the actual flow UUID and saved clock observations before execution");
+  }
   const deadline = waitStartedAt + 15 * 60 * 1000;
   const delayMs = Math.max(0, lastStatusCheckedAt + 15 * 1000 - Date.now());
   if (Date.now() + delayMs >= deadline) {
@@ -224,8 +242,8 @@ Read `contentPlanFlow.status`, not a top-level `status`. If it is missing,
 inspect the response instead of silently looping. Always use this generation's
 flow ID. A new flow can stay `CREATED` for a while before it starts: keep
 checking through `CREATED`, `SITE_ANALYSIS` and `SITE_SUMMARY` within the
-same 15-minute waiting budget. If it expires, report the actual ID and last
-observed status as incomplete without inventing missing business prerequisites.
+same [bounded waiting budget](#waiting-without-losing-progress). If it expires,
+report the actual ID and last observed status as incomplete without inventing missing business prerequisites.
 See [Get Content Plan Flow](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-content-plan-flow-v1/get-content-plan-flow).
 
 `contentPlanFlow.status` is a string enum. Status checks may skip intermediate
@@ -247,20 +265,18 @@ fallback) → `SUCCESS`.
 | `CANCELED` | Canceled and cannot be resumed. Report it and stop. |
 | `UNKNOWN` | No usable status. Inspect the response and report uncertainty instead of guessing progress. |
 
-Pace checks about 15 seconds apart using supported waiting and elapsed time.
-Completion time varies; follow the same bounded waiting policy for every
-in-progress status.
+Completion time varies; follow the [bounded waiting policy](#waiting-without-losing-progress)
+for every in-progress status.
 
 ### 3. Wait for the keyword research
 
-Check the same flow's status about every 15 seconds using the supported
-clock and wait described above. Record when you first observe `KEYWORD_RESEARCH`.
-If the user reports it has already been in that state for at least five minutes,
-that is enough to make the first readiness check now, but does not prove readiness.
+Check the same flow's status using the [bounded waiting policy](#waiting-without-losing-progress).
+Record when you first observe `KEYWORD_RESEARCH`; the policy also covers a
+user-reported wait for an existing flow.
 
 - `CONTENT_PLAN`: skip Create Content Plan; continue with step 5.
 - `SUCCESS`: go to step 6.
-- Still `KEYWORD_RESEARCH` after about five real minutes in that state:
+- Still `KEYWORD_RESEARCH` when the policy's first-readiness threshold is reached:
   check the research once, in a separate execution:
 
   ```
@@ -279,15 +295,14 @@ It takes no parameters and returns the site's most recent research. Keep only
 
 | Response | Next action |
 | --- | --- |
-| `404` `NOT_FOUND: No Keyword research for given content plan` | Not ready yet. The request is correct; do not change it or look up docs. Retry readiness about two real minutes later within the waiting budget. |
-| Empty items or a different `keywordResearchId` than the flow's | Not ready for this flow. Retry readiness about two real minutes later within the waiting budget. |
+| `404` `NOT_FOUND: No Keyword research for given content plan` | Not ready yet. The request is correct; do not change it or look up docs. Retry readiness at the policy's cadence within its waiting budget. |
+| Empty items or a different `keywordResearchId` than the flow's | Not ready for this flow. Retry readiness at the policy's cadence within its waiting budget. |
 | Flow's `keywordResearchId`, at least one item | Ready. If the latest status is still `KEYWORD_RESEARCH`, call Create Content Plan once (step 4). |
 | Any other error | Report it and stop. |
 
 Between readiness checks, continue paced status checks: generation may start
-on its own. Save the last readiness-check time so retries remain about two
-minutes apart across executions. At the 15-minute waiting deadline, report
-incomplete with the actual flow ID and last observed status. Do not extend the
+on its own. Save the last readiness-check time to preserve the policy's cadence
+across executions. At its waiting deadline, report incomplete with the actual flow ID and last observed status. Do not extend the
 budget by counting more calls. A release before research is ready gets the
 [not-ready `428`](#4-release-the-flow); status or elapsed time never replaces
 the nonempty matching research check.
@@ -343,8 +358,8 @@ See [Create Content Plan](https://dev.wix.com/docs/api-reference/business-manage
 ### 5. Check the status until SUCCESS
 
 Use the same single-GET execution and nested response as step 2, with the
-same flow ID. Pace requests about 15 seconds apart within the same 15-minute
-waiting budget; `CONTENT_PLAN` does not reset the clock. At the deadline,
+same flow ID and the [bounded waiting policy](#waiting-without-losing-progress);
+`CONTENT_PLAN` does not reset the clock. At the deadline,
 report incomplete with the actual ID and last observed status. Read candidates
 in a subsequent execution only after observing `SUCCESS` for this flow.
 
@@ -459,9 +474,8 @@ durable across generations.
   release must not be retried in a loop.
 - Call Create Content Plan as soon as the status is `KEYWORD_RESEARCH`, before
   the flow's keyword research items exist.
-- Check readiness before about five real minutes at `KEYWORD_RESEARCH`
-  (step 3). A flow the user reports there for five minutes or more is checked
-  once right away; the time alone does not prove readiness.
+- Check readiness before the [bounded waiting policy](#waiting-without-losing-progress)
+  permits it. Elapsed time alone does not prove readiness.
 - Read candidates before `SUCCESS`.
 - Retry after `PENDING_REQUIREMENTS`.
 - Ask for a site ID.

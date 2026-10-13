@@ -21,17 +21,17 @@ assertions:
       2. Read contentPlanFlow.status from GET /content-plan-flows/{id}.
          KEYWORD_RESEARCH may be skipped if CONTENT_PLAN or SUCCESS is observed.
       3. While in progress, use supported elapsed time and paced individual
-         status requests, about 15 seconds apart. No call count or HTTP field
-         substitutes for a clock. Each API execution makes one HTTP request;
+         status requests following the bounded waiting policy. No call count
+         or HTTP field substitutes for a clock. Each API execution makes one HTTP request;
          a supported external wait or one bounded wait before that request is
          allowed. A multi-request polling loop or busy wait is not allowed.
-      4. If still KEYWORD_RESEARCH after about five real minutes in that state,
+      4. If still KEYWORD_RESEARCH at the policy's first-readiness threshold,
          GET /content-plan-keyword-research-items. Release at most once with
          POST /create-content-plan, only if nonempty items have the flow's
          keywordResearchId and the latest status is still KEYWORD_RESEARCH.
          Skip the release if CONTENT_PLAN or SUCCESS starts on its own.
          Missing, empty or mismatched research is not ready; recheck readiness
-         about two real minutes later within the bounded waiting budget.
+         at the policy's readiness cadence within its bounded waiting budget.
          A single HTTP 428 race is allowed only when matching nonempty research
          items were already proven. Recheck the same flow's status: at
          CONTENT_PLAN, continue paced status checks; at SUCCESS, read candidates.
@@ -43,8 +43,8 @@ assertions:
          and supporting page URLs, candidate count, actual flow ID and SUCCESS.
       Score 0 if any required step is missing, if results are fabricated, or
       completion is claimed for a different flow. Honest incomplete reporting
-      after about 15 real minutes, or when supported timing/waiting is unavailable,
-      preserves the actual flow ID and last status but is NOT a happy-path PASS.
+      at the policy's elapsed-time deadline, or when supported timing/waiting is
+      unavailable, preserves the actual flow ID and last status but is NOT a happy-path PASS.
       PENDING_REQUIREMENTS or FAIL is also not a happy-path PASS.
   - type: llm_judge
     minScore: 7
@@ -60,10 +60,10 @@ assertions:
       used to infer elapsed time, call-count or updatedAt timing, releasing
       before nonempty matching research exists, multiple releases, repeated
       triggers, or claiming completion without reading and presenting candidates.
-      Penalize early readiness checks before about five elapsed minutes in
-      KEYWORD_RESEARCH, retries of missing/empty/mismatched research much sooner
-      than about two minutes, guessed request shapes, and unnecessary docs
-      lookups after an expected readiness 404. A 404 at the paced readiness
+      Judge pacing from clock observations or execution timestamps in the trace.
+      Penalize readiness checks before the bounded policy permits them, retries
+      of missing/empty/mismatched research faster than its cadence, guessed
+      request shapes, and unnecessary docs lookups after an expected readiness 404. A 404 at the paced readiness
       cadence is expected, not friction. One 428 is an acceptable race only
       after matching nonempty research was proven and followed by a status
       recheck; a 428 without that precondition is a safety failure. Other

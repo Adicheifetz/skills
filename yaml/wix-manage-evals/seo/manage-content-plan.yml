@@ -31,9 +31,9 @@ assertions:
         Post Candidate service from the Content Plan Flow service being polled.
       - Explain an early release can return HTTP 428; recheck status/readiness
         instead of retrying release in a loop.
-      - Explain bounded recovery: use real elapsed time and paced status checks
-        (about 15 seconds apart), readiness retries about two minutes apart,
-        and report incomplete after about 15 minutes without completion.
+      - Explain recovery using the bounded waiting policy: supported real
+        elapsed time, paced status and readiness checks, and an elapsed-time
+        deadline for reporting incomplete without completion.
         If supported timing/waiting is unavailable, report incomplete and resume
         later with the actual ID and last observed status. Do not invent a clock
         from updatedAt or use call counts or rapid polling as elapsed time.
@@ -47,20 +47,20 @@ assertions:
     minScore: 7
     maxTokens: 2048
     prompt: |
-      Score 0-10 for the quality of the same missing-ID troubleshooting reply.
-      A direct reply asking for the actual ID, explaining running-or-done status,
-      naming both readiness GET and once-only release POST with matching nonempty
-      research as the precondition, distinguishing the services, and explaining
-      paced bounded recovery scores 8+ without any API execution. Those details,
-      including HTTP 428 handling and honest incomplete reporting, are required
-      recovery guidance, not extra steps. Reading the required recipe is correct.
-      Heavy penalties (each costs 2-3 points): missing the actual-ID request;
-      invented/placeholder ID or API calls without it; premature release;
-      re-triggering; claiming ten minutes proves readiness; indefinite or rapid
-      polling instead of readiness-gated bounded recovery; or extensive searches
-      without answering. Do not penalize the necessary explanation of future
-      checks while waiting for the user's ID, or failure to execute with no ID.
-      Return ONLY {"score":<0-10>,"reason":"<terse explanation>"}.
+      Examine the tool-call path and efficiency of this missing-ID follow-up,
+      not the correctness checklist scored by the preceding judge. Score 0-10.
+      The clean path is one required recipe read, no further docs/schema
+      searches and no API executions, then a focused reply that asks for the
+      missing flow ID and clearly explains the next action. Reading the required
+      recipe is not friction. With no flow ID, stopping for that focused follow-up
+      is efficient; a shorter reply is not better if it loses necessary guidance.
+      Score 8+ for this direct path. Penalize unnecessary discovery calls,
+      repeated recipe reads, API attempts before the ID arrives, repeated
+      unrelated questions, and lengthy or repetitive digressions that obscure
+      the follow-up. Name the likely docs or execution gap behind each detour.
+      Do not grade the reply again against every recovery detail in the first
+      judge, or demand API execution when the required ID is absent.
+      Return ONLY {"score":<0-10>,"reason":"<path frictions and likely gaps, or clean path>"}.
 siteSetup:
   mode: template
   templateId: blank-editor
