@@ -1,0 +1,39 @@
+name: partners/intake-form-submission-status
+description: >-
+  Verifies the agent finds a client's intake forms with Search and judges submission by
+  clientFormInteraction.submissionDate rather than by publishDate or sharing state.
+triggerPrompt: >-
+  Did my client from Bloom Bakery fill out their intake form yet?
+tags: [partners]
+maxTokens: 40000
+assertions:
+  - tool: ReadFullDocsArticle
+    params:
+      articleUrl: https://dev.wix.com/docs/api-reference/account-level/studio-workspace/content-collector/skills/manage-client-intake-forms
+  - type: llm_judge
+    minScore: 7
+    maxTokens: 2048
+    prompt: |
+      The user, a Wix Studio partner, asked whether their Bloom Bakery client submitted their intake form.
+
+      Pass if the agent:
+      - calls POST https://www.wixapis.com/partners/content-collector/v1/intake-forms/search (free-text
+        "bloom bakery" or similar) or Query, as an account-level call with no site ID, AND
+      - bases "submitted" only on clientFormInteraction.submissionDate being set, AND
+      - reports the result clearly: submitted (with date), shared but not submitted, not shared yet, or
+        no matching form found.
+
+      Fail if the agent:
+      - treats publishDate, clientEmails, or lastEditDate alone as proof of submission, OR
+      - uses a site-scoped call, OR
+      - answers without calling the API.
+  - type: llm_judge
+    minScore: 7
+    maxTokens: 2048
+    prompt: >
+      Rate how smoothly the Wix MCP let the agent fulfill the request. Examine the tool-call trace.
+      Score 0-10 (10 = direct: no wasted calls, no errors). Penalize and LIST any of: a non-2xx error
+      even if recovered; a site-scoped call attempted first; a search/query body shape guessed wrong
+      then corrected; listing every form when a search would do; redundant or probing docs/schema
+      calls. For each, name the likely MCP/docs gap.
+      Return ONLY {"score":<0-10>,"reason":"<terse list of frictions + suspected MCP/docs gap, or 'clean path' if none>"}.
