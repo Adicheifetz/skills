@@ -7,7 +7,7 @@ description: >-
 triggerPrompt: >-
   Show me the latest submissions to my contact form.
 tags: [forms]
-maxTokens: 400000
+maxTokens: 600000
 # Two forms are seeded so the agent has to find the contact form's ID first. Submissions can't
 # be seeded: bootstrap steps can't pass the created form's ID to a later step, and a form's ID
 # is read-only. So the form has no submissions, and the judges grade the request the agent
