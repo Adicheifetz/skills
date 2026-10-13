@@ -17,6 +17,8 @@ Change what a form collects — **add a field, relabel one, tighten a rule, reor
 
 ## The call
 
+**No `formId` yet** ("my contact form")? List the forms and pick it by `name`: `GET https://www.wixapis.com/form-schema-service/v4/forms?namespace=wix.form_app.form&fieldsets=METADATA` returns only names and IDs. That call skips disabled forms; if the form isn't there, call again with `&enabled=false`.
+
 ```bash
 # 1 · read the form back: you need its current revision, and every field you intend to keep
 curl -X GET \
