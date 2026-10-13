@@ -9,18 +9,15 @@ A content plan contains suggested blog post briefs: titles, keywords and existin
 site pages they support. Generation creates briefs, not published posts.
 `contentPlanFlowId` identifies the asynchronous job; it is not the site ID.
 
-**Verified against live site runs:** one
-triggered flow advanced to `CONTENT_PLAN` and then `SUCCESS` without a release;
-reading that same flow returned 24 candidates. Another flow went from observed
-`KEYWORD_RESEARCH` to `SUCCESS` on the next paced check without readiness or
-release calls, also returning 24 candidates. In a separate run, Create Content
-Plan attempted while research was still running returned HTTP `428`. These
-observations establish the automatic-progress and not-ready branches, not a
-completion-time guarantee. The API references accompany each request below.
+**Live observations cover automatic progress and premature rejection only:**
+two flows reached `SUCCESS` without a release and each returned 24 candidates
+for the same flow. A separate premature Create Content Plan call returned HTTP
+`428`. These runs establish neither completion timing nor recovery effectiveness.
 
-`KEYWORD_RESEARCH` can mean research is running or done. Status alone does not
-prove readiness. Create Content Plan is a fallback for a flow still in that
-state with matching, nonempty research, never an unconditional next step.
+**Recovery of a genuinely ready parked flow is unverified live.** Step 4 permits
+one documented attempt without promising advancement. `KEYWORD_RESEARCH` can mean
+research is running or done; status alone does not prove readiness. Release is
+conditional on matching, nonempty research and a fresh keyword-stage status.
 
 Use the selected site's authorization context. Trigger and Create Content Plan
 are writes requiring **Manage SEO Settings**; execute them when the user requests
@@ -188,46 +185,47 @@ returned nonempty items and a matching research ID:
 - Other errors: report and stop. A 403 indicates missing permission, not a reason
   to retry.
 
-The linked reference documents not found when the site has no research.
+The linked reference documents that this endpoint returns HTTP `404` when the
+site has no keyword research.
 
 ### 4. Attempt documented recovery once
 
-**Unconfirmed recovery attempt, not an established resolution:** the branch
-below follows the documented API contract but has not been verified live for a
-genuinely ready parked flow. It allows one attempt without promising advancement.
+Follow this sequence for the unconfirmed recovery branch. Keep the shared
+[waiting policy](#waiting-without-losing-progress) throughout; each GET and POST
+uses its own execution.
 
-Check these conditions in order:
+1. Check the monitoring deadline. If it has expired while the flow is in
+   progress, stop incomplete and preserve IDs, status and clock observations.
+2. Check whether release was already attempted. If so, leave this
+   sequence and continue paced status checks within the remaining budget.
+3. Confirm matching, nonempty research from the readiness step. Without that proof, return
+   to readiness checks while continuing status checks.
+4. Wait the remainder of the 15-second status interval. Make a fresh same-flow
+   status GET after the readiness response; honor the deadline before the GET.
+5. Read the fresh status. If it is not `KEYWORD_RESEARCH`, do not release:
+   follow the status table. `CONTENT_PLAN` continues monitoring; `SUCCESS`
+   proceeds to candidate reading.
+6. Compare the fresh `keywordResearchId` with the readiness response. If it does
+   not match, return to readiness checks without releasing.
+7. Recheck the deadline. If still unexpired, attempt release once:
 
-| Condition | Action |
-| --- | --- |
-| In-progress monitoring deadline expired | Stop incomplete; preserve progress. |
-| Matching nonempty readiness has not been proved | Do not release; return to readiness checks. |
-| No status check since matching readiness returned | Wait the remaining status interval; make one fresh same-flow status GET. |
-| Fresh status is `CONTENT_PLAN` | Skip release; continue paced status checks. |
-| Fresh status is `SUCCESS` | Skip release; read candidates. |
-| Fresh status is not `KEYWORD_RESEARCH` | Follow the status table; do not release. |
-| Fresh `KEYWORD_RESEARCH` has a changed research ID | Return to readiness checks for that ID. |
-| Release already attempted | Do not release again. |
-| All preceding guards allow release | Recheck the deadline; POST once in a separate execution. |
+   ```
+   POST https://www.wixapis.com/promote/seo/v1/create-content-plan
+   { "contentPlanFlowId": "<flow-uuid>" }
+   ```
 
-```
-POST https://www.wixapis.com/promote/seo/v1/create-content-plan
-{ "contentPlanFlowId": "<flow-uuid>" }
-```
+8. Handle HTTP `428` by making a paced status recheck within the remaining
+   budget. Return to readiness checks only if still `KEYWORD_RESEARCH`; otherwise
+   follow the status table. Leave this sequence. Never release again.
+9. Stop on other errors or `success: false`; report the error or returned `message`.
+10. On `success: true`, save the actual returned `contentPlanFlowId`. If different,
+    retain both IDs and report which was requested and returned. Never infer
+    original-flow completion from observations of the returned flow.
+11. Continue paced status checks. A successful release response is not completion.
+    At deadline, report incomplete with saved progress and end the turn. Never
+    repeat release, trigger a replacement or restart automatically.
 
-The response is `{ "success": true, "contentPlanFlowId": "<flow-uuid>" }`
-on success; this is not completion.
-
-1. If `success` is false, report `message` and stop. Other errors also stop,
-   except HTTP `428`: recheck status at the normal pace within the budget;
-   `KEYWORD_RESEARCH` returns to readiness checks. Never release again.
-2. On success, retain the actual returned flow ID. If different, keep both and
-   report original ID requested versus different ID returned; never infer the
-   original reached `SUCCESS` from observations of the returned flow.
-3. Continue paced status checks. If it does not advance before the deadline,
-   report incomplete with saved progress. No repeated release, replacement
-   trigger or automatic restart to force advancement.
-
+Success response: `{ "success": true, "contentPlanFlowId": "<flow-uuid>" }`.
 Releasing an already successful flow can generate a new flow.
 [Create Content Plan](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-blog-post-candidate-v1/create-content-plan).
 
