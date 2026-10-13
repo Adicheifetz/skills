@@ -29,7 +29,9 @@ assertions:
       Set followed by one matching draft Set, and reporting from the write
       responses. Penalize a Get or List after the publish Set used as
       verification, retries of a successful write, switching to another API or
-      endpoint after a 200, non-2xx errors, and guessed-shape retries.
+      endpoint after a 200, non-2xx errors, and guessed-shape retries. Do not
+      penalize the absence of a read after the writes: Get and List return only
+      the draft, so a post-write read is the wrong verification here.
       Identify each friction and its likely skill, MCP, or docs cause.
       Return ONLY {"score":<0-10>,"reason":"<frictions and causes, or clean path>"}.
 siteSetup:
