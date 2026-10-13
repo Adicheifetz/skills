@@ -105,6 +105,8 @@ assertions:
       Pass if:
       - the agent found the "Contact form" ID from the site's forms, AND
       - it called POST /form-submission-service/v4/submissions/namespace/query
+        (or its alias /forms/v4/submissions/namespace/query, the publicUrl the
+        API spec gives; both work)
         with "namespace": "wix.form_app.form" inside query.filter, the
         contact form's formId, and a createdDate range with BOTH ends: a
         lower bound at 2026-10-01 (start of day) and an upper bound covering

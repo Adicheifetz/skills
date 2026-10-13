@@ -3,7 +3,7 @@ description: >-
   Verifies the agent reads the Read Forms and Submissions recipe, finds the
   contact form among the site's forms, and queries its submissions with the
   namespace inside query.filter and a createdDate DESC sort — not an invented
-  submittedDate or _createdDate field, and not an invented /forms/v4 URL.
+  submittedDate or _createdDate field, and not an invented /forms/v4/forms URL.
 triggerPrompt: >-
   Show me the latest submissions to my contact form.
 tags: [forms]
@@ -106,6 +106,8 @@ assertions:
         site's forms (GET /form-schema-service/v4/forms?namespace=wix.form_app.form
         or POST /form-schema-service/v4/forms/query), AND
       - it called POST /form-submission-service/v4/submissions/namespace/query
+        (or its alias /forms/v4/submissions/namespace/query, the publicUrl the
+        API spec gives; both work)
         with "namespace": "wix.form_app.form" INSIDE query.filter and the
         contact form's formId in the filter, AND
       - it sorted by createdDate DESC (fieldName "createdDate", order "DESC"), AND

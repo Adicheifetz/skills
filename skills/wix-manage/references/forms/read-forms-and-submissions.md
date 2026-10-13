@@ -52,6 +52,8 @@ The source is [Namespaces of apps made by Wix](https://dev.wix.com/docs/api-refe
 
 **Use `.../submissions/namespace/query` for every submissions query.** It is the only submissions query the docs list. Don't drop `namespace` from the path.
 
+`https://www.wixapis.com/forms/v4/submissions/...` (the `publicUrl` the API spec gives for the submission methods) is the same API under another path, and works too. The `/forms/v4/` alias exists for submissions only: `/forms/v4/forms` still 404s.
+
 ---
 
 ## STEP 3 · List or find the forms
