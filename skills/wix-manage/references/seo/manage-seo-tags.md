@@ -8,12 +8,12 @@ description: Read and update SEO titles and tags at the right level. For "change
 Use the public **SEO APIs** to read and write the titles, descriptions, social
 share tags, canonical links, structured data, and indexing directives of the
 authenticated Wix site. The SEO request body has no site ID: the API selects
-the site from the caller's authorization context. Keep the already selected
-site context on **every request**, including product discovery and SEO reads
-and writes. If your API client accepts a site-context routing option, pass the
-selected site there; do not put it in the SEO body or ask for an ID already
-available in the conversation. Omitting request context can query a different
-site and return an empty product list.
+the site from the caller's authorization context. Use the site already selected
+for this conversation and retain its authorization context on **every request**,
+including product discovery and SEO reads and writes. Do not re-select the site
+or ask for its ID mid-flow. If no site is selected, list the available sites;
+select the only site, or ask the user to choose by name when several exist.
+Never invent a site ID or put one in an SEO request body.
 
 Writing tags requires the **Manage SEO Settings** permission. Reading tags or
 listing pattern variables does not prove that the caller can write.
