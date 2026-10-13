@@ -115,6 +115,7 @@ Then hand back the dashboard links ([Forms Dashboard Navigation](./forms-dashboa
 
 ## Related Documentation
 
+- [Read Forms and Submissions](./read-forms-and-submissions.md) — finding the form to update when you have no `formId` yet
 - [Create Form](./create-form.md) — composing fields, the identifier table, choice fields, the layout rules, plan caps
 - [Forms Dashboard Navigation](./forms-dashboard-navigation.md) — the builder and submissions links to hand back
 - [Update Form](https://dev.wix.com/docs/api-reference/crm/forms/form-schemas/update-form) — the `PATCH` contract and its replace semantics
