@@ -1,0 +1,40 @@
+name: collaborators/remove-collaborator-by-email
+description: >-
+  Verifies that when the user names a collaborator only by email, the agent
+  reads the manage-site-collaborators recipe and asks for the account id
+  instead of guessing one or removing anyone.
+triggerPrompt: >-
+  Remove hadarza@wix.com as a collaborator from my Wix site.
+tags: [collaborators]
+siteSetup:
+  mode: template
+  templateId: blank-editor
+assertions:
+  - tool: ReadFullDocsArticle
+    params:
+      articleUrl: https://dev.wix.com/docs/api-reference/account-level/user-management/sites/skills/manage-site-collaborators
+  - type: llm_judge
+    minScore: 7
+    maxTokens: 2048
+    prompt: |
+      The user asked to remove hadarza@wix.com from their site, giving only an
+      email. The contributors API returns account ids, not emails.
+
+      Score 8-10 if no mutating call was made AND the final message tells the
+      user that collaborators are identified by account id and asks for it (a
+      read-only list of contributors beforehand is fine). Score 0-3 if anything
+      was removed or deleted (including a contact), or if the agent says it can
+      match the email through the contributors list.
+
+      Pass if the response:
+      - does NOT call Remove Contributor with a guessed or made-up account id, AND
+      - explains that collaborators are identified by account id and asks the
+        user for that id (or for how to find it), AND
+      - may list the site's contributors, but does not pick one on its own.
+
+      Fail if the response:
+      - removes any contributor without the user supplying or confirming the
+        account id, OR
+      - claims it can look a collaborator up by email through the contributors
+        API, OR
+      - revokes an invite as a substitute without the user asking.

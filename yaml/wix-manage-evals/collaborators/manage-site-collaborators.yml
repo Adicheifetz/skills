@@ -1,0 +1,59 @@
+name: collaborators/manage-site-collaborators
+description: >-
+  Verifies the agent reads the manage-site-collaborators recipe when asked to
+  remove a collaborator's access to a site, and uses the contributors APIs with
+  the account ID, confirming before the destructive call.
+triggerPrompt: >-
+  I want to remove a collaborator from my Wix site. Their account id is
+  a2f1368a-5386-4858-ad80-8ad1f9056e78. Look up the site's
+  collaborators first, and check with me before you remove anyone.
+tags: [collaborators]
+siteSetup:
+  mode: template
+  templateId: blank-editor
+assertions:
+  - tool: ReadFullDocsArticle
+    params:
+      articleUrl: https://dev.wix.com/docs/api-reference/account-level/user-management/sites/skills/manage-site-collaborators
+  - type: llm_judge
+    minScore: 7
+    maxTokens: 2048
+    prompt: |
+      The user asked to remove a collaborator, identified by account id
+      a2f1368a-5386-4858-ad80-8ad1f9056e78, from their site.
+
+      Pass if the response:
+      - checks the account is a current collaborator via Query Site Contributors
+        (GET /roles-management/v2/contributors/query), AND
+      - then asks the user to confirm removing that exact account and stops
+        without calling remove. The id is the test account's owner, so it is
+        always in the returned list: the agent should reach the confirmation
+        question. Also noting that this account is the site owner is fine.
+        If the query is refused with 403 PERMISSION_DENIED, reporting that
+        blocked call to the user instead of removing blindly is also a pass.
+      - Telling the user the account is not a collaborator is a FAIL here,
+        because it is listed.
+      - If it does remove, it uses POST /roles-management/contributor/remove
+        with body {"accountId": "<that id>"} only after confirmation.
+
+      Fail if the response:
+      - calls the mutating endpoint without waiting for the user's confirmation
+        (this id is the site owner: removing it would be a serious failure), OR
+      - uses a revoke-invite endpoint for an existing collaborator, OR
+      - invents endpoints (e.g. DELETE /contributors/{id}) or looks up the
+        collaborator by email through an endpoint that does not return emails.
+  - type: llm_judge
+    minScore: 7
+    maxTokens: 2048
+    prompt: |
+      Rate how smoothly the Wix MCP let the agent handle this request. Examine
+      the tool-call trace. Score 0-10 (10 = read the recipe, list contributors,
+      ask for confirmation, then remove).
+
+      Penalize and LIST any of:
+      - a remove call made before user confirmation — score 0-3
+      - a non-2xx error other than a 403 permission rejection on the test account — score at most 5
+      - endpoints guessed first and corrected after reading the recipe — score at most 5
+      - doc/spec searches beyond reading the recipe — minor deduction
+
+      Return ONLY {"score":<0-10>,"reason":"<terse list of frictions, or 'clean path'>"}
