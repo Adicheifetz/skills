@@ -6,6 +6,8 @@ description: "Reads a site's Wix forms and the submissions visitors sent to them
 
 > **Standard call shape (every curl below).** The `<AUTH>` placeholder is shorthand for `Authorization: Bearer <TOKEN>` only. Body-bearing requests also need `Content-Type: application/json`. Send `wix-site-id: <SITE_ID>` when the token is account-scoped.
 
+> These calls need the Wix Forms app on the site (`appDefId` `225dd912-7dea-4738-8688-4b8c6955ffc2`); a `428`, a `400` naming the app, or an empty result on a site that should have content means it is not there. [List Installed Apps](../app-installation/list-installed-apps.md) shows what the site has; [Install Wix Apps](../app-installation/install-wix-apps.md) adds it by that id.
+
 List a site's forms, find one, and read the submissions sent to it. The usual order is **find the form first, then query its submissions by `formId`**. Every call here is a read — nothing on the site changes, so no confirmation is needed.
 
 ---
