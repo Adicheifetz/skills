@@ -27,8 +27,8 @@ assertions:
     minScore: 7
     maxTokens: 2048
     prompt: |
-      Score 0-10 for efficient homepage discovery, one target Get, at most one
-      publish:true attempt, then one draft Set and a truthful report. Penalize
+      Score 0-10 for efficient homepage discovery, one target Get, one draft Set,
+      at most one publish:true attempt, and a truthful report. Penalize
       retrying the publish on another endpoint or API, repeated failed writes,
       Get or List calls used to verify the write, guessed-shape retries, and
       unnecessary probing. Identify each friction and its likely skill, MCP, or

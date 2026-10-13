@@ -249,16 +249,18 @@ static page; see below):
 **Publishing a static page takes one extra call.** `publish: true` updates only
 the published revision and leaves the draft holding the old tags; if the user
 later republishes from the Editor, that stale draft silently reverts the change.
-So for `STATIC_PAGE` with `publish: true`, send the Set twice: first with
-`publish: true`, then the same `tags` and `fieldMask` without `publish`. Never
+So for `STATIC_PAGE` with `publish: true`, send the Set twice: first without
+`publish` (this saves the draft), then the same `tags` and `fieldMask` with
+`publish: true`. Never
 Get after a `publish: true` Set to confirm it: Get and List always return the
 draft, so they show the old values even when the publish succeeded. To confirm
 the live change, check the live page.
 
-**A site that was never published has no published revision**, so a
-`publish: true` Set fails on it. Do not retry it on another endpoint. Send the
-same Set without `publish` so the change is saved, and tell the user the site
-is not published yet: the change goes live when they publish the site. Do not
+**A site that was never published has no published revision**, so the
+`publish: true` Set fails on it (the backend reports a missing published
+revision, often as a not-found error). The draft Set already saved the change:
+do not retry the publish, re-read the item, or switch endpoints. Tell the user
+the site is not published yet: the change goes live when they publish the site. Do not
 publish the site yourself, even when the user asked to publish the change:
 publishing a site makes every page live, so ask the user to confirm that first.
 

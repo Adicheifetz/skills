@@ -12,11 +12,11 @@ assertions:
     maxTokens: 2048
     prompt: |
       Require discovery of the homepage ID from API responses, Get Item SEO Tags
-      for STATIC_PAGE and that ID, then a successful Set with publish true whose
-      complete tags array preserves every unrelated tag from Get and sets type
-      title with children "Handmade Ceramics | Studio Shop". Require a second
-      successful Set for the same target with the same tags and fieldMask and
-      publish false or omitted. Fail (score 0) if no publish:true write occurred,
+      for STATIC_PAGE and that ID, then two successful Sets for that target, in
+      either order: one with publish true and one with publish false or omitted,
+      both with the same complete tags array (every unrelated tag from Get kept,
+      type title with children "Handmade Ceramics | Studio Shop") and the same
+      fieldMask. Fail (score 0) if no publish:true write occurred,
       the draft write is missing, an ID was guessed, unrelated tags were dropped,
       or the agent reported the publish as failed or not persisted because a Get
       or List after the write still showed the old title. The report must not
@@ -25,8 +25,8 @@ assertions:
     minScore: 7
     maxTokens: 2048
     prompt: |
-      Score 0-10 for efficient homepage discovery, one target Get, the publish
-      Set followed by one matching draft Set, and reporting from the write
+      Score 0-10 for efficient homepage discovery, one target Get, one draft Set
+      and one matching publish Set (either order), and reporting from the write
       responses. Penalize a Get or List after the publish Set used as
       verification, retries of a successful write, switching to another API or
       endpoint after a 200, non-2xx errors, and guessed-shape retries. Do not
