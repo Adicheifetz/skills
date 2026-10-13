@@ -40,14 +40,22 @@ assertions:
         Missing/empty/mismatched research cannot authorize a release.
       - If a release POST /create-content-plan occurs, require prior proof of
         nonempty items matching this flow's keywordResearchId and latest status
-        KEYWORD_RESEARCH. Allow at most one release. A single HTTP 428 race is
-        allowed only after that readiness proof; recheck the same flow's status.
+        KEYWORD_RESEARCH, with the shared waiting deadline not yet expired.
+        Allow at most one release. A single HTTP 428 race is
+        allowed only after that readiness proof; recheck the same flow's status
+        only if the shared waiting budget remains.
         CONTENT_PLAN continues status checks and SUCCESS permits candidate reading,
         without another readiness GET. Still KEYWORD_RESEARCH requires a paced
         readiness recheck without another release.
 
+      Observed SUCCESS ends waiting: candidate reading and reporting are allowed
+      even if a status request started before the deadline returns SUCCESS at or
+      after it.
+      Do not require more waiting/recovery calls after observed SUCCESS.
+
       Score 7+ only for the full completed same-flow outcome and safe applicable
       recovery. Score 0 for fabricated results, premature/ungated release,
+      release after the shared deadline even if readiness was already proven,
       completion for a different flow, no observed SUCCESS, or no candidate read
       and actual topics in the final reply. Honest incomplete, timeout,
       PENDING_REQUIREMENTS or FAIL cannot pass this happy-path scenario.
@@ -68,10 +76,15 @@ assertions:
       used to infer elapsed time, call-count or updatedAt timing, releasing
       before nonempty matching research exists, multiple releases, repeated
       triggers, or claiming completion without reading and presenting candidates.
+      Also score 0 for starting status, readiness or release requests after the
+      shared waiting deadline, including release when the deadline expired after
+      a ready response, or an immediate automatic attempt restart to evade it.
+      A request begun within budget may return SUCCESS at or after the deadline;
+      observed SUCCESS ends waiting, and the subsequent candidate GET/report is allowed.
       Judge pacing from clock observations or execution timestamps in the trace.
       The policy's late-transition first-readiness window is valid, not an early
       check violation; it does not reset the budget or accelerate retries.
-      Penalize readiness calls in earlier statuses or after the deadline,
+      Penalize readiness calls in earlier statuses,
       readiness checks before the bounded policy permits them, retries
       of missing/empty/mismatched research faster than its cadence, guessed
       request shapes, and unnecessary docs lookups after an expected readiness 404. A 404 at the paced readiness

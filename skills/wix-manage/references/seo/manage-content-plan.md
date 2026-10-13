@@ -127,10 +127,13 @@ flow. This section is the canonical timing policy for every in-progress status:
 | Readiness retry | About two minutes after the previous readiness check, only if the shared waiting budget still allows it; the late first-check exception does not accelerate retries. |
 | Stop waiting | After about 15 minutes in the same attempt without completion, including time spent in `CREATED` or `CONTENT_PLAN`; transitions do not reset it. |
 
-Before every request, including readiness GETs, release POSTs and status checks
-following HTTP `428`, check the supported clock against the shared deadline.
-If it expires after a ready response, do not release. If expired, make no further
-call, even if the first readiness check never became due. Report incomplete,
+Before each waiting or recovery request while the flow is in progress,
+including readiness GETs, release POSTs and status checks following HTTP `428`,
+check the supported clock against the shared deadline. If it expires after a
+ready response, do not release. Observing `SUCCESS` ends waiting and permits
+the candidate read and report, even if an in-flight status response finishes at
+or after the deadline. If the deadline expires with an in-progress status, make no further
+waiting or recovery call, even if readiness was never checked. Report incomplete,
 end the turn and save the actual flow ID, last status, observed `KEYWORD_RESEARCH`
 time and readiness observations for a later requested resume. Do not immediately
 restart, reset or extend this attempt to bypass the deadline.
