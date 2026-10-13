@@ -12,7 +12,7 @@ List a site's forms, find one, and read the submissions sent to it. The usual or
 
 ## STEP 1 · Know the namespace — never guess it
 
-Every form and every submission belongs to one **namespace**: the app that owns the form. Every read except Get Form needs it.
+Every form and every submission belongs to one **namespace**: the app that owns the form. Every read except Get Form and Get Submission needs it.
 
 | App that owns the form | Namespace |
 |---|---|
@@ -40,6 +40,7 @@ The source is [Namespaces of apps made by Wix](https://dev.wix.com/docs/api-refe
 | Query forms (by name, date) | `POST https://www.wixapis.com/form-schema-service/v4/forms/query` | inside the filter: `"namespace": {"$eq": "wix.form_app.form"}` |
 | Get one form | `GET https://www.wixapis.com/form-schema-service/v4/forms/{formId}` | not needed |
 | Query submissions | `POST https://www.wixapis.com/form-submission-service/v4/submissions/namespace/query` | inside the filter: `"namespace": "wix.form_app.form"` |
+| Get one submission | `GET https://www.wixapis.com/form-submission-service/v4/submissions/{submissionId}` | not needed |
 | Count submissions per form | `POST https://www.wixapis.com/form-submission-service/v4/submissions/count` | body field `namespace` |
 
 **⚠️ These look-alike URLs do not exist and return a bare `404`:**
@@ -131,6 +132,18 @@ curl -X POST \
 - **⚠️ `namespace` goes inside `query.filter`.** A top-level `"namespace"` beside `query` doesn't count: the call fails with `namespace filter is required`.
 - Leave out `formId` to read submissions across every form in the namespace.
 - Response: `submissions[]` and **`metadata`** (`count`, `hasNext`, `cursors.next`). Each submission has `id`, `formId`, `status`, `seen`, `contactId` (when linked to a contact), `submitter`, `createdDate`, and `submissions` (the answers, see STEP 5).
+
+### Read one submission
+
+When you already hold a submission ID, read it directly. No namespace is needed:
+
+```bash
+curl -X GET \
+  'https://www.wixapis.com/form-submission-service/v4/submissions/{submissionId}' \
+  -H 'Authorization: <AUTH>'
+```
+
+Returns `submission`, with the same fields as a query result, including `formId` (the form it belongs to) and the answers in `submissions`.
 
 ### When it was submitted = `createdDate`
 
