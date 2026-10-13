@@ -259,7 +259,8 @@ the live change, check the live page.
 `publish: true` Set fails on it. Do not retry it on another endpoint. Send the
 same Set without `publish` so the change is saved, and tell the user the site
 is not published yet: the change goes live when they publish the site. Do not
-publish the site yourself unless the user asks for that.
+publish the site yourself, even when the user asked to publish the change:
+publishing a site makes every page live, so ask the user to confirm that first.
 
 To remove an item's own tags so it inherits again, call **Reset Item SEO Tags To
 Default** (or **Reset SEO Pattern To Default**) — never set an empty list to

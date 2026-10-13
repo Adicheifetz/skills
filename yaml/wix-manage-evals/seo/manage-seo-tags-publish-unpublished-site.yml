@@ -20,7 +20,9 @@ assertions:
       saved but not live because the site is not published yet. Fail (score 0)
       if no successful draft write occurred, an ID was guessed, unrelated tags
       were dropped, the agent claimed the change is live, or the agent published
-      the whole site without the user asking.
+      the whole site. Asking the user whether to publish the site is correct;
+      publishing it without that confirmation is not, even though the user
+      asked to publish the title.
   - type: llm_judge
     minScore: 7
     maxTokens: 2048
