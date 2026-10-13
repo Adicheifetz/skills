@@ -454,16 +454,28 @@ Start here for existing Catalog V3 product updates, including digital products t
 ## Automations
 
 ### [Build and Manage Wix Automations](references/automations/build-and-manage-automations.md)
-Discover installed automation triggers and actions and inspect an automation’s current active status without changing site data.
+Inspect Wix automations and their on/off status, create linear automations from the site’s installed triggers and actions, and turn automations on or off on request.
 
 <details>
 <summary>Internal skills (loaded on demand by Build and Manage Wix Automations — do NOT use directly)</summary>
 
 - [Automations API Catalog](references/automations/api-catalog.md)
-  Discover installed automation triggers and actions and inspect their schemas through site-scoped public catalog APIs.
+  Discover site-specific triggers and actions, authenticate public Automation API calls, and choose the API for validation, persistence or catalog lookups.
+
+- [Automations Graph and Data Model](references/automations/automation-model.md)
+  Assemble builder-editable automation graphs with valid node relationships, namespaces and ancestor data access.
+
+- [Automations Trigger Configuration](references/automations/triggers.md)
+  Select and configure automation triggers, trigger filters and event payload schemas using the site catalog.
+
+- [Automations Action Configuration](references/automations/actions.md)
+  Configure app-defined automation actions from their input schemas and preserve supported existing action mappings.
+
+- [Automations Mapping Expressions](references/automations/bracket-expressions.md)
+  Write builder-compatible automation mapping expressions, literals and data references.
 
 - [Automations Activation Status](references/automations/activation-status.md)
-  Read an automation’s current ACTIVE or INACTIVE status and distinguish it from historical run outcomes.
+  Read an automation’s current ACTIVE or INACTIVE status, and activate or deactivate it when the user asks.
 
 </details>
 
