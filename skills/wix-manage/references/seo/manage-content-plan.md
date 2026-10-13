@@ -67,66 +67,43 @@ Use separate executions throughout:
 
 ## Waiting without losing progress
 
-**One API execution makes one HTTP request and returns.** Decide after each
-response. No multi-request polling loops, busy waits or unbounded sleeps.
+**One API execution makes one HTTP request and returns.** A usable clock exposes
+current or monotonic time on demand, in consistent units, advancing with elapsed
+time. A usable wait is a documented bounded pause/timer that yields without
+HTTP calls or busy loops. Retain attempt start, first `KEYWORD_RESEARCH`, last
+status/readiness observations and actual IDs in notes or supported state across calls.
+`updatedAt` can remain frozen while parked; flow timestamps and counts are not clocks.
 
-Save supported clock observations: attempt start, first observed
-`KEYWORD_RESEARCH`, last status/readiness checks; also save actual flow ID,
-research ID and last status. `createdAt` and `updatedAt` are flow data, not a
-clock; `updatedAt` can stay frozen while parked. Never infer time from HTTP
-fields or request counts.
+These are **arbitrary, adjustable client defaults**, not API readiness thresholds,
+required minimum waits, measured durations or SLAs. Choose finite limits from
+known caller capabilities before the attempt; never reset or extend them mid-attempt:
 
-These are **chosen approximate client pacing, backoff and stop budgets**, not
-API-required minimum waits, an SLA or measured completion times. Reasonable
-pacing variation and safe earlier nonmutating readiness checks are acceptable;
-readiness still requires latest status `KEYWORD_RESEARCH`, and release still
-requires all step 4 proofs. Avoid rapid polling. Later statuses skip readiness.
+- Status checks: about 15 seconds apart.
+- First readiness: normally after about five minutes at `KEYWORD_RESEARCH`.
+- Readiness retries: about two minutes apart within the remaining budget.
+- Stop budget: about 15 minutes total from trigger/resume, including earlier states.
 
-- Check status about every 15 seconds.
-- If still `KEYWORD_RESEARCH`, normally check readiness after about five minutes.
-- Retry readiness about two minutes later, only within the remaining budget.
-- Stop waiting about 15 minutes from trigger/resume; transitions never reset it.
+With these defaults, a report of at least five minutes at `KEYWORD_RESEARCH`
+allows the first readiness check now. For late `KEYWORD_RESEARCH`, check once
+immediately when only the last retry interval remains and no first check occurred.
+Earlier statuses never permit readiness; reasonable pacing variation or safe earlier
+nonmutating checks are acceptable.
+Continue status checks during readiness waits; do not sleep a whole readiness interval.
 
-A user-reported wait beyond the normal first-check interval allows a check now.
-For a late transition to `KEYWORD_RESEARCH`, reserve the attempt's last two
-minutes for one first readiness check if none has occurred. This exception does
-not accelerate retries or extend the deadline; earlier statuses never permit
-readiness checks.
+Check the clock before each waiting/recovery request, including release after
+ready research or HTTP `428`. At expiry, stop, report incomplete, preserve actual
+ID/status and clock/readiness observations, and end the turn until a later requested
+resume. Observed `SUCCESS` ends waiting and permits candidate retrieval even if an
+in-flight status request finishes at or after the deadline. No automatic restart to evade it.
 
-Continue paced status checks throughout readiness waits. Do not sleep the whole
-readiness interval inside an execution. Use a supported external wait or
-persistent runtime state. A supported in-execution delay is allowed **only
-before a status GET**, bounded by its cadence and the shared deadline.
-
-Check the clock before every in-progress waiting/recovery request, including
-readiness, release and 428 recovery. If the deadline expires after a ready
-response, do not release. At expiry with an in-progress status, stop calls,
-report incomplete and end the turn. Preserve all observations for a later
-requested resume; do not immediately restart or extend the attempt to evade
-the deadline. Observed `SUCCESS` ends waiting and permits candidate retrieval,
-even if a status request begun within budget finishes at or after the deadline.
-If supported timing/waiting is unavailable, also report incomplete with the
-actual flow ID and last status; never replace elapsed time with rapid polling.
-
-The first status GET needs no prior check timestamp, but must honor the attempt
-deadline; save its clock observation. The capability-neutral **status-only**
-example below applies to subsequent checks:
-
-1. Validate the actual saved flow UUID and consistent clock observations for
-   attempt start and last check. Missing, placeholder or invalid values must not
-   send a request. Use observations from the same supported clock and time units.
-2. Compute next status-check time from the last observation plus the status
-   cadence, and the shared deadline from attempt start plus the stop budget.
-   If current time or waiting until the next due time would reach the deadline,
-   report incomplete.
-3. Use a supported external wait, or one bounded delay before this single status
-   GET. Read the clock again afterward; if expired, send no request.
-4. Otherwise send one [status GET](#2-read-status) using the actual flow ID,
-   return its response, save the new clock observation and decide the next action.
-
-This illustrates required guards, not a calling contract for any runtime.
-Readiness GETs use their own backoff; never substitute this status cadence or
-one long readiness sleep.
+For a subsequent status check, validate saved ID/start/last observations; determine
+next due time and the fixed deadline. If now or waiting until next due reaches it,
+stop. Otherwise use a supported external wait or one bounded delay only before the
+status GET; re-read the clock, and if unexpired send one GET, save the observation
+and decide. The first GET needs actual ID and attempt start, not a prior check time;
+save its observation.
+If clock, wait or retained observations are unusable, report incomplete with actual
+ID and last status instead of rapid polling. Never reuse status cadence for readiness.
 
 ## API steps
 
@@ -188,7 +165,11 @@ check or retry, execute once:
 GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items
 ```
 
-No parameters; it returns the site's most recent research:
+No parameters are required. The [public request schema and reference](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-keyword-research-v1/list-keyword-research-items)
+allow optional `paging`; omit it for all items. The reserved `contentPlanFlowId`
+parameter is ignored, so this GET returns the site's most recent research,
+not a flow-selected result. A verified live GET with no parameters returned
+nonempty items and the matching `keywordResearchId` on October 13, 2026:
 
 ```json
 {
@@ -197,16 +178,15 @@ No parameters; it returns the site's most recent research:
 }
 ```
 
-- `404` (`No Keyword research for given content plan`), empty items or a
-  mismatched research ID: not ready for this flow. Retry at the policy's cadence
-  while continuing status checks. Do not change the endpoint or search docs
+- Not found, empty items or a mismatched research ID: not ready for this flow.
+  Retry at the policy's cadence while continuing status checks. Do not change the endpoint or search docs
   after an expected readiness 404.
 - Nonempty items matching the flow's research ID: perform the fresh status check
   in step 4; elapsed time alone never authorizes release.
 - Other errors: report and stop. A 403 indicates missing permission, not a reason
   to retry.
 
-[List Keyword Research Items](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-keyword-research-v1/list-keyword-research-items).
+The linked reference documents not found when the site has no research.
 
 ### 4. Release only if still needed
 

@@ -36,26 +36,25 @@ assertions:
     minScore: 7
     maxTokens: 2048
     prompt: |
-      Judge execution quality from the full trace. Require a completed result.
-      Score 8+ for supported elapsed-time pacing under the chosen bounded policy,
-      one HTTP request per execution, continued status checks during readiness
-      waits, and at most one readiness-proven release after fresh matching status.
-      Later statuses skip release; required runtime/recipe reads are correct.
-      Score 0 for polling loops, busy/rapid polling or call-count/HTTP-field clocks;
-      blind long readiness sleeps or skipped status cadence; stale/mismatched
-      status at release; repeated triggers/releases; or starting status/readiness/
-      release after the shared deadline, including automatic restarts to evade it.
-      Cadences are approximate client recommendations: do not fail minor reasonable
-      timing variation or an earlier nonmutating readiness check at KEYWORD_RESEARCH.
-      Release proofs and the shared deadline remain strict. The late first-check
-      window is valid; expected paced 404s are not friction. One 428 is acceptable
-      only after readiness proof, followed by status/research decisions within
-      budget without another release.
-      Observed SUCCESS ends waiting: candidates may be read even if an in-flight
-      status request returns at/after the deadline. Penalize excessive readiness
-      retries, guessed shapes, unnecessary discovery after an expected 404 and
-      other non-2xx errors;
-      identify the likely docs/API/provisioning gap. Use timestamps/clock evidence.
+      Judge the full execution trace using three observable behaviors, not the
+      recipe's default minute values. Require a completed result for a pass.
+      1. One HTTP request per execution, with real paced waits and continuing
+         status checks; no polling loop, blind long readiness sleep, busy/rapid
+         polling, or request-count/HTTP-field clock.
+      2. A finite deadline declared before waiting, not extended or automatically
+         restarted; at most one release, after matching nonempty research and a
+         fresh matching KEYWORD_RESEARCH status, before that deadline. Later
+         statuses skip release. A single 428 requires a status recheck within
+         remaining time, and readiness only if still KEYWORD_RESEARCH; never
+         another release.
+      3. Claims match observed results; incomplete is reported honestly with saved
+         progress, not fabricated success. Required guidance reads and expected
+         readiness 404s are not friction; unnecessary discovery or guessed API
+         shapes are. Observed SUCCESS permits candidate reading after waiting ends.
+      Score 8+ for these behaviors. Score 0 for any listed polling, premature/stale
+      release, deadline-evasion or fabrication violation. Do not fail reasonable
+      timing variation or safe earlier nonmutating readiness checks. Cite trace
+      evidence and identify likely docs/API/provisioning gaps for other friction.
       Return ONLY {"score":<0-10>,"reason":"<trace frictions and likely gaps, or clean path>"}.
 siteSetup:
   mode: template
