@@ -1,11 +1,11 @@
 name: seo/manage-url-redirects-bulk-migration
 description: >-
-  Verifies that the agent migrates 150 one-to-one redirects from another platform by splitting
+  Verifies that the agent migrates 110 one-to-one redirects from another platform by splitting
   them into Bulk Create Redirects calls of at most 100, the API's per-request cap, rather than
   sending one oversized batch that the API rejects with a 400.
-# 150 is chosen to sit between the real cap (100) and the stale one the recipe used to quote
-# (500): an agent that trusts "up to 500" sends a single call and gets INVALID_ARGUMENT back. The
-# pairs are deliberately unpatterned - five old prefixes, renamed slugs - so no group redirect can
+# 110 is chosen to sit just above the real cap (100) and well under the stale one the recipe
+# used to quote (500): an agent that trusts "up to 500" sends a single call and gets
+# INVALID_ARGUMENT back. The pairs are deliberately unpatterned - five old prefixes, renamed slugs - so no group redirect can
 # stand in for the list, and no new path is also an old one, so no loop resolution deletes
 # anything mid-run.
 triggerPrompt: |
@@ -124,46 +124,6 @@ triggerPrompt: |
   /catalog/ivory-throw-807,/shop/throws/ivory-throw
   /store/item/amber-platter-333,/shop/platters/amber-platter
   /catalog/slate-lamp-694,/shop/lamps/slate-lamp
-  /shop-old/oak-basket-247,/shop/baskets/oak-basket
-  /catalog/copper-basket-105,/shop/baskets/copper-basket
-  /products/amber-runner-273,/shop/runners/amber-runner
-  /products/slate-pitcher-737,/shop/pitchers/slate-pitcher
-  /shop-old/cedar-coaster-525,/shop/coasters/cedar-coaster
-  /catalog/sage-throw-750,/shop/throws/sage-throw
-  /products/cedar-lamp-253,/shop/lamps/cedar-lamp
-  /catalog/copper-candle-540,/shop/candles/copper-candle
-  /store/item/glazed-pitcher-352,/shop/pitchers/glazed-pitcher
-  /store/item/indigo-mug-512,/shop/mugs/indigo-mug
-  /shop-old/oak-bowl-318,/shop/bowls/oak-bowl
-  /catalog/sage-basket-121,/shop/baskets/sage-basket
-  /p/indigo-platter-838,/shop/platters/indigo-platter
-  /shop-old/woven-throw-638,/shop/throws/woven-throw
-  /store/item/terracotta-mug-796,/shop/mugs/terracotta-mug
-  /shop-old/indigo-bowl-467,/shop/bowls/indigo-bowl
-  /p/marble-throw-709,/shop/throws/marble-throw
-  /shop-old/cedar-platter-536,/shop/platters/cedar-platter
-  /store/item/indigo-planter-713,/shop/planters/indigo-planter
-  /p/rustic-basket-296,/shop/baskets/rustic-basket
-  /p/glazed-bowl-302,/shop/bowls/glazed-bowl
-  /shop-old/amber-candle-743,/shop/candles/amber-candle
-  /p/rustic-mug-921,/shop/mugs/rustic-mug
-  /store/item/sage-coaster-573,/shop/coasters/sage-coaster
-  /p/woven-planter-241,/shop/planters/woven-planter
-  /products/linen-basket-456,/shop/baskets/linen-basket
-  /store/item/oak-throw-811,/shop/throws/oak-throw
-  /p/walnut-bowl-537,/shop/bowls/walnut-bowl
-  /p/marble-mug-501,/shop/mugs/marble-mug
-  /p/indigo-tray-568,/shop/trays/indigo-tray
-  /products/marble-basket-265,/shop/baskets/marble-basket
-  /p/amber-throw-889,/shop/throws/amber-throw
-  /shop-old/rustic-runner-646,/shop/runners/rustic-runner
-  /products/oak-cushion-956,/shop/cushions/oak-cushion
-  /catalog/terracotta-coaster-980,/shop/coasters/terracotta-coaster
-  /p/linen-pitcher-437,/shop/pitchers/linen-pitcher
-  /store/item/slate-runner-212,/shop/runners/slate-runner
-  /store/item/cedar-mug-452,/shop/mugs/cedar-mug
-  /store/item/woven-pitcher-126,/shop/pitchers/woven-pitcher
-  /shop-old/oak-coaster-421,/shop/coasters/oak-coaster
 tags: [seo]
 # A fresh site with no redirects, so the List Redirects check before writing finds no conflict
 # and the agent can create in the same turn without stopping to ask.
@@ -178,14 +138,14 @@ assertions:
     minScore: 7
     maxTokens: 2048
     prompt: |
-      The user supplied a CSV of 150 old-to-new URL pairs and asked for a redirect for every one,
+      The user supplied a CSV of 110 old-to-new URL pairs and asked for a redirect for every one,
       then a count of how many were created. The site was provisioned empty for this run. Bulk
       Create Redirects accepts at most 100 redirects per request and rejects a larger list as a
       whole with a 400 (INVALID_ARGUMENT), writing nothing.
 
       Pass only if ALL of the following hold:
       - every Bulk Create Redirects call in the trace carried 100 redirects or fewer,
-      - the calls together covered all 150 pairs, each pair exactly once, as exact redirects
+      - the calls together covered all 110 pairs, each pair exactly once, as exact redirects
         (no options.groupRedirect) with `from` and `to` taken from the CSV,
       - the agent read results[].itemMetadata from each response rather than trusting the HTTP
         status alone, and
@@ -194,7 +154,7 @@ assertions:
 
       Fail if any Bulk Create Redirects call carried more than 100 redirects, even if the agent
       recovered afterwards: sending an oversized batch is the exact mistake this scenario exists
-      to catch. Fail if the agent created fewer than 150 redirects and did not say so, invented
+      to catch. Fail if the agent created fewer than 110 redirects and did not say so, invented
       or altered paths, collapsed the list into group redirects, set options.forceReplace, or
       claimed a total it did not verify.
   - type: llm_judge
@@ -202,8 +162,8 @@ assertions:
     maxTokens: 2048
     prompt: |
       Judge the tool-call path, not the prose. Score 0-10, where 10 is a direct path: one List
-      Redirects to check for conflicts, then two Bulk Create Redirects calls (for example 100 and
-      50), with no errors.
+      Redirects to check for conflicts, then two Bulk Create Redirects calls (100, then 10), with
+      no errors.
 
       Penalize and LIST each of the following, naming the likely skill or docs gap behind it:
       - any non-2xx response, even if recovered - a 400 from an oversized Bulk Create batch

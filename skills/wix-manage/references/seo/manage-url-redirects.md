@@ -238,9 +238,15 @@ another platform, follow this path and nothing else:
 1. Parse the whole list before any call. Skip the header row, trim whitespace,
    and drop exact duplicate rows. Each row is one exact redirect unless the user
    asked for a whole section.
-2. Call **List Redirects** once and run the checks above against every row.
+2. Call **List Redirects** once and run the checks above against every row. If
+   either check matches any row, the same rule applies as for a single create:
+   name every row and every existing redirect at stake, end your turn without
+   writing, and continue only after the user answers. A row whose `to` equals an
+   existing redirect's `from` is the dangerous one - Bulk Create deletes that
+   redirect with no error to catch afterwards. If nothing matched, continue in
+   the same turn.
 3. Split the rows into chunks of 100 and call **Bulk Create Redirects** once per
-   chunk, in order. 150 rows is two calls: 100, then 50.
+   chunk, in order. 250 rows is three calls: 100, 100, then 50.
 4. Read each chunk's `results[].itemMetadata` and keep a running count. Never
    delete a redirect that reported success in order to create it again, and
    never resend a chunk that succeeded. A success with no `id` means the same
