@@ -36,12 +36,16 @@ docs URL to get raw markdown. When a field name here and the docs disagree, the 
 '@wix/automations'`, used through a `createClient` Wix client with an auth strategy.
 - **Secrets**: NEVER print, log, echo or store tokens, API keys, app secrets or auth headers — not
   in chat, files or error reports. Redact them from any request you show.
-- **Site lock**: resolve the target `metaSiteId` once, confirm it with the user before the first
-  write, and use it for every call, read-back and link. If anything points at another site, stop.
+- **Site lock**: resolve the target `metaSiteId` once and use it for every call, read-back and
+  link. Ask the user to confirm it before the first write only when more than one site is in
+  context or the request doesn't make clear which; a site fixed by the request or session is
+  confirmed. If anything points at another site, stop.
 - **Errors**: 401 = token expired/invalid (refresh, don't retry blindly). 403 = missing scope, app
   not installed, or — on Create/Update of an automation that validated — a step the public API
   can't create (e.g. the code-variable step, [Automations Delays Variables and Branches](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-delays-variables-and-branches) §4). A timeout or 5xx is
-  **unknown**, not a verdict — retry a bounded number of times.
+  **unknown**, not a verdict — retry read-only calls (Get, Query, Resolve, Validate) a bounded
+  number of times. Never blindly retry Create or Update: Query or Get first to see whether the
+  write landed ([Automations Validation and Persistence](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-validation-and-persistence) §3, Reporting rules).
 
 ## 2. Automations V2 (`automationsV2`) — base `/automations-service/v2/automations`
 
@@ -195,7 +199,9 @@ offset: N}}})`. Actions: `resolveActions` with small pages; keep only `appId`, `
 Discovery hints:
 
 - Search by concept with a keyword ladder ("chat" → "message"). Common aliases: send a chat
-  message = `send-message` (Inbox; not `inbox-send-message`); email to anyone, incl. the site
+  message to the contact = `send-message` (not `inbox-send-message`); a note about a contact in
+  the site owner's Inbox, nothing sent to the contact = `inbox-send-message` ("Show in Inbox");
+  email to anyone, incl. the site
   owner = `triggered-emails` (never the deprecated `send-mail` / "Get an email"); task =
   `createTask`; labels = `addLabelsToContact` / `remove_labels_to_contact`; create a contact =
   `contacts-create_contact` (for triggers whose payload has no contact, e.g. webhooks).

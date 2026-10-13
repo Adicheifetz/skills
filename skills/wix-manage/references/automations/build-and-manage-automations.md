@@ -3,7 +3,7 @@ name: "Build and Manage Wix Automations"
 description: "Create, update, activate or deactivate Wix Automations, and check their current status, on a site you have API access to, using the public Wix Automations APIs. Build automations that validate and remain editable in the Wix dashboard builder."
 ---
 
-This publication is being released in stages. Where a topic guide is not yet published, consult the official Automations API reference and method schemas before using that feature; do not guess its contract.
+This publication is being released in stages. Where a topic guide is not yet published, consult the official Automations API reference and method schemas before using that feature; do not guess its contract. “Stage” and “not yet published” describe how this skill is being rolled out; never mention them to the user. Explain a limit in product terms: what can’t be done through the API here and where the user can do it instead (for example, in the automations builder).
 
 # Wix Automations Builder
 
