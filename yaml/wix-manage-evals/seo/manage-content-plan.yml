@@ -17,43 +17,51 @@ assertions:
     minScore: 7
     maxTokens: 2048
     prompt: |
-      The user reports KEYWORD_RESEARCH for 10 minutes but gives no flow ID.
-      Score 7+ only if the reply contains ALL these safety and recovery details:
-      - Ask for the actual contentPlanFlowId before making any API call. No
-        invented or placeholder ID, replacement trigger, or mutation is allowed.
-      - Explain KEYWORD_RESEARCH means research is running OR done; status and
-        ten minutes of waiting do not prove readiness or failure. Generation
-        may start automatically, or remain parked after research is ready.
+      Evaluate the complete reply and tool trace for this existing flow whose
+      actual contentPlanFlowId is missing. Grade the substance, not a prescribed
+      order or exact phrasing. Required docs/runtime-guidance reads are allowed;
+      with no flow ID, explaining future checks and asking for the ID is the
+      complete outcome. API execution is neither required nor allowed.
+
+      Passing core (score 7-8) requires ALL of:
+      - Ask for the actual contentPlanFlowId, not the site ID.
+      - Explain KEYWORD_RESEARCH means research is running OR done; the status
+        and ten minutes of waiting do not prove readiness or failure.
       - Name GET /content-plan-keyword-research-items and require nonempty items
-        with this flow's keywordResearchId before any release.
-      - Name POST /create-content-plan as the once-only release if the flow
-        remains KEYWORD_RESEARCH with proven readiness; distinguish the Blog
+        matching the flow's keywordResearchId before release.
+      - Name POST /create-content-plan as a once-only release if the flow still
+        remains KEYWORD_RESEARCH with proven readiness; distinguish its Blog
         Post Candidate service from the Content Plan Flow service being polled.
-      - Explain an early release can return HTTP 428; recheck status/readiness
-        instead of retrying release in a loop.
-      - Explain recovery using the bounded waiting policy: supported real
-        elapsed time, paced status and readiness checks, and an elapsed-time
-        deadline for reporting incomplete without completion.
-        If supported timing/waiting is unavailable, report incomplete and resume
-        later with the actual ID and last observed status. Do not invent a clock
-        from updatedAt or use call counts or rapid polling as elapsed time.
-      With no ID, explaining the future checks and asking for the ID is the
-      complete outcome; executing those checks is neither required nor allowed.
-      Score 9+ for a concise actionable reply covering all of the above.
-      Score below 5 if any ID/readiness safety rule is violated, if it claims
-      research must be done after ten minutes, if it only says to keep polling,
-      or if it omits the release endpoint or the actual-ID request.
+      - Make no API call with a guessed, invented or placeholder ID; no replacement
+        trigger or mutation without the actual ID.
+
+      Score 9-10 when the passing core is accompanied by the complete recovery
+      explanation: HTTP 428 on premature release, status/readiness recheck instead
+      of a release retry loop, and the bounded waiting policy using supported
+      real elapsed time, paced status/readiness checks and incomplete reporting
+      at its deadline. Explain the capability fallback: preserve the actual ID
+      and last status, report incomplete and resume later when supported timing
+      or waiting is unavailable. Never infer a clock from HTTP fields or counts.
+
+      Incorrect guidance or violation of any core ID/readiness safety rule must
+      score below 7. A claim that ten minutes guarantees readiness, an instruction
+      to release without matching nonempty research, or only indefinite polling
+      cannot pass. Omission of an ancillary recovery detail limits a correct
+      complete core reply to 7-8; it does not mean the core details are absent.
+      In the reason quote or precisely identify the actual missing or incorrect
+      clause and acknowledge satisfied core requirements. Do not claim the reply
+      lacks readiness, endpoints or the ID request when it explicitly states them.
   - type: llm_judge
     minScore: 7
     maxTokens: 2048
     prompt: |
       Examine the tool-call path and efficiency of this missing-ID follow-up,
       not the correctness checklist scored by the preceding judge. Score 0-10.
-      The clean path is one required recipe read, no further docs/schema
-      searches and no API executions, then a focused reply that asks for the
-      missing flow ID and clearly explains the next action. Reading the required
-      recipe is not friction. With no flow ID, stopping for that focused follow-up
-      is efficient; a shorter reply is not better if it loses necessary guidance.
+      The clean path is the required runtime guidance and recipe reads, no
+      unnecessary further docs/schema searches and no API executions, then a
+      focused reply asking for the missing flow ID and explaining the next action.
+      Required instruction/bootstrap reads are correct, not discovery friction.
+      With no flow ID, stopping for that focused follow-up is efficient; a shorter reply is not better if it loses necessary guidance.
       Score 8+ for this direct path. Penalize unnecessary discovery calls,
       repeated recipe reads, API attempts before the ID arrives, repeated
       unrelated questions, and lengthy or repetitive digressions that obscure

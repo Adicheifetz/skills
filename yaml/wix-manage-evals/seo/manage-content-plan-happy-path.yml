@@ -1,9 +1,8 @@
 name: seo/manage-content-plan-happy-path
 description: >-
   Requires the full generation workflow on an isolated site with business data:
-  trigger, reach KEYWORD_RESEARCH, wait for the research by checking the flow,
-  release only if generation did not start on its own, reach SUCCESS, and read
-  candidates.
+  trigger, follow the same flow through automatic generation or a readiness-gated
+  release, reach SUCCESS, and report the actual candidates.
 triggerPrompt: >-
   Generate an SEO content plan for my Wix site and show me the blog post topics
   it suggests.
@@ -16,36 +15,44 @@ assertions:
     minScore: 7
     maxTokens: 2048
     prompt: |
-      Require evidence of ALL steps in order for the same flow:
-      1. POST /content-plan-flows/trigger and retain its actual contentPlanFlowId.
-      2. Read contentPlanFlow.status from GET /content-plan-flows/{id}.
-         KEYWORD_RESEARCH may be skipped if CONTENT_PLAN or SUCCESS is observed.
-      3. While in progress, use supported elapsed time and paced individual
-         status requests following the bounded waiting policy. No call count
-         or HTTP field substitutes for a clock. Each API execution makes one HTTP request;
-         a supported external wait or one bounded wait before that request is
-         allowed. A multi-request polling loop or busy wait is not allowed.
-      4. If still KEYWORD_RESEARCH at the policy's first-readiness threshold,
-         GET /content-plan-keyword-research-items. Release at most once with
-         POST /create-content-plan, only if nonempty items have the flow's
-         keywordResearchId and the latest status is still KEYWORD_RESEARCH.
-         Skip the release if CONTENT_PLAN or SUCCESS starts on its own.
-         Missing, empty or mismatched research is not ready; recheck readiness
-         at the policy's readiness cadence within its bounded waiting budget.
-         A single HTTP 428 race is allowed only when matching nonempty research
-         items were already proven. Recheck the same flow's status: at
-         CONTENT_PLAN, continue paced status checks; at SUCCESS, read candidates.
-         Neither needs another readiness GET. If still KEYWORD_RESEARCH, recheck
-         readiness at the paced cadence without another release.
-      5. Observe SUCCESS for that same flow, then GET
-         /content-plan-flows/{id}/blog-post-candidates.
-      6. Report the actual returned topics, available nested briefData keywords
-         and supporting page URLs, candidate count, actual flow ID and SUCCESS.
-      Score 0 if any required step is missing, if results are fabricated, or
-      completion is claimed for a different flow. Honest incomplete reporting
-      at the policy's elapsed-time deadline, or when supported timing/waiting is
-      unavailable, preserves the actual flow ID and last status but is NOT a happy-path PASS.
-      PENDING_REQUIREMENTS or FAIL is also not a happy-path PASS.
+      Evaluate correctness from the FULL conversation, including API inputs,
+      tool results and the final reply. The final reply need not narrate calls
+      already proven in the trace. Grade clock/pacing and execution efficiency
+      with the separate quality judge below.
+
+      Required completed outcome:
+      - POST /content-plan-flows/trigger returns an actual contentPlanFlowId.
+      - GET /content-plan-flows/{id} observes SUCCESS for that same flow.
+      - After observed SUCCESS, GET that flow's /blog-post-candidates.
+      - The final reply reports the actual returned topics, available nested
+        briefData keywords and supporting page URLs, candidate count, actual
+        flow ID and SUCCESS. Do not treat weak/repetitive API-generated titles
+        as fabricated if the reply faithfully reports the returned data.
+
+      Conditional recovery, ONLY if applicable to the observed status:
+      - If the flow advances automatically to CONTENT_PLAN or SUCCESS (including
+        on the first status check), keyword research has already been passed.
+        No KEYWORD_RESEARCH observation, readiness GET or release POST is required. An automatic CONTENT_PLAN -> SUCCESS path
+        satisfies the workflow without any keyword-research/release calls.
+      - Only if the flow remains KEYWORD_RESEARCH until the bounded policy's
+        readiness threshold, check /content-plan-keyword-research-items.
+        Missing/empty/mismatched research cannot authorize a release.
+      - If a release POST /create-content-plan occurs, require prior proof of
+        nonempty items matching this flow's keywordResearchId and latest status
+        KEYWORD_RESEARCH. Allow at most one release. A single HTTP 428 race is
+        allowed only after that readiness proof; recheck the same flow's status.
+        CONTENT_PLAN continues status checks and SUCCESS permits candidate reading,
+        without another readiness GET. Still KEYWORD_RESEARCH requires a paced
+        readiness recheck without another release.
+
+      Score 7+ only for the full completed same-flow outcome and safe applicable
+      recovery. Score 0 for fabricated results, premature/ungated release,
+      completion for a different flow, no observed SUCCESS, or no candidate read
+      and actual topics in the final reply. Honest incomplete, timeout,
+      PENDING_REQUIREMENTS or FAIL cannot pass this happy-path scenario.
+      In your reason cite the actual tool-result evidence and identify any
+      specific missing requirement; do not label conditional steps missing
+      when their triggering status never occurred.
   - type: llm_judge
     minScore: 7
     maxTokens: 2048
