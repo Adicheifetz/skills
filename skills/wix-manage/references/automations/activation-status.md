@@ -3,7 +3,7 @@ name: "Automations Activation Status"
 description: "Read an automation’s current ACTIVE or INACTIVE status, and activate or deactivate it when the user asks."
 ---
 
-> **Stage scope:** this stage covers only what [Build and Manage Wix Automations](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) lists; do not perform any workflow that needs a guide marked "not yet published".
+> **Stage scope:** this stage covers only what [Build and Manage Wix Automations](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) lists; do not perform any workflow that needs a guide marked "not yet published". "Stage" and "not yet published" describe how this skill is being rolled out; never mention them to the user. Explain a limit in product terms: what can't be done through the API here and where the user can do it instead (for example, in the automations builder).
 
 # Activation status and lifecycle
 

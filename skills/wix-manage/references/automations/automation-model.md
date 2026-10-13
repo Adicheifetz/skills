@@ -3,7 +3,7 @@ name: "Automations Graph and Data Model"
 description: "Assemble builder-editable automation graphs with valid node relationships, namespaces and ancestor data access."
 ---
 
-> **Stage scope:** this stage covers only what [Build and Manage Wix Automations](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) lists; do not perform anything marked "Later stages only" or any workflow that needs a guide marked "not yet published".
+> **Stage scope:** this stage covers only what [Build and Manage Wix Automations](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) lists; do not perform anything marked "Later stages only" or any workflow that needs a guide marked "not yet published". "Stage", "Later stages only" and "not yet published" describe how this skill is being rolled out; never mention them to the user. Explain a limit in product terms: what can't be done through the API here and where the user can do it instead (for example, in the automations builder).
 
 # Automation Model — Object, Graph Rules, Payload Scope
 
