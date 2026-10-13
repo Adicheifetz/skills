@@ -121,7 +121,8 @@ published-revision read. Only claim a live-page check when you performed it.
 
 **A site that was never published has no published revision**, so the
 `publish: true` Set fails on it (the backend reports a missing published
-revision, often as a not-found error). The draft Set already saved the change:
+revision, often as a not-found error). This failure was confirmed on a
+template site before its first publish. The draft Set already saved the change:
 do not retry the publish, re-read the item, or switch endpoints. Tell the user
 the site is not published yet: the change goes live when they publish the site. Do not
 publish the site yourself, even when the user asked to publish the change:
