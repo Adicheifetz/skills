@@ -128,38 +128,41 @@ These are pacing and waiting budgets, not service completion guarantees.
 frozen while parked. Never infer elapsed time from request counts or HTTP fields.
 
 Prefer a supported wait outside the API execution. When a JavaScript execution
-runtime supports `Date.now`, `setTimeout` and authenticated `fetch`, one bounded
-wait before one status request is also allowed. For example, supply `actualFlowId`
-from the retained response and `authorizationHeaders` from the selected site's
-existing authorization context. Supply `waitStartedAt` and `lastStatusCheckedAt`
-from your saved clock observations; do not reset them on each execution:
+runtime supports `Date.now`, `setTimeout` and the authenticated `wix.request`
+helper, one bounded wait before one status request is also allowed. The example
+below uses the selected site's authorization context through `scope: "site"`.
+Supply `actualFlowId` from the retained response and `waitStartedAt` and
+`lastStatusCheckedAt` from your saved clock observations; do not reset them
+on each execution. Use this asynchronous function as the execution input:
 
 ```js
-const deadline = waitStartedAt + 15 * 60 * 1000;
-const delayMs = Math.max(0, lastStatusCheckedAt + 15 * 1000 - Date.now());
-if (Date.now() + delayMs >= deadline) {
-  throw new Error("Waiting budget exhausted; report incomplete with saved flow ID and status");
-}
-await new Promise(resolve => setTimeout(resolve, delayMs));
-if (Date.now() >= deadline) {
-  throw new Error("Waiting budget exhausted; report incomplete with saved flow ID and status");
-}
-const response = await fetch(
-  `https://www.wixapis.com/promote/seo/v1/content-plan-flows/${actualFlowId}`,
-  { method: "GET", headers: authorizationHeaders }
-);
-const body = await response.json();
-const observedAt = Date.now();
-// Return these values and save observedAt as lastStatusCheckedAt for the next execution.
-({
-  httpStatus: response.status,
-  observedAt,
-  contentPlanFlow: {
-    id: body.contentPlanFlow?.id,
-    status: body.contentPlanFlow?.status,
-    keywordResearchId: body.contentPlanFlow?.keywordResearchId
+async function() {
+  const deadline = waitStartedAt + 15 * 60 * 1000;
+  const delayMs = Math.max(0, lastStatusCheckedAt + 15 * 1000 - Date.now());
+  if (Date.now() + delayMs >= deadline) {
+    throw new Error("Waiting budget exhausted; report incomplete with saved flow ID and status");
   }
-});
+  await new Promise(resolve => setTimeout(resolve, delayMs));
+  if (Date.now() >= deadline) {
+    throw new Error("Waiting budget exhausted; report incomplete with saved flow ID and status");
+  }
+  const response = await wix.request({
+    scope: "site",
+    method: "GET",
+    url: `https://www.wixapis.com/promote/seo/v1/content-plan-flows/${actualFlowId}`
+  });
+  const flow = response.data.contentPlanFlow;
+  const observedAt = Date.now();
+  // Save observedAt as lastStatusCheckedAt for the next execution.
+  return {
+    observedAt,
+    contentPlanFlow: {
+      id: flow?.id,
+      status: flow?.status,
+      keywordResearchId: flow?.keywordResearchId
+    }
+  };
+}
 ```
 
 This example sends exactly one HTTP request; run the next check in a separate
