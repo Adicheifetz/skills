@@ -1,52 +1,68 @@
 ---
 name: "Automations Activation Status"
-description: "Read an automation’s current ACTIVE or INACTIVE status and distinguish it from historical run outcomes."
+description: "Read an automation’s current ACTIVE or INACTIVE status, and activate or deactivate it when the user asks."
 ---
 
-# Inspect activation status
+> **Stage scope:** this stage covers only what [Build and Manage Wix Automations](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) lists; do not perform any workflow that needs a guide marked "not yet published". "Stage" and "not yet published" describe how this skill is being rolled out; never mention them to the user. Explain a limit in product terms: what can't be done through the API here and where the user can do it instead (for example, in the automations builder).
 
-An automation's current state is `configuration.status`: ACTIVE is eligible for new trigger
-events; INACTIVE is not. Neither value proves that a historical run succeeded or that a
-pending activation has stopped.
+# Activation status and lifecycle
 
-1. Resolve the requested name with one Query Automations call filtered by that exact name
-   (below); don't page through other automations. If the ID is already supplied, go to Get.
-   If several match, open your answer by listing each match's full returned ID and asking
-   which one the user means; don't report a single status. If none match, say so and ask the
-   user to check the name or site; never guess an ID.
-2. Get the matching returned ID and read `configuration.status`.
-3. Answer briefly and completely in one reply. Start with the automation's exact name, its
-   returned ID and ACTIVE/INACTIVE from that response, then say what it means for new trigger
-   events. If the user asks whether the status says anything about past runs, answer it
-   directly in the next sentence: status does not show whether past runs succeeded; they are
-   visible in the automation's activity view in the site dashboard.
-4. If Get returns not found, do not state a status. Open with: the automation wasn't found on
-   this site, so its status can't be determined, and ask the user to confirm the site and the
-   automation ID. This question is required. Then give the possible causes below.
+**What the public API can see.** An automation's live state is `configuration.status` —
+`ACTIVE` (eligible for new trigger events) or `INACTIVE` (not eligible for new trigger events).
+Status does not show whether past runs succeeded. There is no separate
+"published" flag and no public draft API:
 
-Use an authorized site-scoped client with Set Up Automations permission. REST calls use
-`Authorization: <token>`. An API key also needs `wix-site-id: <metaSiteId>`; do not combine it
-with `wix-account-id`. Never print credentials.
+- **Status check** = Get Automation → read `configuration.status`. Report exactly that value, in a
+  short answer that starts with the automation's name and returned ID;
+  never infer it from the name or from your own earlier writes. If several automations match the
+  supplied name, list each one's returned ID and end with a direct question such as "Which one
+  do you mean?"; don't report a single status. If no automation matches the supplied name, say
+  so and ask the user to check the name or site; never guess an ID.
+- **Builder drafts are invisible to you**: if the user says "it doesn't show my latest changes",
+  tell them to publish (or discard) in the builder first — don't reproduce their edits.
+- **NOT_FOUND is ambiguous.** Open the answer by saying the status can't be determined and
+  asking the user to confirm the site and the automation ID; then give the possible causes. A never-published builder draft is absent
+  from Get/Query, but deletion and a replaced preinstalled id can also explain a 404. The first
+  update of a preinstalled automation can create an override with a new id; use the mutation's
+  returned id, or Query to find the current automation and confirm its identity. When the
+  user's history supports an unpublished builder draft as the cause, ask the owner to publish or
+  discard it rather than reproducing its edits.
 
-`POST https://www.wixapis.com/automations-service/v2/automations/query`
+**Calls** (auth as in [Automations API Catalog](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-api-catalog) §1). A status question needs only Query and Get — no catalogs, Validate or writes.
 
-```json
-{"query":{"filter":{"name":"<automation name>"},"cursorPaging":{"limit":25}}}
-```
+- Find by name: `POST https://www.wixapis.com/automations-service/v2/automations/query` with
+  `{"query":{"filter":{"name":"<automation name>"},"cursorPaging":{"limit":25}}}` → `automations[]`
+  with each `id` and exact `name`. If the user supplied the ID, skip this.
+- Read: `GET https://www.wixapis.com/automations-service/v2/automations/<automationId>` → `automation.configuration.status`. Add
+  `?fields=OVERRIDE_SCHEMA` before activating or deactivating.
+- Activate / deactivate: `PATCH https://www.wixapis.com/automations-service/v2/automations/<automationId>` with
+  `{"automation": <the object exactly as fetched, with only configuration.status changed>}` — it
+  carries `id`, the current `revision`, `origin` and any `settings` the Get returned.
 
-Read `automations[]` and `pagingMetadata.cursors.next`; continue pages if needed. Retain the
-returned `id` and exact name. Then:
+**Activate** (only when the user asks):
 
-`GET https://www.wixapis.com/automations-service/v2/automations/<automationId>`
+1. Get Automation with `fields: ["OVERRIDE_SCHEMA"]` → current `revision`, `origin`, `settings`.
+   If `settings.disableStatusChange`
+   or `settings.readonly` is true, stop and report the lock: the owning app doesn't allow it
+   (§4 of Automations Feasibility and Planning (not yet published)).
+2. Already `ACTIVE` → report it and stop (idempotent; no write).
+3. Set only the candidate's status to `ACTIVE`, then apply the §4 checklist in [Build and Manage Wix Automations — included validation procedure](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) and full Validate — never activate
+   an automation that doesn't validate. Preserve existing supported configurations as the §4 checklist in [Build and Manage Wix Automations — included validation procedure](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) explains.
+4. Explicit activation instructions authorize this change; do not ask again. If the user only
+   asked to build or inspect it, obtain authorization before making it eligible for real runs.
+5. Update Automation with the object exactly as fetched, `configuration.status: "ACTIVE"`, and
+   its `revision`. Nothing else changes.
+6. Capture the returned id (a preinstalled override can change it), Get that id again with
+   override schemas, and confirm `configuration.status` is `ACTIVE` and all other requested
+   content is unchanged. Report "active" only then.
 
-Read `automation.configuration.status` from the Get response. Never infer status from the
-name or a previous mutation. Do not validate, change configuration, toggle status or test-run
-an automation to answer this read-only request.
+**Deactivate** (on explicit request): Get the complete object with override schemas; check
+`settings.disableStatusChange` and `settings.readonly`; already INACTIVE means no write.
+Otherwise change only `configuration.status` to `INACTIVE`, preserving origin, settings,
+revision, schemas and all nodes, then Update and read back the returned id. **Do not run the §4 checklist in [Build and Manage Wix Automations — included validation procedure](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) or
+Validate as a prerequisite**, and do not repair or remove unrelated invalid/legacy steps.
+An explicit request to turn it off is sufficient authorization. Deactivating prevents new
+triggered runs; it is not proof that every pending/running activation has stopped or will finish.
 
-Not-found causes (step 4): unpublished builder drafts do not appear
-through this API, but a 404 can also mean deletion or a changed ID after overriding a
-preinstalled automation. When the user's history supports an unpublished builder draft as the
-cause, ask the owner to publish or discard it rather than reproducing its edits.
-
-Official contracts: [Query Automations](https://dev.wix.com/docs/api-reference/business-management/automations/automations/automations-v2/query-automations),
-[Get Automation](https://dev.wix.com/docs/api-reference/business-management/automations/automations/automations-v2/get-automation).
+**Revision conflicts** (someone published from the builder meanwhile): re-Get and retry once;
+if the fresh object differs in ways that matter, tell the user instead of overwriting.
