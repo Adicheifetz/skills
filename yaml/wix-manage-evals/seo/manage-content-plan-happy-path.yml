@@ -38,6 +38,9 @@ assertions:
       Cite actual trace evidence and any specific missing criterion. Never mark
       readiness/release missing on an automatic path. Timing/efficiency is graded
       separately below.
+
+      Full final reply (evaluate this, not the completion preview):
+      {{output}}
   - type: llm_judge
     minScore: 7
     maxTokens: 2048
@@ -75,6 +78,9 @@ assertions:
       or safe earlier nonmutating readiness checks. Identify likely docs/API/provisioning gaps
       for other friction.
       Return ONLY {"score":<0-10>,"reason":"<trace frictions and likely gaps, or clean path>"}.
+
+      Full final reply (evaluate this, not the completion preview):
+      {{output}}
 siteSetup:
   mode: template
   templateId: stores-v3-editor

@@ -64,21 +64,27 @@ Use separate executions throughout:
 
 ## Waiting without losing progress
 
-**One API execution makes one HTTP request and returns.** This procedure uses
-15-second status pacing, 120-second readiness retries and a 30-minute monitoring
-attempt. These are arbitrary safe client limits, not values derived from API
-latency or rate limits, and not a completion guarantee. Use a date/time capability
-and a documented bounded pause that yields without HTTP calls or busy loops. `updatedAt` can stay
-frozen; HTTP timestamps and request counts are not clocks.
+**One API execution makes one HTTP request and returns.** Enforce the following
+conservative client monitoring policy: at least 15 seconds between status checks,
+120 seconds between readiness retries and one fixed 30-minute attempt. These
+limits are mandatory for this procedure; they are not API latency, rate-limit
+requirements or a promise of completion. Use a date/time capability and a
+supported bounded pause that yields without HTTP calls or busy loops.
+`updatedAt` can stay frozen; HTTP timestamps and request counts are not clocks.
 
-1. Before starting, note the attempt start and fixed deadline in working notes.
-   Never reset or extend the attempt. The first status GET needs no wait or
-   previous check timestamp; it still honors the deadline.
-2. After each response, record actual flow/research IDs, last status and clock
-   times of the last status and readiness checks. Before a subsequent status GET,
-   read current time using the same clock/units. Actually wait for the remainder
-   of 15 seconds since the last status observation, then read the clock again.
-   If now or the needed wait reaches the deadline, send no request.
+1. Before starting, persist a compact record in conversation state or writable
+   working notes: attempt start, deadline, actual flow/research IDs, last status,
+   last status/readiness clock observations and `releaseAttempted`. Set false only
+   when no release has occurred; preserve known true on resume, and allow no release
+   when its history is unknown. Read and update the record across executions; do not
+   assume tool calls retain it. Use the same clock and units throughout. Never reset
+   or extend the attempt. If the record or clock state is lost, stop incomplete
+   instead of starting a new budget.
+2. The first status GET needs no wait or previous observation, but honors the
+   deadline. Save each response's IDs, status and clock observation in the record.
+   Before every later status GET, read current time and wait the remainder of
+   15 seconds since the last status observation. Read the clock again after the
+   pause. If now or the needed wait reaches the deadline, send no request.
 3. Upon observing `KEYWORD_RESEARCH`, make the first readiness GET immediately.
    Retry readiness only after 120 real seconds from the previous readiness
    observation, continuing the 15-second status checks between retries. Earlier
@@ -207,7 +213,8 @@ uses its own execution.
    proceeds to candidate reading.
 6. Compare the fresh `keywordResearchId` with the readiness response. If it does
    not match, return to readiness checks without releasing.
-7. Recheck the deadline. If still unexpired, attempt release once:
+7. Recheck the deadline. If still unexpired, mark `releaseAttempted` in the
+   saved record and attempt release once:
 
    ```
    POST https://www.wixapis.com/promote/seo/v1/create-content-plan

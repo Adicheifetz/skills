@@ -21,25 +21,25 @@ assertions:
       Completion previews may be truncated; missing preview text is not missing
       reply content. Use the tool-call trace for API and status evidence.
 
-      Judge the user's recovery needs from the full reply and trace, not exact
-      endpoint names, field spellings, wording or order. No API call is required
-      or allowed before the actual flow identifier arrives.
-      Score 7-8 only if ALL safe core substance is present:
-      - Ask for the actual flow ID, not the site ID.
-      - Explain keyword research can be running or complete; unchanged status or
-        elapsed time alone does not show whether the flow is ready or failed.
-      - Before one documented recovery attempt, confirm nonempty research belongs
-        to this flow, then freshly confirm it remains at the keyword-research
-        stage with that same research, rather than already generating or complete.
-        Do not promise that the attempt will resolve it.
-      - No guessed/placeholder-ID API execution, replacement trigger, premature
-        release or indefinite polling is performed or recommended.
-      Exact URLs/field names are not required to express that safety. Score 9-10
-      for fuller actionable detail: the method/endpoints, service distinction,
-      428/no-loop recovery and bounded incomplete/preserve/resume guidance.
-      Wrong core guidance or safety violations score below 7. Hypothetical prose
-      placeholders are not executed IDs; assess distracting examples in quality.
-      Identify specific missing/incorrect substance, acknowledging details present.
+      Judge the user's recovery needs, not exact wording or internal API mechanics.
+      Score 7-8 only when the reply and trace meet all these user outcomes:
+      - Ask for the actual flow ID; make no API call before obtaining it.
+      - Explain research may be running or complete. Unchanged status or elapsed
+        time alone proves neither readiness nor failure.
+      - Explain recovery is conditional: confirm research is ready and the flow
+        still needs that action before attempting it once, without promising
+        completion.
+      - Do not recommend or perform premature/repeated release, a replacement
+        trigger, guessed-ID execution or indefinite polling.
+      Score 9-10 for fuller actionable guidance, including handling not-ready
+      responses without a release loop and preserving progress for a bounded
+      later resume. Wrong core guidance or unsafe behavior scores below 7.
+      Assess detailed research-ID and fresh-status API sequencing in the happy
+      path's execution trace, not as required wording in this missing-ID reply.
+      Identify specific missing/incorrect substance and acknowledge what is present.
+
+      Full final reply (evaluate this, not the completion preview):
+      {{output}}
   - type: llm_judge
     minScore: 7
     maxTokens: 2048
@@ -58,6 +58,9 @@ assertions:
       step. Identify the likely docs/runtime gap behind each detour; do not demand
       API execution with no ID or reward brevity that loses necessary guidance.
       Return ONLY {"score":<0-10>,"reason":"<path frictions and likely gaps, or clean path>"}.
+
+      Full final reply (evaluate this, not the completion preview):
+      {{output}}
 siteSetup:
   mode: template
   templateId: blank-editor
