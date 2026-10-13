@@ -9,6 +9,9 @@ triggerPrompt: >-
   I've been polling GetContentPlanFlow and the status never changes.
   What's wrong and how do I get it to finish?
 tags: [seo, content-plan]
+# {{output}}/{{trace}} are supported by evaluator replacePlaceholders, not custom syntax:
+# https://github.com/wix-private/evalforge/blob/554e54f1fc9f1f79b2d225708e9c6c332b0d5d07/packages/eval-assertions/src/evaluators/llm-judge-evaluator.ts#L219
+# Full input.outputText is bound at L327; context interpolation is applied at L362/L399.
 assertions:
   - tool: ReadFullDocsArticle
     params:

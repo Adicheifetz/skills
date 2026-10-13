@@ -62,52 +62,41 @@ Use separate executions throughout:
 2. At `KEYWORD_RESEARCH`, follow [readiness](#3-check-research-readiness) and the
    conditional [release](#4-release-only-if-still-needed).
 3. If `CONTENT_PLAN` or `SUCCESS` appears automatically, skip readiness/release
-   immediately; do not wait for the first-readiness threshold.
+   immediately; do not wait for the chosen first-readiness time.
 4. After observed `SUCCESS`, [read and present the actual briefs](#5-read-and-present-the-briefs).
 
 ## Waiting without losing progress
 
-**One API execution makes one HTTP request and returns.** After each call, write
-in your working notes the actual flow/research IDs, last status and the times of
-attempt start, first `KEYWORD_RESEARCH`, last status check and last readiness check.
-Read current time with an available date/time capability before the next call,
-using the same clock and units. Use a documented bounded pause/timer that yields
-without HTTP calls or busy loops. `updatedAt` can stay frozen while parked;
-HTTP timestamps, request counts and round trips are not a clock or a wait.
+**One API execution makes one HTTP request and returns.** Use a date/time
+capability and a documented bounded pause that yields without HTTP calls or busy
+loops. `updatedAt` may stay frozen; HTTP timestamps and counts are not clocks.
 
-These are **arbitrary, adjustable client defaults**, not API readiness thresholds,
-required minimum waits, SLAs or values derived from the verification runs. Choose
-finite limits from known caller capabilities before the attempt; never reset or
-extend them mid-attempt:
-
-- Status checks: about 15 seconds apart.
-- First readiness: normally after about five minutes at `KEYWORD_RESEARCH`.
-- Readiness retries: about two minutes apart within the remaining budget.
-- Stop budget: about 30 minutes total from trigger/resume, including earlier states.
-
-With these defaults, a report of at least five minutes at `KEYWORD_RESEARCH`
-allows the first readiness check now. For late `KEYWORD_RESEARCH`, check once
-immediately when only the last retry interval remains and no first check occurred.
-Earlier statuses never permit readiness; reasonable pacing variation or safe earlier
-nonmutating checks are acceptable.
-Continue status checks during readiness waits; do not sleep a whole readiness interval.
-
-Check the clock before each waiting/recovery request, including release after
-ready research or HTTP `428`. Expiry ends only this monitoring attempt; it does
-not prove the job stalled or failed. Stop, report incomplete, preserve actual
-ID/status and clock/readiness observations, and end the turn until a later requested
-resume. Observed `SUCCESS` ends waiting and permits candidate retrieval even if an
-in-flight status request finishes at or after the deadline. No automatic restart to evade it.
-
-Before each subsequent status GET, compare current time with your saved last
-status-check time plus the chosen cadence. If that next due time reaches the
-deadline, stop incomplete. If not yet due, actually pause for the remaining
-interval using the supported wait; HTTP round trips do not count as the pause. Check current time again after waiting: if the fixed deadline is
-reached, send no request. Otherwise send one GET, note its observation time and
-decide. The first GET needs the actual ID and attempt start, not a prior check
-time; honor the deadline and save its observation.
-If saved times, clock or wait are unavailable, report incomplete with actual IDs
-and last status. Never reuse status cadence or a long status-free sleep for readiness.
+1. Before waiting, note the attempt start, finite budget and status cadence in
+   your working notes, not necessarily the final reply. Adjustable defaults are
+   about 15 seconds between status checks and 30 minutes total monitoring; they
+   are client limits, not SLAs or measured API durations. Choose reasonable first
+   readiness and retry intervals from available caller capabilities before the
+   attempt, leaving a first-check window within the budget. Never extend/reset it.
+2. After each response, record actual flow/research IDs, last status and clock
+   times for first `KEYWORD_RESEARCH`, last status check and last readiness check.
+   The first status GET needs no prior check time; it still honors the deadline.
+3. Before the next status GET, read current time with the same clock/units and
+   compare with last check plus chosen cadence. If the needed wait reaches the
+   deadline, stop incomplete. Otherwise actually pause for any remaining interval,
+   recheck the clock, send one GET if unexpired, then save its observation time.
+4. Continue status checks throughout readiness waits. Only `KEYWORD_RESEARCH`
+   permits readiness: check at the chosen first/retry time, or now if the user's
+   reported wait already meets the chosen first interval. If no readiness check
+   occurred and remaining budget is at most the chosen retry interval, make one
+   first readiness check while still unexpired.
+   Elapsed time never proves readiness; do not sleep a whole readiness interval
+   without status checks. In-execution delay is only before a status GET.
+5. Check the deadline before all recovery calls, including release after ready
+   research and 428 rechecks. Expiry or unusable clock/wait means stop calls,
+   report incomplete, preserve IDs/status/times and end the turn for later
+   requested resume. This ends monitoring, not the job, and proves no stall or
+   failure. No automatic restart. Observed `SUCCESS` ends waiting and permits
+   candidates even when an in-flight status response finishes at/after the deadline.
 
 ## API steps
 
@@ -194,6 +183,10 @@ The linked reference documents not found when the site has no research.
 
 ### 4. Release only if still needed
 
+**Not yet verified live:** the ready-then-release branch below follows the API
+contract; the retained live evidence proves automatic completion and an early
+428, not that this fallback advances a genuinely ready parked flow.
+
 After matching nonempty readiness, make a **fresh status GET** for the same flow
 in its own execution. Immediately decide: `CONTENT_PLAN` or `SUCCESS` means skip
 release. Only fresh `KEYWORD_RESEARCH` with the same research ID permits release;
@@ -206,8 +199,11 @@ POST https://www.wixapis.com/promote/seo/v1/create-content-plan
 ```
 
 Success: `{ "success": true, "contentPlanFlowId": "<flow-uuid>" }`.
-Check `success`, not just HTTP status. If false, report its `message` and stop.
-This response is not completion or a candidate list.
+Check `success`, not just HTTP status. If false, report its `message` and stop;
+for errors other than the 428 handling below, report the error and stop. Success
+is not completion: if status does not advance, continue paced checks only within
+the remaining budget, then report incomplete with saved progress. Never repeat
+the release to force advancement.
 
 On HTTP `428`, do not release again in this attempt. Within the remaining
 budget, recheck status: later statuses follow the table; `KEYWORD_RESEARCH`

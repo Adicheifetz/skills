@@ -7,6 +7,9 @@ triggerPrompt: >-
   Generate an SEO content plan for my Wix site and show me the blog post topics
   it suggests.
 tags: [seo, content-plan]
+# {{output}}/{{trace}} are supported by evaluator replacePlaceholders, not custom syntax:
+# https://github.com/wix-private/evalforge/blob/554e54f1fc9f1f79b2d225708e9c6c332b0d5d07/packages/eval-assertions/src/evaluators/llm-judge-evaluator.ts#L219
+# Full input.outputText is bound at L327; context interpolation is applied at L362/L399.
 assertions:
   - tool: ReadFullDocsArticle
     params:
@@ -76,10 +79,15 @@ assertions:
          progress, not fabricated success. Required guidance reads and expected
          readiness 404s are not friction; unnecessary discovery or guessed API
          shapes are. Observed SUCCESS permits candidate reading after waiting ends.
-      Score 8+ for these behaviors. Score 0 for any listed polling, premature/stale
-      release, deadline-evasion or fabrication violation. Do not fail reasonable
-      timing variation or safe earlier nonmutating readiness checks. Cite trace
-      evidence and identify likely docs/API/provisioning gaps for other friction.
+      Score 8+ for these behaviors. Reserve 0 for an ACTUAL unsafe violation:
+      listed polling, materially unbounded waiting, premature/stale release,
+      deadline evasion or fabrication. Cite the exact full-trace violation.
+      Unshown working notes/clock declarations are missing evidence, not proof of
+      deadline evasion. A short automatic completion after one finite supported
+      wait, with no release, can pass; missing bookkeeping may warrant a modest
+      deduction, not 0. Do not fail reasonable timing variation or safe earlier
+      nonmutating readiness checks. Identify likely docs/API/provisioning gaps
+      for other friction.
       Return ONLY {"score":<0-10>,"reason":"<trace frictions and likely gaps, or clean path>"}.
 siteSetup:
   mode: template
