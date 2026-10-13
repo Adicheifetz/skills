@@ -88,6 +88,85 @@ reference article URLs follow this pattern (for edge cases not covered here):
 | Pattern | `seo-pattern-v1` | Get SEO Pattern (`get-seo-pattern`), List SEO Patterns (`list-seo-patterns`), List SEO Pattern Variables (`list-seo-pattern-variables`), Create SEO Pattern (`create-seo-pattern`), Set SEO Pattern (`set-seo-pattern`), Reset SEO Pattern To Default (`reset-seo-pattern-to-default`) |
 | Item | `item-seo-tags-v1` | Get Item SEO Tags (`get-item-seo-tags`), List Item SEO Tags (`list-item-seo-tags`), Set Item SEO Tags (`set-item-seo-tags`), Bulk Set Item SEO Tags (`bulk-set-item-seo-tags`), Reset Item SEO Tags To Default (`reset-item-seo-tags-to-default`) |
 
+## The write sequence
+
+After discovering the target, follow this order: one Get, one Set (two matching
+Sets for a static-page publish), then a report. Reporting is not an API call:
+
+1. **Get** the current tags or pattern for the target. Required — see the rule
+   above.
+2. **Set** the complete merged set, naming only the changed fields in the field
+   mask.
+3. Report from the **Set response**, which returns the updated tags and
+   `resolvedTags`. Do not issue a verification read: the write response is the
+   confirmation. Read again only when the user asks about a target you have not
+   read in this session.
+
+**Publishing a static page takes one extra call.** `publish: true` updates only
+the published revision and leaves the draft holding the old tags; if the user
+later republishes from the Editor, the old draft tags are published again.
+The [Set Item SEO Tags limitations](https://dev.wix.com/docs/api-reference/business-management/seo/item-seo-tags-v1/set-item-seo-tags)
+and [Item SEO Tags introduction](https://dev.wix.com/docs/api-reference/business-management/seo/item-seo-tags-v1/introduction)
+describe these separate revisions: saving the same tags to both keeps the
+next full-site publish consistent with this targeted publish.
+So for `STATIC_PAGE` with `publish: true`, send the Set twice: first without
+`publish` (this saves the draft), then the same `tags` and `fieldMask` with
+`publish: true`. Never
+Get after a `publish: true` Set to confirm it: Get and List return only the
+draft, not the published revision. Report the two write outcomes from their
+responses as accepted writes, not an observed live-page result. If the user
+also requests live-page verification, fetch the live
+page's rendered HTML separately and inspect its head; this SEO API has no
+published-revision read. Only claim a live-page check when you performed it.
+
+**A site that was never published has no published revision**, so the
+`publish: true` Set fails on it (the backend reports a missing published
+revision, often as a not-found error). The draft Set already saved the change:
+do not retry the publish, re-read the item, or switch endpoints. Tell the user
+the site is not published yet: the change goes live when they publish the site. Do not
+publish the site yourself, even when the user asked to publish the change:
+publishing a site makes every page live, so ask the user to confirm that first.
+
+To remove an item's own tags so it inherits again, call **Reset Item SEO Tags To
+Default** (or **Reset SEO Pattern To Default**) — never set an empty list to
+mean "reset".
+
+## Worked example: publish a static page's title
+
+These are HTTP steps in one execution flow. `<page-id>` is the `itemId` carried
+from discovery, not a guessed literal. This example's Get returned no overrides;
+when `tags` is non-empty, preserve its other entries in both Sets.
+
+```http
+GET https://www.wixapis.com/promote/seo/v1/item-seo-tags/STATIC_PAGE/<page-id>
+```
+
+Relevant response: `{"itemSeoTags":{"tags":[]}}`. Merge the requested title
+into that array, then save the draft:
+
+```http
+PATCH https://www.wixapis.com/promote/seo/v1/item-seo-tags/STATIC_PAGE/<page-id>
+Content-Type: application/json
+
+{"itemSeoTags":{"tags":[{"type":"title","children":"New homepage title"}]},"fieldMask":"tags"}
+```
+
+A successful draft response returns the updated `itemSeoTags.tags` and
+`resolvedTags`; the title's source is `TAG_SOURCE_HOST_PAGE`. Now send the same
+merged tags and field mask to the same target, adding `publish: true`:
+
+```http
+PATCH https://www.wixapis.com/promote/seo/v1/item-seo-tags/STATIC_PAGE/<page-id>
+Content-Type: application/json
+
+{"itemSeoTags":{"tags":[{"type":"title","children":"New homepage title"}]},"fieldMask":"tags","publish":true}
+```
+
+If that call succeeds, report the draft save and accepted publish update.
+Its response is not a read of the live revision. If it fails because there is
+no published revision, report that the first Set saved the draft and the site
+is not live. Stop there; do not retry, Get, or publish the entire site.
+
 ## REST request and response shapes
 
 Use these shapes directly — do not go looking for them in the docs first.
@@ -141,8 +220,14 @@ For static-page discovery, call this with `STATIC_PAGE`. Example response:
 }
 ```
 
-Inspect the returned page identities and resolved tags to identify the requested
-page. Keep discovery, the target Get, and its Set(s) in one execution flow:
+For an explicit homepage request, identify a unique entry from its
+`resolvedTags`: a default-pattern canonical link matching the site URL already
+in context, or a resolved title that unambiguously names the homepage (such
+as `Home | Site name`). Read the nested `entry.resolvedTags[].tag` fields.
+The List object has no `isHomePage`, `pageName`, or top-level `title` field;
+do not test invented fields or assume the first entry is the homepage.
+For another named page, match its resolved title or canonical URL.
+Keep discovery, the target Get, and its Set(s) in one execution flow:
 carry the selected entry's `itemId` directly into the request paths rather than
 pasting a literal ID into a later call. Return the discovered page identity
 alongside the write outcomes so its provenance is visible. Get that exact
@@ -218,8 +303,10 @@ returns `INVALID_FIELD_MASK`. `publish` is a boolean.
 this source replaced a value a lower source had set.
 
 For a `STATIC_PAGE`, `TAG_SOURCE_HOST_PAGE` is the layer this API writes to:
-a tag you set on a static page resolves with that source. It never means the
-Editor is blocking the write.
+a tag you set on a static page resolves with that source. This was confirmed
+with a static-page draft Set response on 2026-10-13 and is shown in the
+[Set Item SEO Tags response example](https://dev.wix.com/docs/api-reference/business-management/seo/item-seo-tags-v1/set-item-seo-tags).
+It never means the Editor is blocking the write.
 
 All paths are relative to `https://www.wixapis.com/promote/seo/v1`.
 
@@ -245,49 +332,6 @@ All paths are relative to `https://www.wixapis.com/promote/seo/v1`.
   variable name.
 - Dynamic Wix Data pages are addressed by `pageId`; addressing a pattern by
   collection name is not supported.
-
-## The write sequence
-
-After discovering the target, follow this order: one Get, one Set (two matching
-Sets for a static-page publish), then a report. Reporting is not an API call:
-
-1. **Get** the current tags or pattern for the target. Required — see the rule
-   above.
-2. **Set** the complete merged set, naming only the changed fields in the field
-   mask.
-3. Report from the **Set response**, which returns the updated tags and
-   `resolvedTags`. Do not issue a verification read: the write response is the
-   confirmation. Read again only when the user asks about a target you have not
-   read in this session.
-
-**Publishing a static page takes one extra call.** `publish: true` updates only
-the published revision and leaves the draft holding the old tags; if the user
-later republishes from the Editor, the old draft tags are published again.
-The [Set Item SEO Tags limitations](https://dev.wix.com/docs/api-reference/business-management/seo/item-seo-tags-v1/set-item-seo-tags)
-and [Item SEO Tags introduction](https://dev.wix.com/docs/api-reference/business-management/seo/item-seo-tags-v1/introduction)
-describe these separate revisions: saving the same tags to both keeps the
-next full-site publish consistent with this targeted publish.
-So for `STATIC_PAGE` with `publish: true`, send the Set twice: first without
-`publish` (this saves the draft), then the same `tags` and `fieldMask` with
-`publish: true`. Never
-Get after a `publish: true` Set to confirm it: Get and List return only the
-draft, not the published revision. Report the two write outcomes from their
-responses as accepted writes, not an observed live-page result. If the user
-also requests live-page verification, fetch the live
-page's rendered HTML separately and inspect its head; this SEO API has no
-published-revision read. Only claim a live-page check when you performed it.
-
-**A site that was never published has no published revision**, so the
-`publish: true` Set fails on it (the backend reports a missing published
-revision, often as a not-found error). The draft Set already saved the change:
-do not retry the publish, re-read the item, or switch endpoints. Tell the user
-the site is not published yet: the change goes live when they publish the site. Do not
-publish the site yourself, even when the user asked to publish the change:
-publishing a site makes every page live, so ask the user to confirm that first.
-
-To remove an item's own tags so it inherits again, call **Reset Item SEO Tags To
-Default** (or **Reset SEO Pattern To Default**) — never set an empty list to
-mean "reset".
 
 ## Worked example: set a product's SEO title and description
 
