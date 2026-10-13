@@ -132,6 +132,26 @@ homepage, or create/update a pattern as a fallback for a missing page. A
 single-page request never authorizes changing all pages of its type.
 See [List Item SEO Tags](https://dev.wix.com/docs/api-reference/business-management/seo/item-seo-tags-v1/list-item-seo-tags).
 
+### Bulk Set Item SEO Tags — `POST /bulk/item-seo-tags/set`
+
+One item type per call, up to 100 entries. Each entry carries its own
+`fieldMask`; `publish` applies to every entry.
+
+```json
+{
+  "itemType": "STORES_PRODUCT",
+  "entries": [
+    {
+      "itemId": "a1b2c3d4-...",
+      "itemSeoTags": {
+        "tags": [{ "type": "title", "children": "Page title here" }]
+      },
+      "fieldMask": "tags"
+    }
+  ]
+}
+```
+
 ### Set Site SEO Tags — `PATCH /site-seo-tags`
 
 ```json
@@ -175,6 +195,10 @@ returns `INVALID_FIELD_MASK`. `publish` is a boolean.
 `TAG_SOURCE_DEFAULT_PATTERN`, `TAG_SOURCE_USER_PATTERN`, `TAG_SOURCE_HOST_PAGE`,
 `TAG_SOURCE_ITEM`, or `TAG_SOURCE_UNSPECIFIED`. `inheritedTag` appears only when
 this source replaced a value a lower source had set.
+
+For a `STATIC_PAGE`, `TAG_SOURCE_HOST_PAGE` is the layer this API writes to:
+a tag you set on a static page resolves with that source. It never means the
+Editor is blocking the write.
 
 All paths are relative to `https://www.wixapis.com/promote/seo/v1`.
 
@@ -322,7 +346,8 @@ writing.
 **Static pages** keep a draft and a published revision: a write updates the
 draft unless `publish` is `true`, and `publish: true` updates only the
 published revision. Get and List read only the draft; this API cannot read the
-published revision back. Say clearly which revision the change reached, and
+published revision back. Script tags, including JSON-LD, follow the same
+rule. Say clearly which revision the change reached, and
 follow the two-call publish rule in the write sequence. Item types that are
 always live, such as store products, need no publish step.
 
