@@ -1,14 +1,15 @@
 name: Sync Codex Skills
 
-# Not path-filtered: main requires branches to be up to date, so an open sync PR is rebuilt
-# from every new main or auto-merge would wait on it forever.
+# Not path-filtered: main requires branches to be up to date, so an open sync PR is replaced
+# by one from every new main or auto-merge would wait on it forever.
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
+# The default token only approves; the App token pushes and opens the PR.
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
 
 concurrency:
@@ -21,6 +22,8 @@ jobs:
     environment: codegen
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
@@ -41,40 +44,18 @@ jobs:
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Close a sync PR that main already covers
+      - name: Close sync PRs that main already covers
         if: steps.sync.outputs.has_changes == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          pr=$(gh pr list --head sync/codex-skills --state open --json number --jq '.[0].number')
-          if [ -n "$pr" ]; then
-            gh pr close "$pr" --delete-branch --comment "main already matches skills/."
-          fi
+          for pr in $(gh pr list --state open --limit 100 --json number,headRefName \
+              --jq '.[] | select(.headRefName | startswith("bot/codex-skills-sync-")) | .number'); do
+            gh pr close "$pr" --comment "main already matches skills/."
+          done
 
-      - name: Open or update the sync PR
-        if: steps.sync.outputs.has_changes == 'true'
-        id: pr
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B sync/codex-skills
-          git add codex-skills/
-          git commit -m "chore: sync codex-skills from skills"
-          git push -f origin sync/codex-skills
-          url=$(gh pr list --head sync/codex-skills --state open --json url --jq '.[0].url')
-          if [ -z "$url" ]; then
-            url=$(gh pr create \
-              --base main \
-              --head sync/codex-skills \
-              --title "chore: sync codex-skills from skills" \
-              --body "Automated sync of \`codex-skills/\` from \`skills/\` by \`.github/scripts/sync-codex-skills.sh\`. Merges itself once required checks pass.")
-          fi
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-
-      # The approval must come from an identity other than the PR author, and is re-given
-      # after every force-push because pushes dismiss earlier approvals.
+      # GitHub holds CI on PRs opened with the default token until a person approves the run,
+      # so the App opens the PR and the default token approves it.
       - name: Mint App token
         if: steps.sync.outputs.has_changes == 'true'
         id: app-token
@@ -83,11 +64,47 @@ jobs:
           client-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 
-      - name: Approve and enable auto-merge
+      # A fresh branch per main commit, like release-bump.yml: rulesets forbid sync/**
+      # branches, force-pushes and branch deletion.
+      - name: Open the sync PR
+        if: steps.sync.outputs.has_changes == 'true'
+        id: pr
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          branch="bot/codex-skills-sync-${GITHUB_SHA::8}"
+          if ! git ls-remote --exit-code --heads origin "$branch" > /dev/null; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git checkout -b "$branch"
+            git add codex-skills/
+            git commit -m "chore: sync codex-skills from skills"
+            git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$branch"
+          fi
+          url=$(gh pr list --head "$branch" --state open --json url --jq '.[0].url')
+          if [ -z "$url" ]; then
+            url=$(gh pr create \
+              --base main \
+              --head "$branch" \
+              --title "chore: sync codex-skills from skills" \
+              --body "Automated sync of \`codex-skills/\` from \`skills/\` by \`.github/scripts/sync-codex-skills.sh\`. Merges itself once required checks pass.")
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          for pr in $(gh pr list --state open --limit 100 --json number,headRefName \
+              --jq ".[] | select(.headRefName | startswith(\"bot/codex-skills-sync-\")) | select(.headRefName != \"$branch\") | .number"); do
+            gh pr close "$pr" --comment "Superseded by $url."
+          done
+
+      - name: Approve
+        if: steps.sync.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ steps.pr.outputs.url }}
+        run: gh pr review --approve "$PR_URL" --body "Automated approval for codex-skills sync."
+
+      - name: Enable auto-merge
         if: steps.sync.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_URL: ${{ steps.pr.outputs.url }}
-        run: |
-          gh pr review --approve "$PR_URL" --body "Automated approval for codex-skills sync."
-          gh pr merge --auto --squash "$PR_URL"
+        run: gh pr merge --auto --squash "$PR_URL"
