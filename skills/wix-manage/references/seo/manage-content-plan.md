@@ -289,9 +289,13 @@ context without changing settings.
 
 ## Editing keywords (optional)
 
-A request to edit does not bypass readiness: during a known in-progress flow,
-follow step 3 and edit only its matching research. Otherwise read once with the
-readiness GET; on not found, report not ready instead of retrying immediately.
+A request to edit does not bypass readiness. For known `KEYWORD_RESEARCH`, use
+step 3 and edit only matching research. For earlier in-progress statuses or
+`CONTENT_PLAN`, follow the bounded status policy until `SUCCESS` before editing;
+if waiting cannot complete, report incomplete and make no edit. For an already
+complete flow or no in-progress flow, read research once, matching its ID to the
+known flow's research ID where available. On not found or mismatch, report not
+ready instead of retrying immediately.
 
 Only `keyword` and `main_keyword` are writable, using a field mask:
 
