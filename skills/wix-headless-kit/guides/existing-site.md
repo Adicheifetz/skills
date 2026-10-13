@@ -7,7 +7,8 @@ is the create flow's job on a site made for the run — a folder holding only a 
 is that case too: `init` made the site; SKILL.md step 3). (A project downloaded from Wix whose `.env.local` declares a
 migration is the other way to arrive at an existing site: `guides/migration.md`; the reading
 part below applies there too, against the migrated site.) `<SKILL_ROOT>` is the installed skill folder; the shipped code is
-under `<SKILL_ROOT>/templates/` (SKILL.md, "The run").
+in the folder `node <SKILL_ROOT>/install/templates.mjs` prints (`<templates>` below; SKILL.md, "The
+model").
 
 **Read the site, then run attach.** First, one call tells you what
 the site is — its name, currency, and the Wix apps installed on it:
@@ -25,6 +26,12 @@ shape as setup (SKILL.md step 3):
 ```bash
 node <SKILL_ROOT>/install/attach.mjs --site <siteId> --business-name "<site name>" --vertical <vertical>[,<vertical>] [--plan plan.json]
 ```
+
+The same call takes a folder that already holds the site's config and the CLI's blank Astro
+starter with no work of its own (`context.mjs` says `blank-starter`: a Wix Dev Machine for a
+never-released site, or a bare `wix create`): `--site` comes from the config, the vertical's
+composed template takes the starter's place, its lockfile with it, and the install and the seed
+run detached as below. Do not install by hand there; the brand layer is yours while they run.
 
 `init`/`wix create` always create a site, so they are not used here. attach does what they do
 after creating one — the site's OAuth app, Wix hosting, `wix.config.json` — against the site
@@ -46,7 +53,7 @@ for: what the chosen verticals will render, roughly how much of it, and what it 
 six items in three groups design differently from six hundred. Run the vertical's reader:
 
 ```bash
-node <SKILL_ROOT>/templates/<vertical>/seed/read-site.mjs --site <siteId> [--limit <n>]
+node <templates>/<vertical>/seed/read-site.mjs --site <siteId> [--limit <n>]
 ```
 
 It prints one JSON: whether the vertical's app is installed, counts, one page of each entity

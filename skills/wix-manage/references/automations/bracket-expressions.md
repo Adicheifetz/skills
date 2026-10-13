@@ -29,7 +29,7 @@ MUST:
 - Every field access is `var("path")` with ONE argument — `{{fieldName}}` is not supported.
 - Double quotes only (`var('x')` is an unknown variable to the builder). In JSON escape them: `"{{var(\"contact.email\")}}"`.
 - `;` between arguments, no leading/trailing/double `;`, balanced parentheses. No whitespace outside string literals — `{{ concat(…` or `sum( 1;2)` is unreadable to the builder.
-- Numbers: plain decimal literals (`5`, `-3`, `12.5`). Never `0.5`, `.5`, `-0.25`, `05` or `1e3` — the builder's parser rejects them (conditions, filters, delays and rate limits stop loading). Write `divide(1;2)` instead.
+- Numbers: plain decimal literals (`5`, `-3`, `12.5`). Never `0.5`, `.5`, `-0.25`, `05` or `1e3` — the builder's parser rejects them (conditions, filters, delays and rate limits stop loading). Write `divide(1;2)` instead. Percentages follow the same rule: 10% of `x` is `divide(x;10)` and 15% is `divide(multiply(x;15);100)`, never `multiply(x;0.1)`.
 - Path segments may contain hyphens (`var("triggered-emails-1.messageId")`); a space inside a segment is invalid.
 - **URI-encode every string literal inside `{{…}}`** exactly as `encodeURIComponent` does — this is how the builder's panels and the platform store them: `"a@b.com"` → `"a%40b.com"`, `"50%"` → `"50%25"`, `"New York"` → `"New%20York"`, `"&"` → `"%26"`. Letters, digits and `- _ . ! ~ * ' ( )` stay as they are, so uuids and `arrayMap` paths are unchanged. Do NOT encode `var("…")` paths (except in trigger filters, where the filter panel encodes the path too — [Automations Trigger Configuration](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-trigger-configuration)) or text outside `{{…}}`, nor a date-time literal in a formula field (§2). Decode literals when you read an existing automation. Action formula fields display literals as stored, so in string fields keep fixed text outside `{{…}}` (`Hi {{var("contact.name.first")}}, welcome!`) rather than in `concat("…")`.
 
@@ -73,7 +73,7 @@ Valid first arguments: a comparison (`eq`, `gt`, `stringEq`, `dateBefore`, `star
 In number and boolean target fields BOTH branches must return exactly the field's type — a number literal/var/function for a number field. A nested `if` as a branch counts as "any" and is flagged there: wrap it (`toNumber(if(…))`) or, for booleans, use `and`/`or`. Nested `if` is fine in string fields.
 
 - ✅ `{{if(stringEq(var("status");"active");"Active";"Inactive")}}`
-- ✅ fallback: `{{if(isEmptyString(var("contact.name.first"));"there";var("contact.name.first"))}}`
+- ✅ fallback when the value is missing or empty: `{{if(or(isEmpty(var("contact.name.first"));isEmptyString(var("contact.name.first")));"there";var("contact.name.first"))}}`
 - ❌ `{{if(var("status");…)}}` when `status` is a string · ❌ `{{if("active";…)}}`
 
 ## 4. Field-type rules (what the builder accepts per target field)

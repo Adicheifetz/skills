@@ -4,6 +4,9 @@ description: "Add, query, update, and delete items in CMS collections, one at a 
 ---
 # CMS Data Items CRUD
 
+> These calls need the Wix CMS app on the site (`appDefId` `e593b0bd-b783-45b8-97c2-873d42aacaf4`); a `428`, a `400` naming the app, or an empty result on a site that should have content means it is not there. [List Installed Apps](../app-installation/list-installed-apps.md) shows what the site has; [Install Wix Apps](../app-installation/install-wix-apps.md) adds it by that id.
+
+
 > **Standard call shape (every curl below).** The `<AUTH>` placeholder is shorthand for `Authorization: Bearer <TOKEN>` only. Body-bearing requests also need `Content-Type: application/json`.
 
 This recipe covers Create, Read, Update, Delete (CRUD) operations for Wix CMS data items, plus count, upsert, truncate, aggregate, and reference-field links.
@@ -175,6 +178,8 @@ curl -X GET \
 
 **Endpoint**: `PUT https://www.wixapis.com/wix-data/v2/items/{itemId}`
 
+> **Warning**: This replaces the entire item — fields not in `dataItem.data` are deleted. To change only some fields, use [Patch Data Item](#patch-data-item-partial-update---single-item).
+
 **Request Body**:
 ```json
 {
@@ -233,6 +238,8 @@ Unlike Update, this only modifies the specified fields — all other fields rema
 
 > There is no update-by-filter endpoint. To update the items matching a filter, query them first (see [Query Data Items](#query-data-items)), then send their ids to bulk update or bulk patch.
 
+> **Note**: This replaces the entire item. Include all fields you want to keep, not just the ones you're changing.
+
 > **Important**: Use `id` (not `_id`) at the element level. The `data` object should NOT contain `_id`.
 
 ```json
@@ -242,22 +249,24 @@ Unlike Update, this only modifies the specified fields — all other fields rema
     {
       "id": "item-guid-1",
       "data": {
+        "title": "Wireless Headphones Pro",
         "price": 159.99,
+        "description": "Premium wireless headphones",
         "inStock": true
       }
     },
     {
       "id": "item-guid-2",
       "data": {
+        "title": "Wired Earbuds",
         "price": 89.99,
+        "description": "Compact wired earbuds",
         "inStock": false
       }
     }
   ]
 }
 ```
-
-> **Note**: This replaces the entire item. Include all fields you want to keep, not just the ones you're changing.
 
 ## Bulk Patch Items (Partial Update)
 

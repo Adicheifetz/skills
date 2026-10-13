@@ -3,7 +3,7 @@ name: "Automations Schemas and Scheduling"
 description: "Configure dynamic schemas and scheduled automation triggers with correct timezone and calendar behavior."
 ---
 
-> **Stage scope:** this stage covers only what [Build and Manage Wix Automations](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) lists; follow the instruction attached to each guide marked "not yet published".
+> **Stage scope:** this stage covers only what [Build and Manage Wix Automations](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) lists; follow the instruction attached to each guide marked "not yet published". "Stage" and "not yet published" describe how this skill is being rolled out; never mention them to the user. Explain a limit in product terms: what can't be done through the API here and where the user can do it instead (for example, in the automations builder).
 
 # Schemas & Scheduling — Aggregated Schema, Override Schemas, Scheduled and Future-Date Triggers
 

@@ -3,7 +3,7 @@ name: "Automations Action Configuration"
 description: "Configure app-defined automation actions from their input schemas and preserve supported existing action mappings."
 ---
 
-> **Stage scope:** this stage covers only what [Build and Manage Wix Automations](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) lists; do not perform anything marked "Later stages only", and follow the instruction attached to each guide marked "not yet published".
+> **Stage scope:** this stage covers only what [Build and Manage Wix Automations](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) lists; do not perform anything marked "Later stages only", and follow the instruction attached to each guide marked "not yet published". "Stage", "Later stages only" and "not yet published" describe how this skill is being rolled out; never mention them to the user. Explain a limit in product terms: what can't be done through the API here and where the user can do it instead (for example, in the automations builder).
 
 # App-Defined Actions — Discovery, Schemas, Input Mapping
 
@@ -48,7 +48,7 @@ Site-scoped (`wix-site-id` header), SDK module `actionCatalog`: Resolve Actions 
 - `outputSchema` — fields downstream steps read as `var("<namespace>.<field>")`. Empty and no dynamic output → later steps must not reference its namespace.
 - `implementedMethods` — `validateConfiguration` (the app validates your mapping on Validate Automation), `getQuotaInfo`. It does **not** tell you about dynamic schemas — decide by `updateSchemaOnChange` and by calling the dynamic-output API.
 
-**`WIDGET_COMPONENT` actions.** The widget owns the mapping; the builder's form rules don't apply to it. If `inputSchema` fully describes what the user asked for (e.g. `addLabelsToContact`: `contactId` + `labelKeys`), hand-author it (§5.2) and tell the user to review the step; otherwise explain that configuring it is outside this stage. If the widget can't load (its app is uninstalled), the builder shows an "app not installed" state with a Replace button instead of the settings.
+**`WIDGET_COMPONENT` actions.** The widget owns the mapping; the builder's form rules don't apply to it. In these guides an *opaque widget* is a `WIDGET_COMPONENT` action whose `inputSchema` does not fully describe the requested configuration. If `inputSchema` fully describes what the user asked for (e.g. `addLabelsToContact`: `contactId` + `labelKeys`), hand-author it (§5.2) and tell the user to review the step; otherwise tell the user this step can’t be configured through the API here and that they can set it up in the automations builder. If the widget can't load (its app is uninstalled), the builder shows an "app not installed" state with a Replace button instead of the settings.
 
 Conditional fields (`if`/`then`/`dependencies`, e.g. a due date shown only when "add a due date" is true): set the toggle and the dependent field together, or leave both out.
 
@@ -86,6 +86,7 @@ MUST (builder renderability — the `GENERIC` form drops, rewrites or flags anyt
 - Entity-selector fields: real ids of the right kind and shape (§1 of Automations Entity and Provider Configuration (topic guide not yet published; consult the [Automations API reference](https://dev.wix.com/docs/api-reference/business-management/automations))).
 - `{{…}}` only in fields with `dynamicValuesOptions.enabled` (or an `identityType` field), per [Automations Mapping Expressions](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-mapping-expressions) §4: number/boolean hold exactly one expression of that type; date-time a single date-time expression or ISO literal; strings may mix text and expressions. An **array-typed** `var()` in a string field is flagged as a format mismatch.
 - Don't copy volatile values: dates → `now()`/payload dates; ids → resolved at build time, never from examples.
+- Keep what the user describes for one field in that field. A subject described as "Order received, then the customer's first name" is one `subject` string mixing text and expressions (`"Order received {{var(…)}}"`); don't split its values into other fields, such as a message's `fields` rows.
 
 Value kinds:
 
@@ -108,7 +109,7 @@ Trigger fields have no prefix; action outputs use the step's `namespace` (e.g. `
 
 Optional inputs with no `default` (e.g. `isDueDate`, `onlyWhenAvailable`): omit them unless the request needs them. A deprecated defaulted input (e.g. `labelIds: []` on add-label) may be omitted.
 
-Process: (1) fetch the effective schema (§4) → (2) classify required vs optional; map optional fields only with a real source → (3) source each required field from payload, upstream outputs or the user; ask for user-specific content (text, recipient, which entity) → (4) build → (5) self-check against the list above → (6) Validate Automation.
+Process: (1) fetch the effective schema (§4) before you write a mapping or any script that saves one — never guess an action's field names → (2) classify required vs optional; map optional fields only with a real source → (3) source each required field from payload, upstream outputs or the user; ask for user-specific content (text, recipient, which entity) → (4) build → (5) self-check against the list above → (6) Validate Automation.
 
 ### 5.3 Validation errors on actions
 

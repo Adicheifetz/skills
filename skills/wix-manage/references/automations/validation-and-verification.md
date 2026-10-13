@@ -3,7 +3,7 @@ name: "Automations Validation and Persistence"
 description: "Validate automation configuration, check builder compatibility, persist changes and verify the saved result."
 ---
 
-> **Stage scope:** this stage covers only what [Build and Manage Wix Automations](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) lists; do not perform anything marked "Later stages only", and follow the instruction attached to each guide marked "not yet published".
+> **Stage scope:** this stage covers only what [Build and Manage Wix Automations](https://dev.wix.com/docs/api-reference/business-management/automations/skills/build-and-manage-wix-automations) lists; do not perform anything marked "Later stages only", and follow the instruction attached to each guide marked "not yet published". "Stage", "Later stages only" and "not yet published" describe how this skill is being rolled out; never mention them to the user. Explain a limit in product terms: what can't be done through the API here and where the user can do it instead (for example, in the automations builder).
 
 # Validation and Verification
 
@@ -119,13 +119,24 @@ resource, finish setup). Report its `title`/`message` and the `ctaUrl`, and don'
 
 1. §4 checklist passes and the final full Validate is `VALID` (or understood warnings).
 2. Create Automation with `origin: "USER"`, `configuration.status: "INACTIVE"`, no `settings`.
-   Capture `id`.
+   Capture `id`. Send Create as its own call, after a separate full Validate call has returned
+   `VALID` (or understood warnings) — never in the same script as that Validate or as discovery.
+   Send it once per candidate: if a Create's outcome is unknown, Query Automations before
+   resending it (Reporting rules below). A Create that was never sent is not an attempt.
 3. **Read back** with Get Automation on the same site. Confirm the trigger, the root id, and the
    set of action ids/types match what you sent (string literals come back URI-encoded, as sent).
    If you used an override schema, Get with `fields: ["OVERRIDE_SCHEMA"]` ([Automations API Catalog](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-api-catalog) §2).
-4. Hand off: name, status (inactive), id, and the edit link
-   `https://manage.wix.com/dashboard/<metaSiteId>/triggers/edit/<automationId>`. Ask the user to
-   review it in the builder; its main button on an inactive automation, **Activate**, turns it on.
+   Run the Get as a separate call once Create has returned (not batched into the same script),
+   and keep its response body as returned: the returned `automation` is the evidence, so don't
+   replace it with a summary you assemble from selected fields.
+4. Hand off, leading with the outcome. Make the first line of your answer the saved state, for
+   example: "Saved **<name>** as inactive (ID `<automationId>`). Click **Activate** in the
+   builder to turn it on: `https://manage.wix.com/dashboard/<metaSiteId>/triggers/edit/<automationId>`".
+   That first line MUST name the automation, its status and its ID together; don't move the ID
+   to a later line, because a reader may see only the first line.
+   Then say what it does, and ask the user to review it in the builder. If the user asked to
+   turn it on, activate it first (step 5) and make the first line the active state instead:
+   "Saved **<name>** and turned it on (ID `<automationId>`): <edit link>".
 5. Activate only on request — see "Activation status, activate, deactivate" below.
 
 ### Update
@@ -220,7 +231,7 @@ this list is the union; run those too for the node types you used.
    **Later stages only — email is outside stage 3:** New email steps have a provider-generated mapping used once and persisted before content edits; no fabricated opaque-widget mapping; unrelated existing ones unchanged
    (except the documented site-owner audience replacement).
 9. `inputMapping`: only schema keys (an existing email/widget step's mapping passes through unchanged), types and
-   enums match, every required/visible field mapped, entity-selector fields hold ids, formulas
+   enums match, every required field mapped (optional ones per [Automations Action Configuration](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-action-configuration) §5.2), entity-selector fields hold ids, formulas
    only in `dynamicValuesOptions.enabled` fields.
 10. No "Create a contact" action (`contacts-create_contact`) when the trigger payload already has
     an `identityType: "contact"` field — the builder marks it "can't create a contact" and blocks

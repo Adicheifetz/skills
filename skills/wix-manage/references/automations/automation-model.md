@@ -11,7 +11,7 @@ description: "Assemble builder-editable automation graphs with valid node relati
 - Every action: `actions[k].id === k`, a fresh uuid v4, a unique `namespace` (except variable steps, which share `setVariable`), and ONLY its own type's `*Info` object.
 - The automation MUST render and be editable in the Wix dashboard builder. The builder rules below are hard MUSTs — the API accepts shapes the builder cannot draw (some hang its loader forever).
 - A step may read (`var("...")`) only its node's **aggregated payload schema**: trigger payload + identity enrichment + outputs of its ANCESTOR steps.
-- Create and Update do NOT validate. Always call Validate Automation before saving ([Automations API Catalog](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-api-catalog)).
+- Create and Update do NOT validate. Always call Validate Automation before Create, a configuration Update or activation ([Automations API Catalog](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-api-catalog)); status-only deactivation is exempt ([Automations Activation Status](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-activation-status)).
 
 ---
 
