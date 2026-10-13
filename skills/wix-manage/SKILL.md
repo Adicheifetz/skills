@@ -6,6 +6,15 @@ compatibility: Requires Wix REST API access (API key or OAuth).
 
 # Management Recipes Index
 
+## Start Here — Wix MCP
+
+This applies when the Wix MCP is connected. To check, search your tools for Wix ones; they may not be listed up front. If there are none, skip this section.
+
+### Call the `WixREADME` tool
+Must be read at the start of any flow, before opening any recipe. How to work with the Wix MCP: source-of-truth rules, the discovery-and-call flow, batching calls into one invocation, and loading site context.
+
+---
+
 > **Standard call shape for every curl example across these recipes.** The `<AUTH>` placeholder in example curls is shorthand for the `Authorization` header only; body-bearing calls also need `Content-Type: application/json`.
 
 ## What Are Management Recipes?
