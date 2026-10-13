@@ -45,13 +45,16 @@ assertions:
       blind long readiness sleeps or skipped status cadence; stale/mismatched
       status at release; repeated triggers/releases; or starting status/readiness/
       release after the shared deadline, including automatic restarts to evade it.
-      A policy-permitted late first-readiness check is valid. Expected paced 404s
-      are not friction. One 428 is acceptable only after readiness proof, followed
-      by status/research decisions within budget without another release.
+      Cadences are approximate client recommendations: do not fail minor reasonable
+      timing variation or an earlier nonmutating readiness check at KEYWORD_RESEARCH.
+      Release proofs and the shared deadline remain strict. The late first-check
+      window is valid; expected paced 404s are not friction. One 428 is acceptable
+      only after readiness proof, followed by status/research decisions within
+      budget without another release.
       Observed SUCCESS ends waiting: candidates may be read even if an in-flight
-      status request returns at/after the deadline. Penalize first-readiness or
-      retry checks outside the chosen policy, guessed shapes, unnecessary discovery
-      after an expected 404 and other non-2xx errors;
+      status request returns at/after the deadline. Penalize excessive readiness
+      retries, guessed shapes, unnecessary discovery after an expected 404 and
+      other non-2xx errors;
       identify the likely docs/API/provisioning gap. Use timestamps/clock evidence.
       Return ONLY {"score":<0-10>,"reason":"<trace frictions and likely gaps, or clean path>"}.
 siteSetup:

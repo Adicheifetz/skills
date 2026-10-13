@@ -76,16 +76,22 @@ research ID and last status. `createdAt` and `updatedAt` are flow data, not a
 clock; `updatedAt` can stay frozen while parked. Never infer time from HTTP
 fields or request counts.
 
-The following values are **chosen request-pacing, backoff and stop budgets** for
-this recipe. They are not API-required waits, an SLA or measured completion
-times. Keep observing progress; later statuses bypass readiness waiting.
+These are **chosen approximate client pacing, backoff and stop budgets**, not
+API-required minimum waits, an SLA or measured completion times. Reasonable
+pacing variation and safe earlier nonmutating readiness checks are acceptable;
+readiness still requires latest status `KEYWORD_RESEARCH`, and release still
+requires all step 4 proofs. Avoid rapid polling. Later statuses skip readiness.
 
-| Decision | Chosen elapsed-time policy |
-| --- | --- |
-| Status check | About 15 seconds between checks. |
-| First readiness | Normally after about five minutes at `KEYWORD_RESEARCH`; a user's report of that long permits a check now. Reserve the last two minutes of the attempt: if this window has begun, latest status is `KEYWORD_RESEARCH` and readiness has never been checked, check immediately. Earlier statuses never permit readiness checks. |
-| Readiness retry | About two minutes after the previous check, only within the remaining budget. The late first-check window does not accelerate retries. |
-| Stop waiting | About 15 minutes from trigger/resume, including earlier statuses and `CONTENT_PLAN`. Transitions do not reset the deadline. |
+- Check status about every 15 seconds.
+- If still `KEYWORD_RESEARCH`, normally check readiness after about five minutes.
+- Retry readiness about two minutes later, only within the remaining budget.
+- Stop waiting about 15 minutes from trigger/resume; transitions never reset it.
+
+A user-reported wait beyond the normal first-check interval allows a check now.
+For a late transition to `KEYWORD_RESEARCH`, reserve the attempt's last two
+minutes for one first readiness check if none has occurred. This exception does
+not accelerate retries or extend the deadline; earlier statuses never permit
+readiness checks.
 
 Continue paced status checks throughout readiness waits. Do not sleep the whole
 readiness interval inside an execution. Use a supported external wait or
@@ -102,42 +108,23 @@ even if a status request begun within budget finishes at or after the deadline.
 If supported timing/waiting is unavailable, also report incomplete with the
 actual flow ID and last status; never replace elapsed time with rapid polling.
 
-Optional **status-only** illustration for a runtime supporting `Date.now`,
-`setTimeout` and authenticated `wix.request`. It is not a required calling
-pattern. If adapting it, replace marked strings with the actual UUID and saved
-clock observations in milliseconds since the Unix epoch. Do not reset these
-observations between executions or reuse this cadence for readiness GETs.
+A capability-neutral **status-only** example:
 
-```js
-async function() {
-  const id = "<actual-flow-uuid>";
-  const start = Number("<saved-wait-start-ms>");
-  const last = Number("<saved-last-status-check-ms>");
-  const now = Date.now();
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
-      || !Number.isFinite(start) || !Number.isFinite(last)
-      || start <= 0 || last < start || last > now) {
-    throw new Error("Supply actual ID and saved clock observations before execution");
-  }
-  const deadline = start + 15 * 60 * 1000;
-  const delay = Math.max(0, last + 15 * 1000 - now);
-  if (now + delay >= deadline) throw new Error("Report incomplete; preserve progress");
-  await new Promise(resolve => setTimeout(resolve, delay));
-  if (Date.now() >= deadline) throw new Error("Report incomplete; preserve progress");
-  const response = await wix.request({
-    scope: "site", method: "GET",
-    url: `https://www.wixapis.com/promote/seo/v1/content-plan-flows/${id}`
-  });
-  const flow = response.data.contentPlanFlow;
-  return { observedAt: Date.now(), contentPlanFlow: {
-    id: flow?.id, status: flow?.status, keywordResearchId: flow?.keywordResearchId
-  }};
-}
-```
+1. Validate the actual saved flow UUID and consistent clock observations for
+   attempt start and last check. Missing, placeholder or invalid values must not
+   send a request. Use observations from the same supported clock and time units.
+2. Compute next status-check time from the last observation plus the status
+   cadence, and the shared deadline from attempt start plus the stop budget.
+   If current time or waiting until the next due time would reach the deadline,
+   report incomplete.
+3. Use a supported external wait, or one bounded delay before this single status
+   GET. Read the clock again afterward; if expired, send no request.
+4. Otherwise send one [status GET](#2-read-status) using the actual flow ID,
+   return its response, save the new clock observation and decide the next action.
 
-Save returned `observedAt` as the last status-check time; decide from the response
-before the next separate execution. The guards prevent unfilled/invalid input
-and expired budgets from sending a request.
+This illustrates required guards, not a calling contract for any runtime.
+Readiness GETs use their own backoff; never substitute this status cadence or
+one long readiness sleep.
 
 ## API steps
 
