@@ -117,6 +117,12 @@ do not append status calls to this execution.
 GET https://www.wixapis.com/promote/seo/v1/content-plan-flows/{contentPlanFlowId}
 ```
 
+**Only the first status GET skips waiting. Every later status GET—including
+fresh-readiness and 428 follow-ups—must be at least 15 real seconds after the
+previous status response. Use a supported wait for the remaining interval;
+a returned API call is not a wait. With no usable clock/wait, stop incomplete
+instead of sending another GET. Always honor the shared deadline.**
+
 Minimal response example:
 
 ```json
@@ -155,12 +161,11 @@ observation or when the retry interval in the waiting procedure has elapsed:
 GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items
 ```
 
-No parameters are required. The [public request schema and reference](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-keyword-research-v1/list-keyword-research-items)
-allow optional `paging`; omit it for all items. The reserved `contentPlanFlowId`
-parameter is documented as ignored in the [pinned request schema](https://github.com/wix-private/promote-seo/blob/f0dc0a4c4b1245742486788aabebaeac94497521/packages/seo-content-plan-api/src/main/proto/wix/promote/seo/content/plan/v1/keyword_research_service.proto#L241),
-so this GET returns the site's most recent research, not a flow-selected result.
-A verified live GET with no parameters returned nonempty items and matching
-`keywordResearchId`:
+No parameters are required. [List Keyword Research Items](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-keyword-research-v1/list-keyword-research-items)
+allows optional `paging`; omit it for all items. Request in the selected site's
+authorization context. Compare the returned `keywordResearchId` with the current
+flow rather than assuming the items belong to it. A verified parameter-free GET
+returned nonempty items and a matching research ID:
 
 ```json
 {
@@ -185,34 +190,35 @@ The linked reference documents not found when the site has no research.
 below follows the documented API contract but has not been verified live for a
 genuinely ready parked flow. It allows one attempt without promising advancement.
 
-After matching nonempty readiness, make a **fresh status GET** for the same flow
-in its own execution. This GET obeys the same 15-second status spacing: wait the
-remaining interval first. Immediately decide: `CONTENT_PLAN` or `SUCCESS` means
-skip release. Only fresh `KEYWORD_RESEARCH` with the same research ID permits release;
-a pre-readiness status is insufficient. If the ID changed, return to paced
-readiness checking. Send the release separately after rechecking the deadline:
+Check these conditions in order:
+
+| Condition | Action |
+| --- | --- |
+| Deadline expired while the flow is in progress | Stop incomplete; preserve progress. No recovery call. |
+| Nonempty matching research just returned; no status check since that read | Wait the remaining status interval, then make a fresh same-flow status GET in its own execution. |
+| Fresh `CONTENT_PLAN` or `SUCCESS` | Skip release; follow the status table. |
+| Fresh `KEYWORD_RESEARCH` with a changed research ID | Return to paced readiness checks. |
+| Fresh `KEYWORD_RESEARCH`, same research ID, remaining budget, no previous release | Recheck the deadline, then POST once in a separate execution. |
+| Release already attempted, or any other status | Do not release; follow the status table within the budget. |
 
 ```
 POST https://www.wixapis.com/promote/seo/v1/create-content-plan
 { "contentPlanFlowId": "<flow-uuid>" }
 ```
 
-Success: `{ "success": true, "contentPlanFlowId": "<flow-uuid>" }`.
-Check `success`, not just HTTP status. If false, report its `message` and stop;
-for errors other than the 428 handling below, report the error and stop. Success
-is not completion: if status does not advance, continue paced checks only within
-the remaining budget, then report incomplete with saved progress. Never repeat
-the release to force advancement.
+The response is `{ "success": true, "contentPlanFlowId": "<flow-uuid>" }`
+on success; this is not completion.
 
-On HTTP `428`, do not release again in this attempt. Within the remaining
-budget, recheck status with the same status spacing: later statuses follow the
-table; `KEYWORD_RESEARCH` returns to paced readiness checks. If still parked, report the refusal and
-preserve progress. No retry loop or automatic replacement trigger.
+1. If `success` is false, report `message` and stop. Other errors also stop,
+   except HTTP `428`: recheck status at the normal pace within the budget;
+   `KEYWORD_RESEARCH` returns to readiness checks. Never release again.
+2. On success, retain the actual returned flow ID. If different, keep both and
+   report original ID requested versus different ID returned; never infer the
+   original reached `SUCCESS` from observations of the returned flow.
+3. Continue paced status checks. If it does not advance before the deadline,
+   report incomplete with saved progress. No repeated release, replacement
+   trigger or automatic restart to force advancement.
 
-Retain the actual returned flow ID. If different, keep both and report the
-relationship: original ID requested, different ID returned. Do not claim the
-original reached `SUCCESS` using observations of the returned flow. Continue
-status checks before reading results; never release again to retrieve them.
 Releasing an already successful flow can generate a new flow.
 [Create Content Plan](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-blog-post-candidate-v1/create-content-plan).
 

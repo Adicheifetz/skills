@@ -26,9 +26,11 @@ assertions:
       2. The reply shows actual returned topics, available briefData keywords and
          supporting URLs, count, flow ID and SUCCESS. Weak API-generated titles
          are still actual results; fabrication or promises without topics fail.
-      3. Recovery is conditional: automatic CONTENT_PLAN/SUCCESS skips readiness
-         and release. If release occurs, matching nonempty readiness must be
-         followed by a fresh same-flow status GET still KEYWORD_RESEARCH with
+      3. After observing CONTENT_PLAN/SUCCESS, skip further readiness and release.
+         Earlier nonmutating readiness at observed KEYWORD_RESEARCH is valid even
+         if the flow later completes automatically. If release occurs, matching
+         nonempty readiness must be followed by a fresh same-flow status GET
+         still KEYWORD_RESEARCH with
          the same research ID; release once before the shared deadline.
       Score 7+ only when all applicable criteria hold. Score 0 for incomplete,
       timeout, failure, no observed SUCCESS, no actual candidate read/topics,
