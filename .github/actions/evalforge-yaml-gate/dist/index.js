@@ -66708,9 +66708,14 @@ function winnerLabel(s) {
     if (!s.pairwiseJudgement) {
         return '—';
     }
-    const winnerIcon = s.pairwiseJudgement.winner === 'tie' ? '≈' : s.pairwiseJudgement.winner === 'with' ? '⬆️' : '⬇️';
-    return `${winnerIcon} ${s.pairwiseJudgement.winner} (${s.pairwiseJudgement.confidence})`;
+    const { winner } = s.pairwiseJudgement;
+    if (winner === 'tie')
+        return '≈ tie';
+    return winner === 'with' ? '⬆️ PR' : '⬇️ prod';
 }
+const TABLE_LEGEND = [
+    '**Skill needed?** is the decision: ✅ yes if the PR passes checks prod fails, or uses >15% fewer tokens; ❌ no otherwise. **Judge\'s pick** is an LLM opinion and never changes it. If they disagree, trust *Skill needed?* and read the judge\'s reasoning below; if the judge sees a real gain on a ❌, add an assertion to measure it.',
+];
 function formatComparisonResult(result, projectId) {
     const { verdict, tag, scenarios, judgeCoverage } = result.result;
     const hasNoWinner = comparisonHasNoWinner(result.result);
@@ -66729,7 +66734,7 @@ function formatComparisonResult(result, projectId) {
     if (!isFullyJudged && judgeCoverage) {
         lines.push(`> ⚠️ **Only ${judgeCoverage.judged}/${judgeCoverage.total} scenarios were judged.** The verdict above rests on the`, '> remaining scenarios\' assertion results alone, so treat it as provisional rather than', '> as evidence the skill makes no difference. Re-run to get full coverage.', '');
     }
-    lines.push('| Scenario | Required | Winner | Cost (PR / prod) | Tokens (PR / prod) | Time (PR / prod) | Runs (PR / prod) |', '|---|---|---|---|---|---|---|');
+    lines.push('| Scenario | Skill needed? | Judge\'s pick | Cost (PR / prod) | Tokens (PR / prod) | Time (PR / prod) | Runs (PR / prod) |', '|---|---|---|---|---|---|---|');
     for (const s of (scenarios ?? [])) {
         const costWith = s.with.totalCostUsd.toFixed(3);
         const costWithout = s.without.totalCostUsd.toFixed(3);
@@ -66739,8 +66744,9 @@ function formatComparisonResult(result, projectId) {
         const timeWithout = `${(s.without.durationMs / 1000).toFixed(1)}s`;
         const runWith = projectId && s.with.runId ? `[PR](${(0, evalforge_core_1.evalRunUrl)(projectId, s.with.runId, s.with.name)})` : '—';
         const runWithout = projectId && s.without.runId ? `[prod](${(0, evalforge_core_1.evalRunUrl)(projectId, s.without.runId, s.without.name)})` : '—';
-        lines.push(`| ${s.scenarioName} | ${s.required ? '✅' : '❌'} | ${winnerLabel(s)} | $${costWith} / $${costWithout} | ${tokWith} / ${tokWithout} | ${timeWith} / ${timeWithout} | ${runWith} / ${runWithout} |`);
+        lines.push(`| ${s.scenarioName} | ${s.required ? '✅ yes' : '❌ no'} | ${winnerLabel(s)} | $${costWith} / $${costWithout} | ${tokWith} / ${tokWithout} | ${timeWith} / ${timeWithout} | ${runWith} / ${runWithout} |`);
     }
+    lines.push('', ...TABLE_LEGEND);
     for (const s of (scenarios ?? [])) {
         const reason = noWinnerReason(s);
         lines.push('', `<details><summary>${s.scenarioName}</summary>`, '', s.reason, '');
