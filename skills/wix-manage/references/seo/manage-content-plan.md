@@ -9,7 +9,7 @@ A content plan contains suggested blog post briefs: titles, keywords and existin
 site pages they support. Generation creates briefs, not published posts.
 `contentPlanFlowId` identifies the asynchronous job; it is not the site ID.
 
-**Verified live behavior, distilled from site runs on October 13, 2026:** one
+**Verified against live site runs:** one
 triggered flow advanced to `CONTENT_PLAN` and then `SUCCESS` without a release;
 reading that same flow returned 24 candidates. Another flow went from observed
 `KEYWORD_RESEARCH` to `SUCCESS` on the next paced check without readiness or
@@ -67,21 +67,23 @@ Use separate executions throughout:
 
 ## Waiting without losing progress
 
-**One API execution makes one HTTP request and returns.** A usable clock exposes
-current or monotonic time on demand, in consistent units, advancing with elapsed
-time. A usable wait is a documented bounded pause/timer that yields without
-HTTP calls or busy loops. Retain attempt start, first `KEYWORD_RESEARCH`, last
-status/readiness observations and actual IDs in notes or supported state across calls.
-`updatedAt` can remain frozen while parked; flow timestamps and counts are not clocks.
+**One API execution makes one HTTP request and returns.** After each call, write
+in your working notes the actual flow/research IDs, last status and the times of
+attempt start, first `KEYWORD_RESEARCH`, last status check and last readiness check.
+Read current time with an available date/time capability before the next call,
+using the same clock and units. Use a documented bounded pause/timer that yields
+without HTTP calls or busy loops. `updatedAt` can stay frozen while parked;
+HTTP timestamps, request counts and round trips are not a clock or a wait.
 
 These are **arbitrary, adjustable client defaults**, not API readiness thresholds,
-required minimum waits, measured durations or SLAs. Choose finite limits from
-known caller capabilities before the attempt; never reset or extend them mid-attempt:
+required minimum waits, SLAs or values derived from the verification runs. Choose
+finite limits from known caller capabilities before the attempt; never reset or
+extend them mid-attempt:
 
 - Status checks: about 15 seconds apart.
 - First readiness: normally after about five minutes at `KEYWORD_RESEARCH`.
 - Readiness retries: about two minutes apart within the remaining budget.
-- Stop budget: about 15 minutes total from trigger/resume, including earlier states.
+- Stop budget: about 30 minutes total from trigger/resume, including earlier states.
 
 With these defaults, a report of at least five minutes at `KEYWORD_RESEARCH`
 allows the first readiness check now. For late `KEYWORD_RESEARCH`, check once
@@ -91,19 +93,21 @@ nonmutating checks are acceptable.
 Continue status checks during readiness waits; do not sleep a whole readiness interval.
 
 Check the clock before each waiting/recovery request, including release after
-ready research or HTTP `428`. At expiry, stop, report incomplete, preserve actual
+ready research or HTTP `428`. Expiry ends only this monitoring attempt; it does
+not prove the job stalled or failed. Stop, report incomplete, preserve actual
 ID/status and clock/readiness observations, and end the turn until a later requested
 resume. Observed `SUCCESS` ends waiting and permits candidate retrieval even if an
 in-flight status request finishes at or after the deadline. No automatic restart to evade it.
 
-For a subsequent status check, validate saved ID/start/last observations; determine
-next due time and the fixed deadline. If now or waiting until next due reaches it,
-stop. Otherwise use a supported external wait or one bounded delay only before the
-status GET; re-read the clock, and if unexpired send one GET, save the observation
-and decide. The first GET needs actual ID and attempt start, not a prior check time;
-save its observation.
-If clock, wait or retained observations are unusable, report incomplete with actual
-ID and last status instead of rapid polling. Never reuse status cadence for readiness.
+Before each subsequent status GET, compare current time with your saved last
+status-check time plus the chosen cadence. If that next due time reaches the
+deadline, stop incomplete. If not yet due, actually pause for the remaining
+interval using the supported wait; HTTP round trips do not count as the pause. Check current time again after waiting: if the fixed deadline is
+reached, send no request. Otherwise send one GET, note its observation time and
+decide. The first GET needs the actual ID and attempt start, not a prior check
+time; honor the deadline and save its observation.
+If saved times, clock or wait are unavailable, report incomplete with actual IDs
+and last status. Never reuse status cadence or a long status-free sleep for readiness.
 
 ## API steps
 
@@ -169,7 +173,7 @@ No parameters are required. The [public request schema and reference](https://de
 allow optional `paging`; omit it for all items. The reserved `contentPlanFlowId`
 parameter is ignored, so this GET returns the site's most recent research,
 not a flow-selected result. A verified live GET with no parameters returned
-nonempty items and the matching `keywordResearchId` on October 13, 2026:
+nonempty items and the matching `keywordResearchId`:
 
 ```json
 {

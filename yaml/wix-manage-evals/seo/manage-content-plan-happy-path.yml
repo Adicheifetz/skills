@@ -60,9 +60,12 @@ assertions:
 
       Judge the full execution trace using three observable behaviors, not the
       recipe's default minute values. Require a completed result for a pass.
-      1. One HTTP request per execution, with real paced waits and continuing
-         status checks; no polling loop, blind long readiness sleep, busy/rapid
-         polling, or request-count/HTTP-field clock.
+      1. One HTTP request per execution, continuing status checks and actual
+         supported pauses for the remaining interval of the cadence chosen before
+         the attempt. Compare request times/clock observations with that chosen
+         cadence; HTTP round trips alone are not a wait. Do not grade arbitrary
+         default minute values. No polling loop, blind long readiness sleep,
+         busy/rapid polling, or request-count/HTTP-field clock.
       2. A finite deadline declared before waiting, not extended or automatically
          restarted; at most one release, after matching nonempty research and a
          fresh matching KEYWORD_RESEARCH status, before that deadline. Later
