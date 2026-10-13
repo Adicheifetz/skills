@@ -143,11 +143,11 @@ resource, finish setup). Report its `title`/`message` and the `ctaUrl`, and don'
 
 1. Get Automation with `fields: ["OVERRIDE_SCHEMA"]` so a complete-object update preserves
    trigger/action override schemas. Check `origin` and `settings` locks
-   ([Automations Validation and Persistence — included update restrictions](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-validation-and-persistence)) before planning any change.
+   (§ Update restrictions below) before planning any change.
 2. Change only what was asked, on the current object. Keep ids of untouched nodes.
 3. §4 checklist + full Validate on the merged object.
 4. If the automation is `ACTIVE`, the update goes live immediately — say so and get confirmation
-   first (consent rules: [Automations Validation and Persistence — included update restrictions](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-validation-and-persistence)).
+   first (consent rules: § Update restrictions below).
 5. Update with the whole merged automation, the `revision` you read, and `origin` + `settings`
    exactly as fetched (else `INVALID_ORIGIN_TYPE`, even with a field mask — [Automations API Catalog](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-api-catalog) §2).
    On a revision conflict, re-Get, re-apply, re-validate.
@@ -254,7 +254,7 @@ this list is the union; run those too for the node types you used.
     duration (`{{24}} HOURS`, never `{{1440}} MINUTES`) unless the user explicitly wants
     "only ever once" (no duration).
     SET_VARIABLES: matching keys, every property has a `title`, keys unique across all variable
-    steps; preserve existing image-variable metadata per [Automations Delays Variables and Branches](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-delays-variables-and-branches) §3.
+    steps; preserve existing image-variable metadata per [Automations Delays Variables and Branches](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-delays-variables-and-branches) §4.
     SPLIT: 2–10 paths.
 
 **Object and limits**
@@ -311,7 +311,7 @@ Explain what's locked and why (installed by Wix or an app), say what IS editable
 Every update:
 
 - **Live edits**: if `status` is `ACTIVE`, Update Automation changes the running automation immediately. Tell the user and confirm before writing. (Or offer: deactivate, edit, re-activate.) If the request already contains that consent ("it's live, change it anyway"), don't ask again — record in your answer that it was a live edit made on their stated consent.
-- **Procedure** (builder edits published or discarded first → Get → merge → Validate → Update with the current `revision`, `origin`, `settings` → read-back; revision conflict → re-Get, re-merge, re-validate): [Automations Validation and Persistence](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-validation-and-persistence) §3.
+- **Procedure** (builder edits published or discarded first → Get → merge → Validate → Update with the current `revision`, `origin`, `settings` → read-back; revision conflict → re-Get, re-merge, re-validate): §3 of this guide.
 - Touch only what was asked; keep untouched nodes, ids, namespaces and SPLIT paths exactly as they are. A new step's namespace number = 1 + the largest number among the steps that REMAIN ([Automations Graph and Data Model](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-graph-and-data-model) §3): numbers of removed steps are not reserved, so removing the highest-numbered step frees its number for the next new step. Re-point or remove every `var()` that read a removed step before reusing its namespace. The single-parent tree rules still apply to any restructuring.
 - Re-verify every entity and field the change touches — they may have been renamed or deleted since creation.
 - **Later stages only — email is outside stage 3:** **Email content of an existing step** (subject, preview text, body text — "add the phone number to the email") → edit it in place with Get / Set Email Content (§3 of Automations Email Actions (not yet published; email configuration is outside stage 3)), after the user's OK: it goes live immediately. Recipient or design changes → the user does them in the email editor (site-owner audience: the one allowed edit). Do not initialize or recreate an existing step for content-only changes. Adding a distinct new email uses Generate Action Input Mapping, subject to the origin's new-node restrictions.

@@ -25,8 +25,8 @@ docs URL to get raw markdown. When a field name here and the docs disagree, the 
 ## 1. Authentication and transport
 
 - **Permission scope**: **Set Up Automations** (`SCOPE.CRM.SETUP-AUTOMATIONS`) for every
-  Automations method below. Generate Action Input Mapping and Get / Set Email Content (Automation Email Action API) need **Manage
-  Email Marketing** (`SCOPE.DC-PROMOTE.EMAIL-MARKETING`) — a 403 there means that scope is missing.
+  Automations method below. Email steps are added in the automations builder, so no **Manage
+  Email Marketing** (`SCOPE.DC-PROMOTE.EMAIL-MARKETING`) scope is needed here.
   Entity lookups in other verticals need that vertical's read scope
   (Automations Entity and Provider Configuration (topic guide not yet published; consult the [Automations API reference](https://dev.wix.com/docs/api-reference/business-management/automations))).
 - **Token**: `Authorization: <token>` header — an OAuth app access token (`client_credentials` via
@@ -198,7 +198,7 @@ Discovery hints:
 - Search by concept with a keyword ladder ("chat" → "message"). Common aliases: send a chat
   message to the contact = `send-message` (not `inbox-send-message`); a note about a contact in
   the site owner's Inbox, nothing sent to the contact = `inbox-send-message` ("Show in Inbox");
-  email to anyone, incl. the site
+  email (added by the user in the automations builder here) to anyone, incl. the site
   owner = `triggered-emails` (never the deprecated `send-mail` / "Get an email"); task =
   `createTask`; labels = `addLabelsToContact` / `remove_labels_to_contact`; create a contact =
   `contacts-create_contact` (for triggers whose payload has no contact, e.g. webhooks).
@@ -221,7 +221,7 @@ variables + identity enrichment. Recipe and fetch order: [Automations Graph and 
 
 - **Draft automations** → create `INACTIVE`; the user activates. Builder drafts are invisible.
 - **Site-action generation** → §3 of Automations Entity and Provider Configuration (topic guide not yet published; consult the [Automations API reference](https://dev.wix.com/docs/api-reference/business-management/automations)).
-  New email initialization is available through its dedicated public API above.
+- **Send an email steps** → not configurable through the API here; the user adds them in the automations builder.
 - **Expression parsing/evaluation, code runner** → local checks ([Automations Mapping Expressions](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-mapping-expressions),
   [Automations Conditions](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-conditions)), then Validate Automation.
 - **Validate by id** → Get Automation, then Validate the returned object.

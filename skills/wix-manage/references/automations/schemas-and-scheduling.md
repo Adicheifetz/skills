@@ -103,6 +103,8 @@ Timing lives in `configuration.trigger.automationConfigMapping`, supported by Cr
 
 Time zone: read the site's time zone with Site Properties — `GET https://www.wixapis.com/site-properties/v4/properties?fields.paths=timeZone` (SDK `siteProperties.getSiteProperties({fields: ["timeZone"]})` from `@wix/business-tools`) → `properties.timeZone` (IANA, e.g. `America/New_York`). Convert it to the offset valid on each date (DST changes the offset; compute `startDate` and `endDate` separately). If the call fails or the value is empty, ask the user; never silently assume UTC.
 
+A schedule always runs in the site's time zone. If the user names a different zone ("23:30 Berlin time" on a London site), never write that zone's offset. When the site zone keeps the same offset from theirs all year (for example, both on the same DST calendar), convert the time to site wall-clock time and say which zone the schedule uses. Otherwise a fixed site-time schedule can't match their time all year: ask whether to change the site time zone or run at a site time. Date checks in a CODE_CONDITION may still use the user's zone.
+
 One-time: `{"startDate": "…"}` only — the absence of `repetitions` means run once (and no `endDate`).
 
 Recurring: `repetitions` with `cronExpression` + **exactly one** of `everyNthDay` (1–99) / `everyNthWeek` (1–52) / `everyNthMonth` (1–12) — the stricter of the builder's input (1–99) and the trigger's config schema (≤ 365 days, 52 weeks, 12 months), optional `endDate` **inside** `repetitions` (same format and time zone, after `startDate`). Cron is `"MM HH DOM MON DOW"` (Sunday = 0); `N#K` = Kth weekday N of the month; `NL` = last weekday N.

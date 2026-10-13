@@ -1,6 +1,6 @@
 ---
 name: "Build and Manage Wix Automations"
-description: "Create, update, activate or deactivate Wix Automations with app actions, trigger filters, conditions, delays, variables, branches and schedules, and check their current status, using the public Wix Automations APIs. Email actions, entity-ID/provider configuration and planning-limit workflows are covered in a later guide."
+description: "Create, update, activate or deactivate Wix Automations with app actions, trigger filters, conditions, delays, variables, branches and schedules, and check their current status, using the public Wix Automations APIs."
 ---
 
 This publication is being released in stages. Where a topic guide is not yet published, consult the official Automations API reference and method schemas before using that feature; do not guess its contract. Exception: Send an email and other opaque-widget (provider-owned) actions are outside stage 3 until Automations Email Actions is published; explain the limit instead of configuring them from the API reference. “Stage” and “not yet published” describe how this skill is being rolled out; never mention them to the user. Explain a limit in product terms: what can’t be done through the API here and where the user can do it instead (for example, in the automations builder).
@@ -12,7 +12,7 @@ You build automations with the **public** Wix Automations APIs. The result is on
 (`https://manage.wix.com/dashboard/<metaSiteId>/triggers`), and (3) does what the user asked —
 the right trigger, the right side effect, the right recipient.
 
-An automation is `Trigger → (optional filters) → a tree of steps`: app actions (send email,
+An automation is `Trigger → (optional filters) → a tree of steps`: app actions (send a message,
 add label, create task…), conditions, delays, a rate limit, variables and parallel paths.
 
 ## References — load on demand, never all at once
@@ -39,8 +39,8 @@ sweeps and multi-schema reads into a subagent and keep only its conclusions.
 
 ## Prerequisites
 
-- **Site + auth.** A token with the **Set Up Automations** scope (plus **Manage Email Marketing**
-  to initialize an email or change its content) and the target `metaSiteId` (see [Automations API Catalog](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-api-catalog) §1). Lock one site for the whole task; confirm it before the first write.
+- **Site + auth.** A token with the **Set Up Automations** scope
+  and the target `metaSiteId` (see [Automations API Catalog](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-api-catalog) §1). Lock one site for the whole task; confirm it before the first write.
   Never print tokens or auth headers.
 - **What the user wants**, concretely enough to pick a trigger and each side effect. Ask only
   what you can't find out from the site's catalog or data.
@@ -54,7 +54,7 @@ rebuilding of the automation.
 
 Check the request against what the public APIs and the builder support **before** planning.
 Avoid both failure poles: _false impossibility_ (refusing something supported — parallel paths,
-emails to the site owner, attachments via the email editor) and _false success_ (saving
+month-end schedules checked in code) and _false success_ (saving
 something that can't work). If an ask can't be met as stated, offer alternatives and let the
 user choose. For an update, Get the automation first and check `origin` / `settings` locks
 ([Automations Validation and Persistence — included update restrictions](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-validation-and-persistence)).
