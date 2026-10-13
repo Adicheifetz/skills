@@ -41,7 +41,7 @@ For a user reporting a stuck `KEYWORD_RESEARCH` flow, also briefly explain:
 - With the ID, check `GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items`
   for nonempty items matching the flow's `keywordResearchId`.
 - After a fresh status check still shows `KEYWORD_RESEARCH` with that research
-  ID, release once using `POST https://www.wixapis.com/promote/seo/v1/create-content-plan`.
+  ID, attempt recovery once using `POST https://www.wixapis.com/promote/seo/v1/create-content-plan`.
   This is the Blog Post Candidate service, not the Content Plan Flow service
   being polled. An early release can return `428`; recheck instead of retrying
   release in a loop.
@@ -60,43 +60,40 @@ Use separate executions throughout:
 
 1. Check status using the waiting policy and the table below.
 2. At `KEYWORD_RESEARCH`, follow [readiness](#3-check-research-readiness) and the
-   conditional [release](#4-release-only-if-still-needed).
+   conditional [recovery attempt](#4-attempt-documented-recovery-once).
 3. If `CONTENT_PLAN` or `SUCCESS` appears automatically, skip readiness/release
-   immediately; do not wait for the chosen first-readiness time.
+   immediately.
 4. After observed `SUCCESS`, [read and present the actual briefs](#5-read-and-present-the-briefs).
 
 ## Waiting without losing progress
 
-**One API execution makes one HTTP request and returns.** Use a date/time
-capability and a documented bounded pause that yields without HTTP calls or busy
-loops. `updatedAt` may stay frozen; HTTP timestamps and counts are not clocks.
+**One API execution makes one HTTP request and returns.** This procedure uses
+15-second status pacing and a 30-minute monitoring attempt as client policy,
+not an API completion guarantee. Use a date/time capability and a documented
+bounded pause that yields without HTTP calls or busy loops. `updatedAt` can stay
+frozen; HTTP timestamps and request counts are not clocks.
 
-1. Before waiting, note the attempt start, finite budget and status cadence in
-   your working notes, not necessarily the final reply. Adjustable defaults are
-   about 15 seconds between status checks and 30 minutes total monitoring; they
-   are client limits, not SLAs or measured API durations. Choose reasonable first
-   readiness and retry intervals from available caller capabilities before the
-   attempt, leaving a first-check window within the budget. Never extend/reset it.
+1. Before starting, note the attempt start and fixed deadline in working notes.
+   Never reset or extend the attempt. The first status GET needs no wait or
+   previous check timestamp; it still honors the deadline.
 2. After each response, record actual flow/research IDs, last status and clock
-   times for first `KEYWORD_RESEARCH`, last status check and last readiness check.
-   The first status GET needs no prior check time; it still honors the deadline.
-3. Before the next status GET, read current time with the same clock/units and
-   compare with last check plus chosen cadence. If the needed wait reaches the
-   deadline, stop incomplete. Otherwise actually pause for any remaining interval,
-   recheck the clock, send one GET if unexpired, then save its observation time.
-4. Continue status checks throughout readiness waits. Only `KEYWORD_RESEARCH`
-   permits readiness: check at the chosen first/retry time, or now if the user's
-   reported wait already meets the chosen first interval. If no readiness check
-   occurred and remaining budget is at most the chosen retry interval, make one
-   first readiness check while still unexpired.
-   Elapsed time never proves readiness; do not sleep a whole readiness interval
-   without status checks. In-execution delay is only before a status GET.
-5. Check the deadline before all recovery calls, including release after ready
-   research and 428 rechecks. Expiry or unusable clock/wait means stop calls,
-   report incomplete, preserve IDs/status/times and end the turn for later
-   requested resume. This ends monitoring, not the job, and proves no stall or
-   failure. No automatic restart. Observed `SUCCESS` ends waiting and permits
-   candidates even when an in-flight status response finishes at/after the deadline.
+   times of the last status and readiness checks. Before a subsequent status GET,
+   read current time using the same clock/units. Actually wait for the remainder
+   of 15 seconds since the last status observation, then read the clock again.
+   If now or the needed wait reaches the deadline, send no request.
+3. Upon observing `KEYWORD_RESEARCH`, make the first readiness GET immediately.
+   Retry readiness only after 120 real seconds from the previous readiness
+   observation, continuing the 15-second status checks between retries. Earlier
+   statuses never permit readiness. A user's reported wait replaces neither
+   the actual ID nor status/readiness proof; elapsed time is not readiness.
+4. Check the deadline before every waiting/recovery call, including release and
+   428 rechecks. In-execution delay is allowed only before a status GET, never a
+   long readiness sleep or multi-request loop. At expiry or unavailable clock/wait,
+   stop calls, report incomplete, preserve IDs/status/times and end the turn for
+   a later requested resume. Expiry ends monitoring and proves no stall or failure.
+5. Observed `SUCCESS` ends waiting and permits reading candidates, even if a
+   status request started within budget finishes at/after the deadline. Skip
+   readiness/release at `CONTENT_PLAN` or `SUCCESS`; never automatically restart.
 
 ## API steps
 
@@ -151,8 +148,8 @@ Intermediate states may be skipped. Every in-progress state uses the same
 
 ### 3. Check research readiness
 
-Only while latest status is `KEYWORD_RESEARCH` and the policy permits its first
-check or retry, execute once:
+Only while latest status is `KEYWORD_RESEARCH`, execute once at the first
+observation or when the retry interval in the waiting procedure has elapsed:
 
 ```
 GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items
@@ -160,9 +157,10 @@ GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items
 
 No parameters are required. The [public request schema and reference](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-keyword-research-v1/list-keyword-research-items)
 allow optional `paging`; omit it for all items. The reserved `contentPlanFlowId`
-parameter is ignored, so this GET returns the site's most recent research,
-not a flow-selected result. A verified live GET with no parameters returned
-nonempty items and the matching `keywordResearchId`:
+parameter is documented as ignored in the [pinned request schema](https://github.com/wix-private/promote-seo/blob/f0dc0a4c4b1245742486788aabebaeac94497521/packages/seo-content-plan-api/src/main/proto/wix/promote/seo/content/plan/v1/keyword_research_service.proto#L241),
+so this GET returns the site's most recent research, not a flow-selected result.
+A verified live GET with no parameters returned nonempty items and matching
+`keywordResearchId`:
 
 ```json
 {
@@ -181,15 +179,16 @@ nonempty items and the matching `keywordResearchId`:
 
 The linked reference documents not found when the site has no research.
 
-### 4. Release only if still needed
+### 4. Attempt documented recovery once
 
-**Not yet verified live:** the ready-then-release branch below follows the API
-contract; the retained live evidence proves automatic completion and an early
-428, not that this fallback advances a genuinely ready parked flow.
+**Unconfirmed recovery attempt, not an established resolution:** the branch
+below follows the documented API contract but has not been verified live for a
+genuinely ready parked flow. It allows one attempt without promising advancement.
 
 After matching nonempty readiness, make a **fresh status GET** for the same flow
-in its own execution. Immediately decide: `CONTENT_PLAN` or `SUCCESS` means skip
-release. Only fresh `KEYWORD_RESEARCH` with the same research ID permits release;
+in its own execution. This GET obeys the same 15-second status spacing: wait the
+remaining interval first. Immediately decide: `CONTENT_PLAN` or `SUCCESS` means
+skip release. Only fresh `KEYWORD_RESEARCH` with the same research ID permits release;
 a pre-readiness status is insufficient. If the ID changed, return to paced
 readiness checking. Send the release separately after rechecking the deadline:
 
@@ -206,8 +205,8 @@ the remaining budget, then report incomplete with saved progress. Never repeat
 the release to force advancement.
 
 On HTTP `428`, do not release again in this attempt. Within the remaining
-budget, recheck status: later statuses follow the table; `KEYWORD_RESEARCH`
-returns to paced readiness checks. If still parked, report the refusal and
+budget, recheck status with the same status spacing: later statuses follow the
+table; `KEYWORD_RESEARCH` returns to paced readiness checks. If still parked, report the refusal and
 preserve progress. No retry loop or automatic replacement trigger.
 
 Retain the actual returned flow ID. If different, keep both and report the
