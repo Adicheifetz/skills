@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- assets/logo.svg inset to a rounded plate with ~10% transparent padding, as the Antigravity Marketplace asks. -->
+<!-- The repo's assets/logo.svg inset to a rounded plate with ~10% transparent padding, as the Antigravity Marketplace asks. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <rect x="12" y="12" width="104" height="104" rx="22" fill="#000000"/>
   <g transform="translate(64 64) scale(0.8125) translate(-64 -64)">

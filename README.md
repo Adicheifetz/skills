@@ -41,10 +41,10 @@ gemini extensions install https://github.com/wix/skills
 
 ### Antigravity Plugin
 
-In [Antigravity](https://antigravity.google), open **Customizations → Plugins**, click **+ Install from URL**, and enter `https://github.com/wix/skills`. Or, from a terminal:
+In [Antigravity](https://antigravity.google), open **Customizations → Plugins**, click **+ Install from URL**, and enter `https://github.com/wix/skills/tree/main/antigravity/wix`. Or, from a terminal:
 
 ```bash
-agy plugin install https://github.com/wix/skills
+agy plugin install https://github.com/wix/skills/tree/main/antigravity/wix
 ```
 
 The Wix MCP server signs you in to your Wix account the first time a Wix tool is used.
