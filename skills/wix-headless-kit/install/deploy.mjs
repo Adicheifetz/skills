@@ -18,8 +18,8 @@
 //                  <out>/js/wix/ — shared/rest/ (client, media, config) + each vertical's rest/ + the
 //                  vertical's transport-agnostic core files (types, *-core) from its app/ — writes
 //                  the client id, and strips it to browser-ready ESM with tsc (comments kept, the
-//                  .ts sources kept beside the .js). No package.json is touched. Storefront only
-//                  until other verticals ship a rest/. `--out <dir>` (default: the project root)
+//                  .ts sources kept beside the .js). No package.json is touched. Every vertical
+//                  with a rest/ folder is supported. `--out <dir>` (default: the project root)
 //                  is the folder the site is served from — the one wix.config.json's
 //                  site.outputDirectory points at — so the modules land where the pages import
 //                  them and nothing else in the project gets uploaded.
@@ -45,7 +45,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { templatesDir } from "./templates.mjs";
 import { syncLockRoot } from "./lock.mjs";
-import { siteContext } from "./context.mjs";
+import { blankStarter, siteContext } from "./context.mjs";
 const PINS = JSON.parse(readFileSync(new URL("./pins.json", import.meta.url), "utf8"));
 const WIX_CLI = `@wix/cli@${PINS["@wix/cli"]}`;
 
@@ -130,7 +130,7 @@ const VERTICAL_DEPS = {
   blog: {
     core: {
       "@wix/blog": "^1.0.645",
-      "@wix/ricos": "^11.12.0",
+      "@wix/ricos": "^11.17.0", // the viewer-only entry @wix/ricos/viewer
     },
     astro: {
       "@wix/seo": "^1.0.79",
@@ -268,7 +268,7 @@ const siteSearchConfigSource = () =>
   `export const siteSearchPlan = ${JSON.stringify(siteSearch, null, 2)};\n`;
 // ---- static stack: the REST layer, composed flat and stripped ------------------------------------
 if (stack === "static") {
-  const { spawnSync } = await import("node:child_process");
+  const { npmSync } = await import("./proc.mjs");
   const { rmSync } = await import("node:fs");
   const OUT = outDir ? resolve(PROJECT, outDir) : PROJECT;
   const JS = join(OUT, "js", "wix");
@@ -309,7 +309,11 @@ if (stack === "static") {
       const fp = join(JS, f);
       if (!existsSync(fp)) continue;
       const src = readFileSync(fp, "utf8");
-      const fixed = src.replace(/from\s+"\.\/types(?:\.js)?"/g, `from "./${vertical}-types.js"`);
+      // The rest/ files import their real paths in the templates (../../shared/rest/client.js,
+      // ../app/wix/<vertical>/cart-core.js); flat in one folder, every import is a sibling.
+      const fixed = src
+        .replace(/from\s+"\.{1,2}\/(?:[^"]*\/)([^"/]+)"/g, 'from "./$1"')
+        .replace(/from\s+"\.\/types(?:\.js)?"/g, `from "./${vertical}-types.js"`);
       if (fixed !== src) writeFileSync(fp, fixed);
     }
     if (VERTICALS.includes(vertical)) result.verticals.push(vertical);
@@ -336,14 +340,14 @@ if (stack === "static") {
   }
   // Strip to ESM with tsc — comments are the spec for whoever reads js/wix/, so they stay.
   const sources = readdirSync(JS).filter((f) => f.endsWith(".ts")).map((f) => join(JS, f));
-  const tsc = spawnSync(
+  const tsc = npmSync(
     "npx",
     ["-y", "-p", `typescript@${PINS.typescript}`, "tsc", ...sources, "--outDir", JS, "--module", "esnext", "--target", "es2022",
      "--moduleResolution", "bundler", "--lib", "es2022,dom", "--strict", "--skipLibCheck", "--removeComments", "false"],
     { encoding: "utf8", timeout: 180_000 },
   );
   if (tsc.status !== 0) {
-    console.log(JSON.stringify({ ...result, error: `tsc strip failed: ${(tsc.stdout || tsc.stderr || "").slice(-800)}` }));
+    console.log(JSON.stringify({ ...result, error: `tsc strip failed: ${(tsc.stdout || tsc.stderr || tsc.error?.message || `exit ${tsc.status}`).slice(-800)}` }));
     process.exit(1);
   }
   rmSync(join(JS, "tsconfig.json"), { force: true });
@@ -431,7 +435,28 @@ if (siteSearch) {
   result.capabilities = { ...result.capabilities, siteSearch: true };
   if (siteSearch.install) {
     // Indexing needs the Wix Site Search app on the site — a site mutation the deploy never makes.
-    result.note = [result.note, "siteSearch.install: run `node <SKILL_ROOT>/templates/shared/capabilities/site-search/seed/install.mjs` from the project root after the seed (results appear about half a minute later)"].filter(Boolean).join("; ");
+    result.note = [result.note, `siteSearch.install: run node ${join(REF, "shared", "capabilities", "site-search", "seed", "install.mjs")} from the project root after the seed (results appear about half a minute later)`].filter(Boolean).join("; ");
+  }
+}
+
+// ---- the blank starter takes the vertical's composed template --------------------------------
+// A project that is still the blank starter (context.mjs blankStarter: a Dev Machine's, or a bare
+// `wix create`) holds only the blank template's packages. Deploying one vertical onto it makes
+// exactly that vertical's composed template (templates/<vertical>/project: the blank scaffold plus
+// the vertical), so the starter takes the composed package.json dependencies and lockfile, and the
+// install reads the lock instead of resolving the vertical's tree. A project with any package of its
+// own, a second vertical, or two verticals in one run is left alone.
+if (stack === "astro" && result.verticals.length === 1 && blankStarter(PROJECT, join(REF, "blank", "project", "package.json"))) {
+  // The composed project/ is left out of a committed templates copy; templatesDir fetches it on need.
+  const composed = join(templatesDir({ need: `${result.verticals[0]}/project` }), result.verticals[0], "project");
+  if (existsSync(join(composed, "package-lock.json"))) {
+    const pkg = JSON.parse(readFileSync(PKG_JSON, "utf8"));
+    const template = JSON.parse(readFileSync(join(composed, "package.json"), "utf8"));
+    pkg.dependencies = template.dependencies;
+    pkg.devDependencies = template.devDependencies;
+    writeFileSync(PKG_JSON, JSON.stringify(pkg, null, 2) + "\n");
+    cpSync(join(composed, "package-lock.json"), join(PROJECT, "package-lock.json"));
+    result.lockFromTemplate = result.verticals[0];
   }
 }
 
@@ -468,9 +493,9 @@ if (result.verticals.length && existsSync(PKG_JSON)) {
   if (existsSync(PROJECT_LOCK)) {
     const sync = syncLockRoot(PROJECT);
     if (sync && (sync.promoted.length || sync.missing.length)) result.lock = sync;
-    result.note = [result.note, "install with `npm ci --ignore-scripts || npm install --ignore-scripts`"].filter(Boolean).join("; ");
+    result.note = [result.note, "install with node <SKILL_ROOT>/install/install.mjs (nothing when node_modules already satisfies the lock)"].filter(Boolean).join("; ");
   } else if (result.depsAdded?.length) {
-    result.note = [result.note, "run `npm install --ignore-scripts` to pick up depsAdded"].filter(Boolean).join("; ");
+    result.note = [result.note, "run node <SKILL_ROOT>/install/install.mjs to pick up depsAdded"].filter(Boolean).join("; ");
   }
 }
 

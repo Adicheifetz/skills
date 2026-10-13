@@ -16,7 +16,7 @@ of 2–3 items each** (the seed shows the shape; the owner adds the rest in the 
 every item with an image (a menu without photos looks broken) — the default is an
 `imagePrompt` (AI-generated, ~1 Wix AI credit per image, account-billed): brand-contextual —
 subject, aesthetic/mood, palette, lighting — always ending "no text, no watermarks". At least one image in the set shows the real subject of the business — the actual product/space/service, not abstract decoration. For an asset the user actually
-supplied use `imagePath` (a file on this machine — uploaded to Wix Media) or `imageUrl`
+supplied use `imageMediaId` (a file already in the site's Media Manager, such as one the user uploaded there: used as it is, no copy; a `static.wixstatic.com/media/<file id>` URL of a site file counts as one), `imagePath` (a file on this machine — uploaded to Wix Media) or `imageUrl`
 (their own hosted URL; verify it with `curl -sI` → 200) — never a stock-photo or guessed URL. Images resolve in parallel and never
 block the seed, a failed image leaves that item text-only — and both add-ons on for a
 restaurant that takes orders and reservations. Give at least one dish a choice (a `variants`
@@ -45,9 +45,9 @@ size, or a `modifierGroups` entry) when the restaurant takes orders, so the dish
         { "name": "Branzino", "description": "Whole roasted sea bass, lemon, herbs.",
           "price": 28, "imageUrl": "https://…" }
       ] },
-      { "name": "Vino", "items": [
-        { "name": "Chianti Classico", "description": "Sangiovese, Tuscany.",
-          "variants": [{ "name": "Glass", "price": 11 }, { "name": "Bottle", "price": 44 }], "imageUrl": "https://…" }
+      { "name": "Pizze", "items": [
+        { "name": "Margherita", "description": "San Marzano tomato, fior di latte, basil.",
+          "variants": [{ "name": "Small", "price": 14 }, { "name": "Large", "price": 22 }], "imageUrl": "https://…" }
       ] },
       { "name": "Dolci", "items": [
         { "name": "Tiramisù", "description": "Espresso-soaked ladyfingers, mascarpone.",
@@ -65,7 +65,7 @@ size, or a `modifierGroups` entry) when the restaurant takes orders, so the dish
 ```
 
 - `price` — a number; stored as a decimal string in the **site currency** (never send one per item).
-  An item has `price` OR `variants` (each `{ name, price }` — "Glass" / "Bottle"), never both; an
+  An item has `price` OR `variants` (each `{ name, price }` — "Small" / "Large"), never both; an
   item with neither renders as "Market price" and can't be ordered online.
 - `modifierGroups` — per item: `{ name, required?, min?, max?, modifiers: [{ name, price?, preSelected?, inStock? }] }`.
   `required: true, min: 1, max: 1` is a single choice (radios); `max` alone is "choose up to";

@@ -12,8 +12,10 @@ Status does not show whether past runs succeeded. There is no separate
 
 - **Status check** = Get Automation → read `configuration.status`. Report exactly that value, in a
   short answer that starts with the automation's name and returned ID;
-  never infer it from the name or from your own earlier writes. If no automation matches the
-  supplied name, say so and ask the user to check the name or site; never guess an ID.
+  never infer it from the name or from your own earlier writes. If several automations match the
+  supplied name, list each one's returned ID and end with a direct question such as "Which one
+  do you mean?"; don't report a single status. If no automation matches the supplied name, say
+  so and ask the user to check the name or site; never guess an ID.
 - **Builder drafts are invisible to you**: if the user says "it doesn't show my latest changes",
   tell them to publish (or discard) in the builder first — don't reproduce their edits.
 - **NOT_FOUND is ambiguous.** Open the answer by saying the status can't be determined and
@@ -23,6 +25,17 @@ Status does not show whether past runs succeeded. There is no separate
   returned id, or Query to find the current automation and confirm its identity. When the
   user's history supports an unpublished builder draft as the cause, ask the owner to publish or
   discard it rather than reproducing its edits.
+
+**Calls** (auth as in [Automations API Catalog](https://dev.wix.com/docs/api-reference/business-management/automations/skills/automations-api-catalog) §1). A status question needs only Query and Get — no catalogs, Validate or writes.
+
+- Find by name: `POST https://www.wixapis.com/automations-service/v2/automations/query` with
+  `{"query":{"filter":{"name":"<automation name>"},"cursorPaging":{"limit":25}}}` → `automations[]`
+  with each `id` and exact `name`. If the user supplied the ID, skip this.
+- Read: `GET https://www.wixapis.com/automations-service/v2/automations/<automationId>` → `automation.configuration.status`. Add
+  `?fields=OVERRIDE_SCHEMA` before activating or deactivating.
+- Activate / deactivate: `PATCH https://www.wixapis.com/automations-service/v2/automations/<automationId>` with
+  `{"automation": <the object exactly as fetched, with only configuration.status changed>}` — it
+  carries `id`, the current `revision`, `origin` and any `settings` the Get returned.
 
 **Activate** (only when the user asks):
 
@@ -36,7 +49,7 @@ Status does not show whether past runs succeeded. There is no separate
 4. Explicit activation instructions authorize this change; do not ask again. If the user only
    asked to build or inspect it, obtain authorization before making it eligible for real runs.
 5. Update Automation with the object exactly as fetched, `configuration.status: "ACTIVE"`, and
-   its `revision` (field mask `configuration,name` if your client takes one). Nothing else changes.
+   its `revision`. Nothing else changes.
 6. Capture the returned id (a preinstalled override can change it), Get that id again with
    override schemas, and confirm `configuration.status` is `ACTIVE` and all other requested
    content is unchanged. Report "active" only then.
