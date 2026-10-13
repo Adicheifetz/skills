@@ -142,7 +142,11 @@ For static-page discovery, call this with `STATIC_PAGE`. Example response:
 ```
 
 Inspect the returned page identities and resolved tags to identify the requested
-page, then Get that exact `itemId` before writing. If the response does not
+page. Keep discovery, the target Get, and its Set(s) in one execution flow:
+carry the selected entry's `itemId` directly into the request paths rather than
+pasting a literal ID into a later call. Return the discovered page identity
+alongside the write outcomes so its provenance is visible. Get that exact
+`itemId` before writing. If the response does not
 unambiguously identify it, ask the user to identify the page. Do not interpret
 a missing response field as an empty page list, assume the first entry is the
 homepage, or create/update a pattern as a fallback for a missing page. A
