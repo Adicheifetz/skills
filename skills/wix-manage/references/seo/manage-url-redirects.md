@@ -233,9 +233,20 @@ first. Both report each item separately **inside a successful response**:
   and returns no per-item results.
 
 There is no import endpoint. To migrate a list of old URLs, such as a CSV from
-another platform, parse it yourself, run the checks above against List Redirects
-once, then call Bulk Create Redirects once per chunk of 100 and read every
-chunk's results before reporting.
+another platform, follow this path and nothing else:
+
+1. Parse the whole list before any call. Skip the header row, trim whitespace,
+   and drop exact duplicate rows. Each row is one exact redirect unless the user
+   asked for a whole section.
+2. Call **List Redirects** once and run the checks above against every row.
+3. Split the rows into chunks of 100 and call **Bulk Create Redirects** once per
+   chunk, in order. 150 rows is two calls: 100, then 50.
+4. Read each chunk's `results[].itemMetadata` and keep a running count. Never
+   delete a redirect that reported success in order to create it again, and
+   never resend a chunk that succeeded. A success with no `id` means the same
+   redirect was already on the site, not that the write was lost.
+5. Report the total from those results. Call List Redirects again only if
+   `bulkActionMetadata.undetailedFailures` was not `0`.
 
 Two more sharp edges to report truthfully:
 
