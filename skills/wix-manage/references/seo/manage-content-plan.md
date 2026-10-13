@@ -133,15 +133,15 @@ These are pacing and waiting budgets, not service completion guarantees.
 `createdAt` and `updatedAt` are flow data, not a clock; `updatedAt` can stay
 frozen while parked. Never infer elapsed time from request counts or HTTP fields.
 
-Prefer a supported wait outside the API execution. When a JavaScript execution
-runtime supports `Date.now`, `setTimeout` and the authenticated `wix.request`
-helper, one bounded wait before one status request is also allowed. The example
-below uses the selected site's authorization context through `scope: "site"`.
-Before execution, replace all three marked strings below with the actual flow
-UUID and the saved clock observations in milliseconds since the Unix epoch.
-Keep those observations across executions; do not reset them for each check.
-The guard rejects unfilled or invalid values before any request. Use this
-self-contained asynchronous function as the execution input:
+Apply the timing policy with a supported external wait or a supported runtime
+state mechanism that retains actual clock observations across executions.
+When a JavaScript runtime supports `Date.now`, `setTimeout` and authenticated
+`wix.request`, one bounded wait before one status request is also allowed.
+The following optional illustration uses the selected site's context through
+`scope: "site"`; it is not a required calling pattern for every check. If
+adapting it, substitute the actual flow UUID and saved clock observations in
+milliseconds since the Unix epoch for the marked strings. Its guard rejects unfilled or invalid values before any
+request. Preserve the waiting start and prior observations; do not reset them:
 
 ```js
 async function() {
@@ -183,8 +183,8 @@ async function() {
 }
 ```
 
-This example sends exactly one HTTP request; run the next check in a separate
-execution after deciding from this response. Use only capabilities supported
+This illustration sends exactly one HTTP request. Decide from the response
+before the next separate execution. Use only capabilities supported
 by your runtime. If no supported clock or bounded wait is available, or the
 budget expires, report incomplete with the actual flow ID and last observed
 status, preserve progress and resume the same flow later. Do not claim success
