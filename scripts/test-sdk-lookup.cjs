@@ -103,6 +103,58 @@ test('a builder with no filter sends the call to the query object, and an empty 
   assert.doesNotMatch(search, /startsWith on ONE field/);
 });
 
+test('without free text, a search term goes in $startsWith on the string fields of the filter list, ids left out', () => {
+  const [r] = json('members', '--intent', 'search');
+  assert.deepEqual(method(r.candidates[0], 'queryMembers').textFields, ['loginEmail', 'contact.firstName'], 'a nested string field is followed; _id is left out');
+});
+
+test('a string field under operators * is a text field: it takes every operator, $startsWith too', () => {
+  const [r] = json('services', '--intent', 'search');
+  const m = method(r.candidates[0], 'queryServices');
+  assert.deepEqual(m.textFields, []);
+  assert.deepEqual(m.textFieldsAny, ['name']);
+  const { out } = run('services', '--intent', 'search');
+  assert.match(out, /^shape services\.queryServices\(\{ paging, filter, sort \}\): no search method, and the builder has no or\(\): pass one query object instead$/m);
+  assert.match(out, /the term: filter: \{ \$or: \[\{ 'name': \{ \$startsWith: term \} \}\] \}$/m);
+  assert.match(out, /text fields with operators '\*' \(every operator, \$startsWith too\): name$/m);
+  assert.doesNotMatch(out, /exact \$eq/);
+  assert.doesNotMatch(out, /no text match/);
+});
+
+test('free text in a query method\'s options is the search, with its field default named', () => {
+  const [r] = json('members', '--intent', 'search');
+  const q = method(r.candidates[0], 'queryMembers');
+  assert.deepEqual(q.optionsSearch, {
+    param: 'options',
+    fields: ['loginEmail', 'contact.firstName', 'contact.lastName', 'profile.title', 'profile.nickname', 'profile.slug'],
+    default: 'profile.nickname',
+    max: 4,
+  });
+  const { out } = run('members', '--intent', 'search');
+  assert.match(out, /^shape members\.queryMembers\(\{ search: \{ expression: term, fields \} \}\)\.find\(\): no search method; free text in its options\.search$/m);
+  assert.match(out, /search\.fields defaults to profile\.nickname alone: name every field the term must match \(at most 4\)/);
+  assert.doesNotMatch(out, /startsWith on ONE field/);
+});
+
+test('a filter list with no text field says the API cannot match a term, not to filter in the client', () => {
+  const [r] = json('contacts', '--intent', 'search');
+  const v4 = r.candidates.find((c) => c.namespace === 'contacts');
+  assert.deepEqual(method(v4, 'queryContacts').textFields, []);
+  assert.match(v4.shape[0], /^contacts\.queryContacts\(\): no text match in the package/);
+  assert.ok(v4.shape.some((l) => /never match only the loaded page, or a capped or cached set/.test(l)));
+  assert.ok(v4.shape.some((l) => /next: its docs page \(SearchWixSDKDocumentation "queryContacts"\), not the typings/.test(l)));
+  assert.ok(!v4.shape.some((l) => /types search\.expression/.test(l)), 'a builder has no search argument');
+});
+
+test('when the package does not list the filter fields, the term line points to the docs page', () => {
+  const [r] = json('extendedBookings', '--intent', 'search');
+  assert.equal(method(r.candidates[0], 'queryExtendedBookings').textFields, undefined);
+  const { out } = run('extendedBookings', '--intent', 'search');
+  assert.match(out, /the term: filter \$or, one clause per text field — the package has no filter list for this method$/m);
+  assert.match(out, /next: its docs page \(SearchWixSDKDocumentation "queryExtendedBookings filter"\), not the typings or the compiled JS/);
+  assert.match(out, /\$contains where a field takes it/);
+});
+
 test('a write method needs the revision', () => {
   const [r] = json('contacts', '--intent', 'write');
   assert.deepEqual(method(r.candidates[0], 'updateContact').required, ['revision']);
