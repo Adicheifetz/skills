@@ -31,34 +31,32 @@ flow ID is answered by
 ## Troubleshoot a flow stuck at KEYWORD_RESEARCH
 
 When the user reports an existing flow stuck at `KEYWORD_RESEARCH` and has not
-given its `contentPlanFlowId`, make no API call. Your reply must contain all
-five points below, in this order; a reply that only asks for the ID is
-incomplete:
-1. Ask for the flow's actual `contentPlanFlowId`, even when the user polls
-   the API themselves: you need it to check and release the flow.
-2. `KEYWORD_RESEARCH` is not a bug or a failure: it means keyword research
-   is running or done. The flow usually moves to `CONTENT_PLAN` on its own
-   when it finishes; if it stays at `KEYWORD_RESEARCH`, the status alone
-   does not show whether the research is ready, so polling the flow will
-   not tell them. Ten minutes of waiting does not prove readiness.
-3. With the flow ID, first check the research
-   (`GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items`)
-   for nonempty items with the flow's `keywordResearchId`.
-4. Only if they exist, release the flow once with Create Content Plan
-   (`POST https://www.wixapis.com/promote/seo/v1/create-content-plan`),
-   which is on the Blog Post Candidate service, not the Content Plan Flow
-   service they are polling. Releasing earlier is refused with HTTP `428`.
-5. Follow the [bounded waiting policy](#waiting-without-losing-progress),
-   preserving the actual ID and last status when reporting incomplete. If
-   supported timing or waiting is unavailable, report incomplete and resume
-   later; do not substitute rapid polling for elapsed time.
+given its `contentPlanFlowId`, make no API call. Ask for the flow's actual
+`contentPlanFlowId`, even when the user polls the API themselves. Briefly cover
+the following substance; no fixed order or wording is required:
 
-Points 3 and 4 belong in this reply even though they run only once the ID
-arrives: they tell the user what will happen next. Name both endpoints, but
-write no request body or URL with a placeholder ID, and never submit one. Do
-not offer a new flow or a different site as an alternative to recovering the
-ID. Then end the turn and wait for the ID. With the ID, continue with [Resume
-or read an existing flow](#resume-or-read-an-existing-flow).
+- `KEYWORD_RESEARCH` is not itself a failure: research is running or done. The
+  flow usually moves to `CONTENT_PLAN` on its own, but can remain parked after
+  research is ready. Status alone and ten minutes of waiting do not prove readiness.
+- With the ID, check
+  `GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items`
+  for nonempty items matching the flow's `keywordResearchId`.
+- Only with those matching items and latest status still `KEYWORD_RESEARCH`,
+  release once using
+  `POST https://www.wixapis.com/promote/seo/v1/create-content-plan`.
+  This is on the Blog Post Candidate service, not the Content Plan Flow service
+  being polled. An early release is refused with HTTP `428`; recheck status
+  and readiness instead of retrying release in a loop.
+- Follow the [bounded waiting policy](#waiting-without-losing-progress),
+  preserving progress when reporting incomplete. If supported timing or waiting
+  is unavailable, report incomplete and resume later; do not substitute rapid
+  polling for elapsed time.
+
+Explain the readiness check and release even though they run only after the
+ID arrives. Name both endpoints, but write no request body or URL with a
+placeholder ID, and never submit one. Do not offer a new flow or a different
+site as an alternative to recovering the ID. End the turn and wait for the
+ID. With it, continue with [Resume or read an existing flow](#resume-or-read-an-existing-flow).
 
 ## Resume or read an existing flow
 
@@ -125,9 +123,17 @@ flow. This section is the canonical timing policy for every in-progress status:
 | Decision | Elapsed-time policy |
 | --- | --- |
 | Status check | About 15 seconds between checks. |
-| First readiness check | After about five minutes at `KEYWORD_RESEARCH`; a user's report of at least that long permits a check now, but does not prove readiness. |
-| Readiness retry | About two minutes after the previous readiness check. |
+| First readiness check | Normally after about five minutes at `KEYWORD_RESEARCH`; a user's report of at least that long permits a check now. Reserve the last two minutes of the attempt: if that window has begun, latest status is `KEYWORD_RESEARCH` and readiness has never been checked, check immediately even if the normal threshold is not yet due. Earlier statuses never permit readiness checks. Time alone does not prove readiness. |
+| Readiness retry | About two minutes after the previous readiness check, only if the shared waiting budget still allows it; the late first-check exception does not accelerate retries. |
 | Stop waiting | After about 15 minutes in the same attempt without completion, including time spent in `CREATED` or `CONTENT_PLAN`; transitions do not reset it. |
+
+Before every request, including readiness GETs, release POSTs and status checks
+following HTTP `428`, check the supported clock against the shared deadline.
+If it expires after a ready response, do not release. If expired, make no further
+call, even if the first readiness check never became due. Report incomplete,
+end the turn and save the actual flow ID, last status, observed `KEYWORD_RESEARCH`
+time and readiness observations for a later requested resume. Do not immediately
+restart, reset or extend this attempt to bypass the deadline.
 
 These are pacing and waiting budgets, not service completion guarantees.
 `createdAt` and `updatedAt` are flow data, not a clock; `updatedAt` can stay
@@ -138,9 +144,11 @@ state mechanism that retains actual clock observations across executions.
 When a JavaScript runtime supports `Date.now`, `setTimeout` and authenticated
 `wix.request`, one bounded wait before one status request is also allowed.
 The following optional illustration uses the selected site's context through
-`scope: "site"`; it is not a required calling pattern for every check. If
-adapting it, substitute the actual flow UUID and saved clock observations in
-milliseconds since the Unix epoch for the marked strings. Its guard rejects unfilled or invalid values before any
+`scope: "site"`; it illustrates a status GET only. Do not reuse its status
+interval for the readiness GET; the table controls readiness timing. It is not
+a required calling pattern for every check. If adapting it, substitute the actual
+flow UUID and saved clock observations in milliseconds since the Unix epoch for
+the marked strings. Its guard rejects unfilled or invalid values before any
 request. Preserve the waiting start and prior observations; do not reset them:
 
 ```js
@@ -276,7 +284,8 @@ user-reported wait for an existing flow.
 
 - `CONTENT_PLAN`: skip Create Content Plan; continue with step 5.
 - `SUCCESS`: go to step 6.
-- Still `KEYWORD_RESEARCH` when the policy's first-readiness threshold is reached:
+- Still `KEYWORD_RESEARCH` when the policy permits the first readiness check
+  (including its late-transition window):
   check the research once, in a separate execution:
 
   ```

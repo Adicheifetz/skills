@@ -34,8 +34,9 @@ assertions:
         on the first status check), keyword research has already been passed.
         No KEYWORD_RESEARCH observation, readiness GET or release POST is required. An automatic CONTENT_PLAN -> SUCCESS path
         satisfies the workflow without any keyword-research/release calls.
-      - Only if the flow remains KEYWORD_RESEARCH until the bounded policy's
-        readiness threshold, check /content-plan-keyword-research-items.
+      - Only if latest status is KEYWORD_RESEARCH and the bounded policy permits
+        readiness (normal threshold or late-transition window), check
+        /content-plan-keyword-research-items before the shared deadline.
         Missing/empty/mismatched research cannot authorize a release.
       - If a release POST /create-content-plan occurs, require prior proof of
         nonempty items matching this flow's keywordResearchId and latest status
@@ -68,7 +69,10 @@ assertions:
       before nonempty matching research exists, multiple releases, repeated
       triggers, or claiming completion without reading and presenting candidates.
       Judge pacing from clock observations or execution timestamps in the trace.
-      Penalize readiness checks before the bounded policy permits them, retries
+      The policy's late-transition first-readiness window is valid, not an early
+      check violation; it does not reset the budget or accelerate retries.
+      Penalize readiness calls in earlier statuses or after the deadline,
+      readiness checks before the bounded policy permits them, retries
       of missing/empty/mismatched research faster than its cadence, guessed
       request shapes, and unnecessary docs lookups after an expected readiness 404. A 404 at the paced readiness
       cadence is expected, not friction. One 428 is an acceptable race only
