@@ -203,7 +203,8 @@ All paths are relative to `https://www.wixapis.com/promote/seo/v1`.
 
 ## The write sequence
 
-Exactly three calls, in this order, with no extra probing:
+Exactly three calls, in this order, with no extra probing (four when publishing a
+static page; see below):
 
 1. **Get** the current tags or pattern for the target. Required — see the rule
    above.
@@ -211,9 +212,17 @@ Exactly three calls, in this order, with no extra probing:
    mask.
 3. Report from the **Set response**, which returns the updated tags and
    `resolvedTags`. Do not issue a verification read: the write response is the
-   confirmation. Read again only to check a static page's published revision
-   after `publish: true`, or when the user asks about a target you have not read
-   in this session.
+   confirmation. Read again only when the user asks about a target you have not
+   read in this session.
+
+**Publishing a static page takes one extra call.** `publish: true` updates only
+the published revision and leaves the draft holding the old tags; if the user
+later republishes from the Editor, that stale draft silently reverts the change.
+So for `STATIC_PAGE` with `publish: true`, send the Set twice: first with
+`publish: true`, then the same `tags` and `fieldMask` without `publish`. Never
+Get after a `publish: true` Set to confirm it: Get and List always return the
+draft, so they show the old values even when the publish succeeded. To confirm
+the live change, check the live page.
 
 To remove an item's own tags so it inherits again, call **Reset Item SEO Tags To
 Default** (or **Reset SEO Pattern To Default**) — never set an empty list to
@@ -312,8 +321,10 @@ writing.
 
 **Static pages** keep a draft and a published revision: a write updates the
 draft unless `publish` is `true`, and `publish: true` updates only the
-published revision. Say clearly which revision the change reached. Item types
-that are always live, such as store products, need no publish step.
+published revision. Get and List read only the draft; this API cannot read the
+published revision back. Say clearly which revision the change reached, and
+follow the two-call publish rule in the write sequence. Item types that are
+always live, such as store products, need no publish step.
 
 ## Bulk writes
 

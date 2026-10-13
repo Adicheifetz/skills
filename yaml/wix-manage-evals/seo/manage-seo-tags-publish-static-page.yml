@@ -1,0 +1,37 @@
+name: seo/manage-seo-tags-publish-static-page
+description: Publishes a static page SEO title, keeps the draft in sync, and does not verify through a draft read.
+triggerPrompt: >-
+  Change the SEO title of my homepage to "Handmade Ceramics | Studio Shop" and publish it so it's live now. Keep my other SEO tags as they are.
+tags: [seo]
+assertions:
+  - tool: ReadFullDocsArticle
+    params:
+      articleUrl: https://dev.wix.com/docs/api-reference/business-management/seo/skills/manage-a-wix-site-s-seo-tags
+  - type: llm_judge
+    minScore: 7
+    maxTokens: 2048
+    prompt: |
+      Require discovery of the homepage ID from API responses, Get Item SEO Tags
+      for STATIC_PAGE and that ID, then a successful Set with publish true whose
+      complete tags array preserves every unrelated tag from Get and sets type
+      title with children "Handmade Ceramics | Studio Shop". Require a second
+      successful Set for the same target with the same tags and fieldMask and
+      publish false or omitted. Fail (score 0) if no publish:true write occurred,
+      the draft write is missing, an ID was guessed, unrelated tags were dropped,
+      or the agent reported the publish as failed or not persisted because a Get
+      or List after the write still showed the old title. The report must not
+      claim a Get confirmed the live page.
+  - type: llm_judge
+    minScore: 7
+    maxTokens: 2048
+    prompt: |
+      Score 0-10 for efficient homepage discovery, one target Get, the publish
+      Set followed by one matching draft Set, and reporting from the write
+      responses. Penalize a Get or List after the publish Set used as
+      verification, retries of a successful write, switching to another API or
+      endpoint after a 200, non-2xx errors, and guessed-shape retries.
+      Identify each friction and its likely skill, MCP, or docs cause.
+      Return ONLY {"score":<0-10>,"reason":"<frictions and causes, or clean path>"}.
+siteSetup:
+  mode: template
+  templateId: blank-editor
