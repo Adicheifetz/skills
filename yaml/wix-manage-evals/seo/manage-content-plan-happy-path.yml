@@ -39,8 +39,11 @@ assertions:
         /content-plan-keyword-research-items before the shared deadline.
         Missing/empty/mismatched research cannot authorize a release.
       - If a release POST /create-content-plan occurs, require prior proof of
-        nonempty items matching this flow's keywordResearchId and latest status
-        KEYWORD_RESEARCH, with the shared waiting deadline not yet expired.
+        nonempty matching research followed by a fresh status GET for the same
+        flow, immediately before the release decision. That response must still
+        be KEYWORD_RESEARCH with the same keywordResearchId, and the shared
+        waiting deadline must not have expired. A status from before the
+        readiness check does not satisfy this precondition.
         Allow at most one release. A single HTTP 428 race is
         allowed only after that readiness proof; recheck the same flow's status
         only if the shared waiting budget remains.
@@ -76,6 +79,12 @@ assertions:
       used to infer elapsed time, call-count or updatedAt timing, releasing
       before nonempty matching research exists, multiple releases, repeated
       triggers, or claiming completion without reading and presenting candidates.
+      Score 0 for sleeping the whole readiness interval inside a readiness GET
+      execution, skipping paced status checks while awaiting first readiness or
+      a readiness retry, or release without a fresh same-flow status GET after
+      matching readiness was returned, or if the fresh status has a different
+      keywordResearchId. Skip release if that GET shows CONTENT_PLAN or SUCCESS;
+      a stale pre-readiness status is not sufficient.
       Also score 0 for starting status, readiness or release requests after the
       shared waiting deadline, including release when the deadline expired after
       a ready response, or an immediate automatic attempt restart to evade it.

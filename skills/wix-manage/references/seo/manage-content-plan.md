@@ -145,7 +145,11 @@ frozen while parked. Never infer elapsed time from request counts or HTTP fields
 Apply the timing policy with a supported external wait or a supported runtime
 state mechanism that retains actual clock observations across executions.
 When a JavaScript runtime supports `Date.now`, `setTimeout` and authenticated
-`wix.request`, one bounded wait before one status request is also allowed.
+`wix.request`, one bounded wait before one status request is also allowed,
+limited by the status-check cadence and shared deadline. In-execution waiting
+is allowed only before a status GET, never before the readiness GET. Continue
+paced status checks throughout the first-readiness and readiness-retry waits;
+do not sleep the whole readiness interval inside one execution.
 The following optional illustration uses the selected site's context through
 `scope: "site"`; it illustrates a status GET only. Do not reuse its status
 interval for the readiness GET; the table controls readiness timing. It is not
@@ -283,7 +287,9 @@ for every in-progress status.
 
 Check the same flow's status using the [bounded waiting policy](#waiting-without-losing-progress).
 Record when you first observe `KEYWORD_RESEARCH`; the policy also covers a
-user-reported wait for an existing flow.
+user-reported wait for an existing flow. Continue paced status checks throughout
+both the initial readiness wait and subsequent retry waits. Do not replace
+those checks with a long sleep before a readiness request.
 
 - `CONTENT_PLAN`: skip Create Content Plan; continue with step 5.
 - `SUCCESS`: go to step 6.
@@ -309,7 +315,7 @@ It takes no parameters and returns the site's most recent research. Keep only
 | --- | --- |
 | `404` `NOT_FOUND: No Keyword research for given content plan` | Not ready yet. The request is correct; do not change it or look up docs. Retry readiness at the policy's cadence within its waiting budget. |
 | Empty items or a different `keywordResearchId` than the flow's | Not ready for this flow. Retry readiness at the policy's cadence within its waiting budget. |
-| Flow's `keywordResearchId`, at least one item | Ready. If the latest status is still `KEYWORD_RESEARCH`, call Create Content Plan once (step 4). |
+| Flow's `keywordResearchId`, at least one item | Ready. Read the same flow's status again in a separate execution immediately before deciding on release, as step 4 requires. |
 | Any other error | Report it and stop. |
 
 Between readiness checks, continue paced status checks: generation may start
@@ -321,6 +327,17 @@ the nonempty matching research check.
 See [List Keyword Research Items](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-keyword-research-v1/list-keyword-research-items).
 
 ### 4. Release the flow
+
+After matching nonempty research is returned, make a fresh status GET for the
+same flow in a separate execution, immediately before the release decision.
+An earlier `KEYWORD_RESEARCH` observation from before the readiness check is
+not sufficient. If now `CONTENT_PLAN` or `SUCCESS`, skip release and follow that
+status. Release once only if the fresh response is still `KEYWORD_RESEARCH`,
+its `keywordResearchId` matches the proven research, and the shared deadline
+has not expired. If the research ID changed, return to the paced readiness
+check instead. Do not wait another readiness interval between this status
+response and the release. Execute the release POST separately, checking the
+shared deadline again before sending it.
 
 ```
 POST https://www.wixapis.com/promote/seo/v1/create-content-plan
@@ -361,9 +378,12 @@ same flow's status once using the bounded waiting policy and follow it:
 - `CONTENT_PLAN`: generation already started; continue with step 5.
 - `SUCCESS`: go to step 6.
 
-On success, retain the returned `contentPlanFlowId` for the next status check
-and candidate read. This response is not the list of briefs: continue to steps
-5 and 6. Do not call release again to retrieve results; on an already successful
+On success, retain the API's actual returned `contentPlanFlowId` for the next
+status check and candidate read. If it differs from the requested ID, retain
+both and report their relationship explicitly: release requested for the
+original ID, API returned a different ID. Do not invent continuity or claim the
+original flow reached `SUCCESS` from observations of the returned flow.
+This response is not the list of briefs: continue to steps 5 and 6. Do not call release again to retrieve results; on an already successful
 flow it regenerates a plan under a new flow ID.
 See [Create Content Plan](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-blog-post-candidate-v1/create-content-plan).
 
