@@ -15,93 +15,45 @@ assertions:
     minScore: 7
     maxTokens: 2048
     prompt: |
-      Evaluate correctness from the FULL conversation, including API inputs,
-      tool results and the final reply. The final reply need not narrate calls
-      already proven in the trace. Grade clock/pacing and execution efficiency
-      with the separate quality judge below.
-
-      Required completed outcome:
-      - POST /content-plan-flows/trigger returns an actual contentPlanFlowId.
-      - GET /content-plan-flows/{id} observes SUCCESS for that same flow.
-      - After observed SUCCESS, GET that flow's /blog-post-candidates.
-      - The final reply reports the actual returned topics, available nested
-        briefData keywords and supporting page URLs, candidate count, actual
-        flow ID and SUCCESS. Do not treat weak/repetitive API-generated titles
-        as fabricated if the reply faithfully reports the returned data.
-
-      Conditional recovery, ONLY if applicable to the observed status:
-      - If the flow advances automatically to CONTENT_PLAN or SUCCESS (including
-        on the first status check), keyword research has already been passed.
-        No KEYWORD_RESEARCH observation, readiness GET or release POST is required. An automatic CONTENT_PLAN -> SUCCESS path
-        satisfies the workflow without any keyword-research/release calls.
-      - Only if latest status is KEYWORD_RESEARCH and the bounded policy permits
-        readiness (normal threshold or late-transition window), check
-        /content-plan-keyword-research-items before the shared deadline.
-        Missing/empty/mismatched research cannot authorize a release.
-      - If a release POST /create-content-plan occurs, require prior proof of
-        nonempty matching research followed by a fresh status GET for the same
-        flow, immediately before the release decision. That response must still
-        be KEYWORD_RESEARCH with the same keywordResearchId, and the shared
-        waiting deadline must not have expired. A status from before the
-        readiness check does not satisfy this precondition.
-        Allow at most one release. A single HTTP 428 race is
-        allowed only after that readiness proof; recheck the same flow's status
-        only if the shared waiting budget remains.
-        CONTENT_PLAN continues status checks and SUCCESS permits candidate reading,
-        without another readiness GET. Still KEYWORD_RESEARCH requires a paced
-        readiness recheck without another release.
-
-      Observed SUCCESS ends waiting: candidate reading and reporting are allowed
-      even if a status request started before the deadline returns SUCCESS at or
-      after it.
-      Do not require more waiting/recovery calls after observed SUCCESS.
-
-      Score 7+ only for the full completed same-flow outcome and safe applicable
-      recovery. Score 0 for fabricated results, premature/ungated release,
-      release after the shared deadline even if readiness was already proven,
-      completion for a different flow, no observed SUCCESS, or no candidate read
-      and actual topics in the final reply. Honest incomplete, timeout,
-      PENDING_REQUIREMENTS or FAIL cannot pass this happy-path scenario.
-      In your reason cite the actual tool-result evidence and identify any
-      specific missing requirement; do not label conditional steps missing
-      when their triggering status never occurred.
+      Judge the FULL conversation: API inputs/results plus the final reply.
+      Calls need not be narrated again in the reply. Require these three criteria:
+      1. One trigger returns an actual flow ID; status results prove SUCCESS for
+         that same flow before its candidates are read.
+      2. The reply shows actual returned topics, available briefData keywords and
+         supporting URLs, count, flow ID and SUCCESS. Weak API-generated titles
+         are still actual results; fabrication or promises without topics fail.
+      3. Recovery is conditional: automatic CONTENT_PLAN/SUCCESS skips readiness
+         and release. If release occurs, matching nonempty readiness must be
+         followed by a fresh same-flow status GET still KEYWORD_RESEARCH with
+         the same research ID; release once before the shared deadline.
+      Score 7+ only when all applicable criteria hold. Score 0 for incomplete,
+      timeout, failure, no observed SUCCESS, no actual candidate read/topics,
+      fabricated/different-flow completion, or release without the stated proof.
+      Cite actual trace evidence and any specific missing criterion. Never mark
+      readiness/release missing on an automatic path. Timing/efficiency is graded
+      separately below.
   - type: llm_judge
     minScore: 7
     maxTokens: 2048
     prompt: |
-      Score 0-10 for a clean completed generation: one trigger, paced status
-      requests using real elapsed time, readiness evidence when needed, at most
-      one release, observed same-flow SUCCESS, and actual candidates in the
-      final reply. Require the full outcome; incomplete is not a passing run.
-      Supported external waits and a single bounded wait before one HTTP
-      request are correct. Routine paced status checks are not friction.
-      Score 0 for a multi-request API polling loop, busy waiting, rapid polling
-      used to infer elapsed time, call-count or updatedAt timing, releasing
-      before nonempty matching research exists, multiple releases, repeated
-      triggers, or claiming completion without reading and presenting candidates.
-      Score 0 for sleeping the whole readiness interval inside a readiness GET
-      execution, skipping paced status checks while awaiting first readiness or
-      a readiness retry, or release without a fresh same-flow status GET after
-      matching readiness was returned, or if the fresh status has a different
-      keywordResearchId. Skip release if that GET shows CONTENT_PLAN or SUCCESS;
-      a stale pre-readiness status is not sufficient.
-      Also score 0 for starting status, readiness or release requests after the
-      shared waiting deadline, including release when the deadline expired after
-      a ready response, or an immediate automatic attempt restart to evade it.
-      A request begun within budget may return SUCCESS at or after the deadline;
-      observed SUCCESS ends waiting, and the subsequent candidate GET/report is allowed.
-      Judge pacing from clock observations or execution timestamps in the trace.
-      The policy's late-transition first-readiness window is valid, not an early
-      check violation; it does not reset the budget or accelerate retries.
-      Penalize readiness calls in earlier statuses,
-      readiness checks before the bounded policy permits them, retries
-      of missing/empty/mismatched research faster than its cadence, guessed
-      request shapes, and unnecessary docs lookups after an expected readiness 404. A 404 at the paced readiness
-      cadence is expected, not friction. One 428 is an acceptable race only
-      after matching nonempty research was proven and followed by a status
-      recheck; a 428 without that precondition is a safety failure. Other
-      non-2xx errors should identify likely skill, API or provisioning causes.
-      Return ONLY {"score":<0-10>,"reason":"<frictions and causes, or clean path>"}.
+      Judge execution quality from the full trace. Require a completed result.
+      Score 8+ for supported elapsed-time pacing under the chosen bounded policy,
+      one HTTP request per execution, continued status checks during readiness
+      waits, and at most one readiness-proven release after fresh matching status.
+      Later statuses skip release; required runtime/recipe reads are correct.
+      Score 0 for polling loops, busy/rapid polling or call-count/HTTP-field clocks;
+      blind long readiness sleeps or skipped status cadence; stale/mismatched
+      status at release; repeated triggers/releases; or starting status/readiness/
+      release after the shared deadline, including automatic restarts to evade it.
+      A policy-permitted late first-readiness check is valid. Expected paced 404s
+      are not friction. One 428 is acceptable only after readiness proof, followed
+      by status/research decisions within budget without another release.
+      Observed SUCCESS ends waiting: candidates may be read even if an in-flight
+      status request returns at/after the deadline. Penalize first-readiness or
+      retry checks outside the chosen policy, guessed shapes, unnecessary discovery
+      after an expected 404 and other non-2xx errors;
+      identify the likely docs/API/provisioning gap. Use timestamps/clock evidence.
+      Return ONLY {"score":<0-10>,"reason":"<trace frictions and likely gaps, or clean path>"}.
 siteSetup:
   mode: template
   templateId: stores-v3-editor
