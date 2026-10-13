@@ -1,6 +1,6 @@
 ---
 name: "Generate and Read a Wix Site's Content Plan"
-description: "Generate an SEO content plan and read its blog post topics, or troubleshoot an existing content plan flow that stays at KEYWORD_RESEARCH. Use this recipe for both generation and stalled-flow questions: it explains what KEYWORD_RESEARCH means, how to wait for the keyword research, when the Create Content Plan release request is needed, missing flow IDs, and the exact public API paths and response fields."
+description: "Generate an SEO content plan for a Wix site, read its suggested blog post topics and keywords, and troubleshoot or resume an existing generation flow."
 ---
 
 # Generate and Read a Wix Site's Content Plan
@@ -40,17 +40,19 @@ incomplete:
    is running or done. The flow usually moves to `CONTENT_PLAN` on its own
    when it finishes; if it stays at `KEYWORD_RESEARCH`, the status alone
    does not show whether the research is ready, so polling the flow will
-   not tell them. If they say it has been there for five minutes or more,
-   the research has most likely finished and the flow is parked.
+   not tell them. Ten minutes of waiting does not prove readiness.
 3. With the flow ID, first check the research
    (`GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items`)
-   for items with the flow's `keywordResearchId`.
+   for nonempty items with the flow's `keywordResearchId`.
 4. Only if they exist, release the flow once with Create Content Plan
    (`POST https://www.wixapis.com/promote/seo/v1/create-content-plan`),
    which is on the Blog Post Candidate service, not the Content Plan Flow
    service they are polling. Releasing earlier is refused with HTTP `428`.
-5. If the items are still missing after that long a wait, the flow should
-   be reported as incomplete rather than waited on indefinitely.
+5. Use the bounded waiting policy below: pace status checks about 15 seconds
+   apart, retry readiness about two minutes apart, and report incomplete after
+   about 15 minutes without completion, preserving the actual ID and last
+   status. If supported timing or waiting is unavailable, report incomplete
+   and resume later; do not substitute rapid polling for elapsed time.
 
 Points 3 and 4 belong in this reply even though they run only once the ID
 arrives: they tell the user what will happen next. Name both endpoints, but
@@ -111,19 +113,61 @@ authorization. `CREATED` can mean queued work, not missing setup.
 
 ## Waiting without losing progress
 
-**One API execution makes one HTTP request and returns.** The sequence below
-is a series of separate calls, with a decision after each response. It is not
-one code block containing the entire workflow. Never wrap API calls in a
-`for`/`while` loop, a timer, or a function that polls until a target status.
+**One API execution makes one HTTP request and returns.** Decide what to do
+next after each response. Never put multiple requests in a polling loop, busy
+wait, or unbounded sleep.
 
-Retain each response's flow ID before the next call. Wait between status checks
-using the client's supported waiting capability, outside the API execution;
-do not assume timers exist inside that execution or busy-wait there.
+Use a supported clock and waiting capability. Save the waiting start time,
+first observed `KEYWORD_RESEARCH` time, last status-check time, last readiness
+check time, actual flow ID, research ID and last status in your notes between
+executions. Start a bounded waiting attempt when triggering or resuming the
+flow. Check status about every 15 seconds and stop after about 15 real minutes
+without completion, including time spent in `CREATED` or `CONTENT_PLAN`.
+These are pacing and waiting budgets, not service completion guarantees.
+`createdAt` and `updatedAt` are flow data, not a clock; `updatedAt` can stay
+frozen while parked. Never infer elapsed time from request counts or HTTP fields.
 
-Keep checking while work progresses. If waiting cannot continue, report the
-flow ID and last observed status as incomplete; do not claim success or merely
-promise to finish later. Identify trigger and release as writes if asked
-whether an execution changes data.
+Prefer a supported wait outside the API execution. When a JavaScript execution
+runtime supports `Date.now`, `setTimeout` and authenticated `fetch`, one bounded
+wait before one status request is also allowed. For example, supply `actualFlowId`
+from the retained response and `authorizationHeaders` from the selected site's
+existing authorization context. Supply `waitStartedAt` and `lastStatusCheckedAt`
+from your saved clock observations; do not reset them on each execution:
+
+```js
+const deadline = waitStartedAt + 15 * 60 * 1000;
+const delayMs = Math.max(0, lastStatusCheckedAt + 15 * 1000 - Date.now());
+if (Date.now() + delayMs >= deadline) {
+  throw new Error("Waiting budget exhausted; report incomplete with saved flow ID and status");
+}
+await new Promise(resolve => setTimeout(resolve, delayMs));
+if (Date.now() >= deadline) {
+  throw new Error("Waiting budget exhausted; report incomplete with saved flow ID and status");
+}
+const response = await fetch(
+  `https://www.wixapis.com/promote/seo/v1/content-plan-flows/${actualFlowId}`,
+  { method: "GET", headers: authorizationHeaders }
+);
+const body = await response.json();
+const observedAt = Date.now();
+// Return these values and save observedAt as lastStatusCheckedAt for the next execution.
+({
+  httpStatus: response.status,
+  observedAt,
+  contentPlanFlow: {
+    id: body.contentPlanFlow?.id,
+    status: body.contentPlanFlow?.status,
+    keywordResearchId: body.contentPlanFlow?.keywordResearchId
+  }
+});
+```
+
+This example sends exactly one HTTP request; run the next check in a separate
+execution after deciding from this response. Use only capabilities supported
+by your runtime. If no supported clock or bounded wait is available, or the
+budget expires, report incomplete with the actual flow ID and last observed
+status, preserve progress and resume the same flow later. Do not claim success
+or promise later completion. Identify trigger and release as writes if asked.
 
 ## API steps
 
@@ -152,9 +196,9 @@ See [Trigger Content Plan Generation Flow](https://dev.wix.com/docs/api-referenc
 GET https://www.wixapis.com/promote/seo/v1/content-plan-flows/{contentPlanFlowId}
 ```
 
-Execute this GET once and return its response. This execution contains no
-`for`/`while` loop and no timer. Repeat it as a separate call when another
-status check is needed. Keep the response compact: flow ID, status, and (once at `KEYWORD_RESEARCH`)
+Execute this GET once and return its response, following the
+[bounded waiting policy](#waiting-without-losing-progress). Repeat it as a
+separate execution when another status check is needed. Keep the response compact: flow ID, status, and (once at `KEYWORD_RESEARCH`)
 `keywordResearchId` suffice.
 
 Example response, showing the public flow fields (optional fields may be absent):
@@ -176,10 +220,9 @@ Example response, showing the public flow fields (optional fields may be absent)
 Read `contentPlanFlow.status`, not a top-level `status`. If it is missing,
 inspect the response instead of silently looping. Always use this generation's
 flow ID. A new flow can stay `CREATED` for a while before it starts: keep
-checking through `CREATED`, `SITE_ANALYSIS` and `SITE_SUMMARY`. Only if it is
-still `CREATED` after about 60 checks (about 240 if your checks run back to
-back without the 15-second wait), report the ID and observed status without
-inventing missing business prerequisites.
+checking through `CREATED`, `SITE_ANALYSIS` and `SITE_SUMMARY` within the
+same 15-minute waiting budget. If it expires, report the actual ID and last
+observed status as incomplete without inventing missing business prerequisites.
 See [Get Content Plan Flow](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-content-plan-flow-v1/get-content-plan-flow).
 
 `contentPlanFlow.status` is a string enum. Status checks may skip intermediate
@@ -201,30 +244,21 @@ fallback) → `SUCCESS`.
 | `CANCELED` | Canceled and cannot be resumed. Report it and stop. |
 | `UNKNOWN` | No usable status. Inspect the response and report uncertainty instead of guessing progress. |
 
-Check about every 15 seconds if your client can, using separate calls, as
-step 3 describes. Completion time varies.
+Pace checks about 15 seconds apart using supported waiting and elapsed time.
+Completion time varies; follow the same bounded waiting policy for every
+in-progress status.
 
 ### 3. Wait for the keyword research
 
-Keep checking the flow status (the step 2 request), one request at a time:
-wait for each reply before the next check, and wait 15 seconds between checks
-if your client can. Requests sent together count as one check. Keep a
-running count of the checks that return `KEYWORD_RESEARCH` in your own notes
-so it survives a long wait; it's for you, not the user, who only needs a short
-progress line such as "still researching keywords". The check numbers below
-stand in for elapsed time, because most clients cannot read a clock; if yours
-can, use the time instead: about five minutes at `KEYWORD_RESEARCH` in place of
-check 20, and about 15 minutes in place of the last check before reporting the
-flow incomplete. They are
-estimates from a small number of test runs, where research finished within
-about 80 seconds and generation then usually started on its own, not a
-documented limit:
+Check the same flow's status about every 15 seconds using the supported
+clock and wait described above. Record when you first observe `KEYWORD_RESEARCH`.
+If the user reports it has already been in that state for at least five minutes,
+that is enough to make the first readiness check now, but does not prove readiness.
 
 - `CONTENT_PLAN`: skip Create Content Plan; continue with step 5.
 - `SUCCESS`: go to step 6.
-- Still `KEYWORD_RESEARCH` at check 20, or the user says it has been there for
-  five minutes or more: check the research once. Not before check 20 while
-  you are checking the flow yourself:
+- Still `KEYWORD_RESEARCH` after about five real minutes in that state:
+  check the research once, in a separate execution:
 
   ```
   GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items
@@ -242,19 +276,18 @@ It takes no parameters and returns the site's most recent research. Keep only
 
 | Response | Next action |
 | --- | --- |
-| `404` `NOT_FOUND: No Keyword research for given content plan` | Not ready yet. The request is correct; do not change it or look up docs. Check the research again at check 30, 40 and 50. |
-| Other `keywordResearchId` than the flow's | Earlier research. Check the research again at check 30, 40 and 50, as for a `404`. |
-| Flow's `keywordResearchId`, at least one item | Ready. Call Create Content Plan once (step 4). |
+| `404` `NOT_FOUND: No Keyword research for given content plan` | Not ready yet. The request is correct; do not change it or look up docs. Retry readiness about two real minutes later within the waiting budget. |
+| Empty items or a different `keywordResearchId` than the flow's | Not ready for this flow. Retry readiness about two real minutes later within the waiting budget. |
+| Flow's `keywordResearchId`, at least one item | Ready. If the latest status is still `KEYWORD_RESEARCH`, call Create Content Plan once (step 4). |
 | Any other error | Report it and stop. |
 
-At check 60, check the research again. If it is still not ready: with the
-15-second wait, report the flow ID as incomplete. Checks that run back to
-back without that wait cover far less time, so slower research can outlast 60
-of them: keep checking, check the research again every 20 checks, and report
-the flow ID as incomplete only at check 240. Most flows
-leave `KEYWORD_RESEARCH` on their own well before check 20. A release before
-the research is ready gets the [not-ready `428`](#4-release-the-flow) and the
-flow keeps waiting; keep checking instead of retrying the release.
+Between readiness checks, continue paced status checks: generation may start
+on its own. Save the last readiness-check time so retries remain about two
+minutes apart across executions. At the 15-minute waiting deadline, report
+incomplete with the actual flow ID and last observed status. Do not extend the
+budget by counting more calls. A release before research is ready gets the
+[not-ready `428`](#4-release-the-flow); status or elapsed time never replaces
+the nonempty matching research check.
 See [List Keyword Research Items](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-keyword-research-v1/list-keyword-research-items).
 
 ### 4. Release the flow
@@ -289,11 +322,12 @@ a successful HTTP response alone is not a completed plan.
 
 The not-ready response is HTTP `428`. Detect it by the HTTP status alone; you
 don't need to parse its body. An HTTP `428` means the flow can't be released right now. Do not call Create Content Plan again right away; check the
-same flow's status once and follow it:
+same flow's status once using the bounded waiting policy and follow it:
 
-- Still `KEYWORD_RESEARCH`: the research hasn't finished. Go back to
-  [step 3](#3-wait-for-the-keyword-research), and release once only after it is
-  ready.
+- Still `KEYWORD_RESEARCH`: readiness is uncertain. Return to
+  [step 3](#3-wait-for-the-keyword-research) and recheck readiness at the paced
+  cadence. Do not issue another release in this attempt; report the refusal
+  if it remains parked. Preserve the flow for a later resume.
 - `CONTENT_PLAN`: generation already started; continue with step 5.
 - `SUCCESS`: go to step 6.
 
@@ -305,14 +339,11 @@ See [Create Content Plan](https://dev.wix.com/docs/api-reference/business-manage
 
 ### 5. Check the status until SUCCESS
 
-Same single-GET execution and nested response as step 2, using the same flow
-ID and returning after each check, one at a time. Typical status progression:
-`CONTENT_PLAN` → `SUCCESS`. Generating the briefs is usually quick, often
-under a minute; keep checking while the status is `CONTENT_PLAN`, up to about
-60 checks as a safety margin (about 240 if your checks run back to back without
-the 15-second wait; an estimate is fine), before reporting the flow as
-incomplete. Read candidates in a subsequent execution after observing
-`SUCCESS`.
+Use the same single-GET execution and nested response as step 2, with the
+same flow ID. Pace requests about 15 seconds apart within the same 15-minute
+waiting budget; `CONTENT_PLAN` does not reset the clock. At the deadline,
+report incomplete with the actual ID and last observed status. Read candidates
+in a subsequent execution only after observing `SUCCESS` for this flow.
 
 ### 6. Read the briefs
 
@@ -420,13 +451,14 @@ durable across generations.
 
 ## Do not
 
-- Keep checking `KEYWORD_RESEARCH` after the research is ready without calling
-  Create Content Plan (step 4).
+- Keep checking `KEYWORD_RESEARCH` after matching nonempty research is ready
+  without the once-only Create Content Plan decision (step 4). A refused
+  release must not be retried in a loop.
 - Call Create Content Plan as soon as the status is `KEYWORD_RESEARCH`, before
   the flow's keyword research items exist.
-- Check the keyword research items before check 20 while you are checking a
-  flow at `KEYWORD_RESEARCH` yourself (step 3). A flow the user reports at
-  `KEYWORD_RESEARCH` for five minutes or more is checked once right away.
+- Check readiness before about five real minutes at `KEYWORD_RESEARCH`
+  (step 3). A flow the user reports there for five minutes or more is checked
+  once right away; the time alone does not prove readiness.
 - Read candidates before `SUCCESS`.
 - Retry after `PENDING_REQUIREMENTS`.
 - Ask for a site ID.

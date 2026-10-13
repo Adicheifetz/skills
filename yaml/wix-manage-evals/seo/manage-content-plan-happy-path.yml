@@ -17,52 +17,55 @@ assertions:
     maxTokens: 2048
     prompt: |
       Require evidence of ALL steps in order for the same flow:
-      1. POST /content-plan-flows/trigger and capture the returned contentPlanFlowId.
-      2. GET /content-plan-flows/{id} until contentPlanFlow.status is
-         KEYWORD_RESEARCH or a later status (CONTENT_PLAN or SUCCESS). Fast
-         research can pass KEYWORD_RESEARCH between two checks; seeing a later
-         status satisfies this step.
-      3. Keep checking the same flow while the research runs. If it moves to
-         CONTENT_PLAN or SUCCESS on its own, steps 3 and 4 are satisfied
-         without a release.
-      4. Only if the flow stays at KEYWORD_RESEARCH for about 20 sequential
-         checks (a few more or fewer is fine): GET
-         /content-plan-keyword-research-items, and POST /create-content-plan
-         once only after it returns items with the flow's keywordResearchId.
-         A 404 "No Keyword research" reply there means not ready yet. A 428
-         on the release, followed by more checks of the same flow, also
-         satisfies this step.
-      5. GET the same flow until status SUCCESS.
-      6. GET /content-plan-flows/{id}/blog-post-candidates and report actual returned topics.
-      Score 0 if any step is missing, if only an explanation/promise is given,
-      or if results are fabricated. PENDING_REQUIREMENTS, FAIL, or a timeout
-      must be reported honestly but do not pass this happy-path scenario.
-      Reading docs and triggering or checking status alone are not completion.
+      1. POST /content-plan-flows/trigger and retain its actual contentPlanFlowId.
+      2. Read contentPlanFlow.status from GET /content-plan-flows/{id}.
+         KEYWORD_RESEARCH may be skipped if CONTENT_PLAN or SUCCESS is observed.
+      3. While in progress, use supported elapsed time and paced individual
+         status requests, about 15 seconds apart. No call count or HTTP field
+         substitutes for a clock. Each API execution makes one HTTP request;
+         a supported external wait or one bounded wait before that request is
+         allowed. A multi-request polling loop or busy wait is not allowed.
+      4. If still KEYWORD_RESEARCH after about five real minutes in that state,
+         GET /content-plan-keyword-research-items. Release at most once with
+         POST /create-content-plan, only if nonempty items have the flow's
+         keywordResearchId and the latest status is still KEYWORD_RESEARCH.
+         Skip the release if CONTENT_PLAN or SUCCESS starts on its own.
+         Missing, empty or mismatched research is not ready; recheck readiness
+         about two real minutes later within the bounded waiting budget.
+         A single HTTP 428 race is allowed only when matching nonempty research
+         items were already proven. Recheck status and readiness before any
+         further decision; never retry the release in a loop.
+      5. Observe SUCCESS for that same flow, then GET
+         /content-plan-flows/{id}/blog-post-candidates.
+      6. Report the actual returned topics, available nested briefData keywords
+         and supporting page URLs, candidate count, actual flow ID and SUCCESS.
+      Score 0 if any required step is missing, if results are fabricated, or
+      completion is claimed for a different flow. Honest incomplete reporting
+      after about 15 real minutes, or when supported timing/waiting is unavailable,
+      preserves the actual flow ID and last status but is NOT a happy-path PASS.
+      PENDING_REQUIREMENTS or FAIL is also not a happy-path PASS.
   - type: llm_judge
     minScore: 7
     maxTokens: 2048
     prompt: |
-      Score 0-10 for a clean completed generation: one trigger, separate
-      bounded status checks, at most one release (only while the flow is
-      still KEYWORD_RESEARCH and its keyword research items exist), then
-      SUCCESS and reading the actual candidates. Generation usually starts
-      on its own; skipping the release then, or one 428 on a release that
-      raced it, is correct and not friction. Routine status checks are not
-      friction.
-      Score 0 for releasing before the keyword research items exist,
-      releasing more than once, staying at KEYWORD_RESEARCH without ever
-      checking the research or releasing, no API execution, or claiming
-      completion without reading candidates.
-      Penalize: one API execution that loops, sleeps, or waits for a status
-      inside the call instead of separate checks; guessed shapes; repeated
-      triggers; non-2xx errors; several status checks sent together instead
-      of one at a time; checking the keyword research items within the first
-      few status checks at KEYWORD_RESEARCH (being a few checks off the
-      skill's ~20 guide is not friction); 404 replies from that check spaced
-      much closer than the skill's ~10-check cadence (several 404s at that
-      cadence in a slow run are fine); and documentation lookups after an
-      expected 404.
-      Identify likely skill, MCP, API, or provisioning causes for each friction.
+      Score 0-10 for a clean completed generation: one trigger, paced status
+      requests using real elapsed time, readiness evidence when needed, at most
+      one release, observed same-flow SUCCESS, and actual candidates in the
+      final reply. Require the full outcome; incomplete is not a passing run.
+      Supported external waits and a single bounded wait before one HTTP
+      request are correct. Routine paced status checks are not friction.
+      Score 0 for a multi-request API polling loop, busy waiting, rapid polling
+      used to infer elapsed time, call-count or updatedAt timing, releasing
+      before nonempty matching research exists, multiple releases, repeated
+      triggers, or claiming completion without reading and presenting candidates.
+      Penalize early readiness checks before about five elapsed minutes in
+      KEYWORD_RESEARCH, retries of missing/empty/mismatched research much sooner
+      than about two minutes, guessed request shapes, and unnecessary docs
+      lookups after an expected readiness 404. A 404 at the paced readiness
+      cadence is expected, not friction. One 428 is an acceptable race only
+      after matching nonempty research was proven and followed by a status
+      recheck; a 428 without that precondition is a safety failure. Other
+      non-2xx errors should identify likely skill, API or provisioning causes.
       Return ONLY {"score":<0-10>,"reason":"<frictions and causes, or clean path>"}.
 siteSetup:
   mode: template
