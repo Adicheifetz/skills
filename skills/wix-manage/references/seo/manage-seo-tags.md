@@ -13,6 +13,15 @@ authorization context; never ask for or send a site ID.
 Writing tags requires the **Manage SEO Settings** permission. Reading tags or
 listing pattern variables does not prove that the caller can write.
 
+## First: is the target clear?
+
+"Change my site's SEO title" does not name a target. Before any other call,
+including discovery, schema or docs lookups, reply with one question: does the
+user mean the homepage, another specific page, or a title convention for a page
+type (for example all product pages)? Then stop and wait for the answer. Do not
+pick the homepage on your own, and do not write anything until the user answers.
+A request that already names a page, an item, or a page type is clear: continue.
+
 ## The one rule that must never be skipped
 
 **Every write replaces the target's tags in full, so a Get always immediately
@@ -45,9 +54,7 @@ SEO Patterns for a page-type title convention. See the
 [Site SEO Tags object](https://dev.wix.com/docs/api-reference/business-management/seo/site-seo-tags-v1/site-seo-tags-object).
 
 If the user says "change my site's SEO title" without identifying a page or
-page type, ask whether they mean the homepage, another specific page, or a
-page-type title convention. Ask immediately after reading this recipe; do not make discovery or schema
-queries until scope is clear. For an explicit
+page type, ask first (see "First: is the target clear?"). For an explicit
 homepage request, discover its actual ID; never assume an ID such as `home`.
 Use Item SEO Tags with `STATIC_PAGE`, read its current tags, and merge the title
 into the complete set. Follow the static-page publication rules below.
@@ -247,6 +254,12 @@ So for `STATIC_PAGE` with `publish: true`, send the Set twice: first with
 Get after a `publish: true` Set to confirm it: Get and List always return the
 draft, so they show the old values even when the publish succeeded. To confirm
 the live change, check the live page.
+
+**A site that was never published has no published revision**, so a
+`publish: true` Set fails on it. Do not retry it on another endpoint. Send the
+same Set without `publish` so the change is saved, and tell the user the site
+is not published yet: the change goes live when they publish the site. Do not
+publish the site yourself unless the user asks for that.
 
 To remove an item's own tags so it inherits again, call **Reset Item SEO Tags To
 Default** (or **Reset SEO Pattern To Default**) — never set an empty list to

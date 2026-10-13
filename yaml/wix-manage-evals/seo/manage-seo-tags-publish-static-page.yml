@@ -37,3 +37,10 @@ assertions:
 siteSetup:
   mode: template
   templateId: blank-editor
+  bootstrap:
+    steps:
+      # The user asks for a live change, so the site must already be live; template copies are drafts.
+      - label: publish the site so it has a published revision
+        method: post
+        url: https://www.wixapis.com/site-publisher/v1/site/publish
+        body: {}
