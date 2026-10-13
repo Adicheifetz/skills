@@ -21,6 +21,9 @@ them, and which components need special handling.
   exist. Ask the user; never guess an id and never conclude "you have no such form".
 - You can select only entities that exist. Labels, coupons, forms, pipelines, badges and email
   templates can't be created for the user here — if one is missing, the user creates it first.
+  Look entities up only with read methods (Query, List, Get). A find-or-create endpoint such as
+  Find or Create Label is a write: never use it to resolve an id. When the user supplies an id or
+  key that a read lookup doesn't find, keep it, and say in your answer that it doesn't exist yet.
 - Some components need a dedicated provider API or can't be configured publicly at all (§3).
 
 ## 1. Recognizing an entity field

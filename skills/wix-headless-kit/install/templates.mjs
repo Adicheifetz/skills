@@ -7,14 +7,18 @@
 //
 // Resolution, in order:
 //   1. the sibling skill folder, `<SKILL_ROOT>/../wix-headless-templates/`: a checkout of the repository,
-//      or a plugin install that carries both skills (every plugin manifest lists the templates skill).
+//      or an install that carries both skills (the cold start's `npx skills add`, the npm package,
+//      the Codex and Cursor plugins; the Claude plugin leaves it out, so there it is fetched).
 //   2. the cache `<SKILL_ROOT>/templates/`, filled by an earlier call (`--refresh` refetches).
 //   3. a fetch: a sparse, shallow clone of `skills/wix-headless-templates/` from the repository the skill was installed
 //      from (skills-lock.json's `source`, default wix/skills), at the branch or tag the install
-//      named (its `ref`, falling back to the default branch when that ref no longer exists) or,
-//      when the install named none, the release tag in `install/pins.json` (`templates.ref`, kept
-//      equal to the package version by the release flow), so the code fetched is the code this
-//      skill was released with. `WIX_HEADLESS_FAST_TEMPLATES_REF=<branch|tag|sha>` overrides both.
+//      named (its `ref`, falling back to the default branch when that ref no longer exists), else
+//      the repository's default branch: a skill installed from the repository tracks the repository,
+//      so the templates match the kit beside them. A kit that came from a package (no skills-lock.json
+//      above it) fetches at the release tag in `install/pins.json` (`templates.ref`, kept equal to the
+//      package version by the release flow), the code it was released with; the package carries the
+//      templates skill beside the kit anyway, so that fetch is the rare path.
+//      `WIX_HEADLESS_FAST_TEMPLATES_REF=<branch|tag|sha>` overrides all of it.
 // The cache stays with the project: its `.gitignore` leaves out only the composed `project/`
 // folders (the scaffolds with their lockfiles, read once, at create or attach) and the repository
 // tooling, so the code layers, playbooks, seeds and readers are committed at the commit the project
@@ -22,7 +26,7 @@
 // `need`; when a committed copy lacks it, that part is fetched at the same commit.
 import { cpSync, existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -39,7 +43,7 @@ const git = (args, opts = {}) => spawnSync("git", args, { encoding: "utf8", time
 // skill folder, its entry for this skill. "wix/skills" → the default branch of that repository;
 // "https://github.com/owner/repo/tree/<ref>" → that ref.
 export function installSource() {
-  const skill = SKILL_ROOT.split("/").pop();
+  const skill = basename(SKILL_ROOT);
   let dir = SKILL_ROOT;
   for (let i = 0; i < 6; i++) {
     const p = join(dir, "skills-lock.json");
@@ -49,7 +53,7 @@ export function installSource() {
         if (typeof entry?.source === "string" && entry.source) {
           const parsed = parseSource(entry.source);
           // `ref` is the branch or tag the install named (skills-lock.json v1 keeps it beside `source`)
-          return { ...parsed, ref: parsed.ref ?? (typeof entry.ref === "string" && entry.ref ? entry.ref : null) };
+          return { ...parsed, ref: parsed.ref ?? (typeof entry.ref === "string" && entry.ref ? entry.ref : null), fromLock: true };
         }
       } catch { /* fall through to the default */ }
       break;
@@ -58,7 +62,7 @@ export function installSource() {
     if (up === dir) break;
     dir = up;
   }
-  return { repo: DEFAULT_REPO, ref: null };
+  return { repo: DEFAULT_REPO, ref: null, fromLock: false };
 }
 
 function parseSource(src) {
@@ -115,9 +119,11 @@ export function templatesSource(dir) {
 }
 
 function fetchTemplates(cache) {
-  const { repo, ref: lockRef } = installSource();
+  const { repo, ref: lockRef, fromLock } = installSource();
   const envRef = process.env.WIX_HEADLESS_FAST_TEMPLATES_REF || null;
-  const pinnedRef = PINS.templates?.ref || null;
+  // Installed from the repository (a lock above the skill) and no ref named: the default branch, so
+  // the templates match the kit. No lock at all is a package install: the release tag it shipped with.
+  const pinnedRef = fromLock ? null : (PINS.templates?.ref || null);
   let ref = envRef || lockRef || pinnedRef || null;
   let r = cloneSparse(repo, ref);
   // The branch the skill was installed from can be gone by the time the code is first needed
