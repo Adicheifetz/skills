@@ -391,7 +391,7 @@ node <this-skill-dir>/scripts/sdk-lookup.cjs contacts orders --intent search   #
 
 Run it from the app directory, after the vertical packages are installed, with **every entity the feature touches in one call**. Per entity it prints:
 
-- the namespace to use and why (a `search*` method for a search; the highest API version; a curated rule), and the other namespaces;
+- the namespace to use and why (a curated rule; within one package, a `search*` method for a search, then the highest API version; across packages that export the same name, the module map's package), and the other namespaces — across packages, each with its entity description, so switch when the feature matches another one;
 - the import line;
 - `shape`: the one call to write for the intent, with its reason and, for a search, where the term goes;
 - each method for the intent, with its call shape (`search`, `query-builder`, `query`, …), permission, required fields (`revision`) and its docs notes (`note`); for a search, query or list method also `arg` and `returns`, the keys of its argument (`cursorPaging`, `filter`, `sort`, `search`) and of its response (`pagingMetadata.cursors.next`); a filter list only when the package declares one (otherwise the method docs page lists the fields) — not who may call it: that stays with [Identity and Elevation Requirement](#identity-and-elevation-requirement);

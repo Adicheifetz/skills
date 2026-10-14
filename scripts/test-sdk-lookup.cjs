@@ -169,24 +169,52 @@ test('a method prints its JSDoc notes, which say who may call it where the ident
   assert.match(run('members', '--intent', 'all').out, /^ {16}note {4}This method requires visitor or member authentication\.$/m);
 });
 
-test('an export form the lookup does not read exits 4 instead of labeling the package not exported', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdk-lookup-odd-'));
+// A project of its own, for package layouts the shared fixtures must not carry.
+const scratchProject = (prefix, wrappers, body) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  const pkg = (name, files, pj = {}) => {
+    const to = path.join(dir, 'node_modules', '@wix', name);
+    fs.mkdirSync(path.join(to, 'build', 'cjs'), { recursive: true });
+    fs.writeFileSync(path.join(to, 'package.json'), JSON.stringify({ name: `@wix/${name}`, ...pj }));
+    for (const [f, src] of Object.entries(files)) fs.writeFileSync(path.join(to, 'build', 'cjs', f), src);
+  };
   try {
-    const pkg = (name, files, deps) => {
-      const to = path.join(dir, 'node_modules', '@wix', name);
-      fs.mkdirSync(path.join(to, 'build', 'cjs'), { recursive: true });
-      fs.writeFileSync(path.join(to, 'package.json'), JSON.stringify({ name: `@wix/${name}`, dependencies: deps }));
-      for (const [f, src] of Object.entries(files)) fs.writeFileSync(path.join(to, 'build', 'cjs', f), src);
-    };
-    pkg('auto_sdk_odd_things', { 'index.typings.d.ts': '' }, {});
-    pkg('odd', { 'index.d.ts': "export * as things from '@wix/auto_sdk_odd_things';\n" }, { '@wix/auto_sdk_odd_things': '1.0.0' });
-    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ dependencies: { '@wix/odd': '1.0.0' } }));
-    const r = spawnSync(process.execPath, [LOOKUP, 'things'], { cwd: dir, encoding: 'utf8' });
-    assert.equal(r.status, 4);
-    assert.match(r.stderr, /@wix\/odd exports @wix\/auto_sdk_odd_things in a form sdk-lookup does not read/);
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ dependencies: Object.fromEntries(wrappers.map((w) => [`@wix/${w}`, '1.0.0'])) }));
+    return body(pkg, (...args) => spawnSync(process.execPath, [LOOKUP, ...args], { cwd: dir, encoding: 'utf8' }));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+};
+
+test('an export form the lookup does not read exits 4 instead of labeling the package not exported', () => {
+  scratchProject('sdk-lookup-odd-', ['odd'], (pkg, lookup) => {
+    pkg('auto_sdk_odd_things', { 'index.typings.d.ts': '' });
+    pkg('odd', { 'index.d.ts': "export * as things from '@wix/auto_sdk_odd_things';\n" }, { dependencies: { '@wix/auto_sdk_odd_things': '1.0.0' } });
+    const r = lookup('things');
+    assert.equal(r.status, 4);
+    assert.match(r.stderr, /@wix\/odd exports @wix\/auto_sdk_odd_things in a form sdk-lookup does not read/);
+  });
+});
+
+test('across packages that export one namespace, the module map package wins over a higher API version', () => {
+  scratchProject('sdk-lookup-shared-', ['ecom', 'pricing-plans'], (pkg, lookup) => {
+    const orders = (vertical, fqdn, doc) => {
+      const auto = `auto_sdk_${vertical}_orders`;
+      pkg(auto, { 'index.typings.d.ts': `${doc ? `/**\n * ${doc}\n *\n * More text.\n */\n` : ''}interface Order {\n    _id?: string | null;\n}\n` }, { wix: { sdkDependency: { fqdn } } });
+      pkg(vertical, { 'index.d.ts': `import * as ${auto.replace(/-/g, '_')} from '@wix/${auto}';\nexport { ${auto.replace(/-/g, '_')} as orders };\n` }, { dependencies: { [`@wix/${auto}`]: '1.0.0' } });
+    };
+    orders('ecom', 'wix.ecom.v1.order', 'An order represents a completed purchase from a buyer. Orders are created through checkout.');
+    orders('pricing-plans', 'wix.pricing_plans.v2.order', 'An order object includes all of the details related to the purchase of a Pricing Plan.');
+    const r = lookup('orders');
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /^use {3}orders \(@wix\/ecom\) — fqdn v1 \(wix\.ecom\.v1\.order\); the module map package — "An order represents a completed purchase from a buyer\."$/m);
+    assert.match(r.stdout, /^also {2}orders \(@wix\/pricing-plans\) — fqdn v2 [^\n]* — "An order object includes all of the details related to the purchase of a Pricing Plan\."$/m);
+    assert.match(r.stdout, /several packages export this name/);
+  });
+});
+
+test('one package with two namespaces gets no description line', () => {
+  assert.doesNotMatch(run('contacts', '--intent', 'search').out, /several packages export this name|no description/);
 });
 
 test('the scope says where to find it, the other methods say how to see them, the package is named', () => {

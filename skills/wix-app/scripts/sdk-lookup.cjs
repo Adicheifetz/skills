@@ -165,6 +165,24 @@ function readDeclaration(src, at) {
 const tags = (doc, tag) =>
   [...doc.matchAll(new RegExp(`@${tag}(?:\\s+([^\\n*]*))?`, 'g'))].map((m) => (m[1] ?? '').trim());
 
+// The first sentence of the JSDoc right before `at`: what the entity is ("An
+// order represents a completed purchase from a buyer."), which tells apart
+// the packages that export the same namespace. Null when there is none.
+function descriptionBefore(src, at) {
+  const end = src.lastIndexOf('*/', at);
+  if (end < 0 || src.slice(end + 2, at).trim()) return null;
+  const text = src
+    .slice(src.lastIndexOf('/**', end) + 3, end)
+    .split('\n')
+    .map((l) => l.replace(/^\s*\*\s?/, '').trim())
+    .join(' ')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!text || text.startsWith('@')) return null;
+  return text.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? text.split(' @')[0];
+}
+
 // The `> **Note:**` blocks of a method's JSDoc, the same text as its docs page.
 // They carry who may call it ("requires visitor or member authentication"),
 // which @applicableIdentity does not: getCurrentMember is tagged APP alone.
@@ -339,7 +357,7 @@ function deriveRecord(name, dir) {
     sources.push(src);
     if (entityType && !typeAt) {
       const m = new RegExp(`^interface ${entityType}\\b`, 'm').exec(src);
-      if (m) typeAt = { name: entityType, file, line: src.slice(0, m.index).split('\n').length };
+      if (m) typeAt = { name: entityType, file, line: src.slice(0, m.index).split('\n').length, description: descriptionBefore(src, m.index) };
     }
     const re = /\/\*\*((?:(?!\*\/)[\s\S])*?)\*\/\s*declare function (\w+?)(?:\$\d+)?\s*\(/g;
     let m;
@@ -704,19 +722,37 @@ function lookup(term, intent, pkgs, curated) {
   }
 
   const preferRule = prefer && candidates.some((c) => c.ns.namespace === prefer.choice.prefer) ? prefer : null;
+  // Several packages can export the same namespace (orders: ecom, pricing-plans,
+  // events). Across packages the module map's package wins, then the package
+  // name, so the order never depends on which package is read first. The API
+  // version and a search method rank only the namespaces of one package
+  // (contacts vs contactsV5): across packages they say nothing about the feature.
+  const packages = new Set(candidates.filter((c) => c.ns.namespace).map((c) => c.ns.from));
+  const mapPackage = packages.size > 1 ? moduleMapRow(term)?.package : null;
   const score = (c) => [
     c.record.maturity === 'PREVIEW' || reasons.get(c).includes('deprecated') ? 0 : 1,
     preferRule && c.ns.namespace === preferRule.choice.prefer ? 1 : 0,
     c.ns.namespace ? 1 : 0,
+    mapPackage && c.ns.from === mapPackage ? 1 : 0,
+  ];
+  const withinPackage = (c) => [
     intent === 'search' && c.record.methods.some((m) => m.kind === 'search') ? 1 : 0,
     versionOf(c.record.fqdn),
   ];
+  const higher = (x, y) => x.findIndex((v, i) => v !== y[i]);
   candidates.sort((a, b) => {
-    const [x, y] = [score(a), score(b)];
-    for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return y[i] - x[i];
+    let i = higher(score(a), score(b));
+    if (i >= 0) return score(b)[i] - score(a)[i];
+    if (a.ns.from !== b.ns.from) return (a.ns.from ?? '').localeCompare(b.ns.from ?? '');
+    i = higher(withinPackage(a), withinPackage(b));
+    if (i >= 0) return withinPackage(b)[i] - withinPackage(a)[i];
     return (a.ns.namespace ?? '').localeCompare(b.ns.namespace ?? '');
   });
   if (preferRule) why(candidates[0], 'curated');
+  else if (mapPackage && candidates[0].ns.from === mapPackage) why(candidates[0], 'the module map package');
+  if (packages.size > 1) {
+    for (const c of candidates.filter((c) => c.ns.namespace)) c.description = c.record.type?.description ?? null;
+  }
   return {
     term,
     status: 'found',
@@ -904,9 +940,16 @@ function render(result, intent, project) {
     // A site-dependent entity has one namespace per site kind, all shown in full.
     const chosen = result.siteDependent ? result.candidates.filter((c) => c.site) : result.candidates.slice(0, 1);
     const lead = result.siteDependent ? 'site' : 'use';
-    for (const c of chosen) out.push(`${lead.padEnd(5)} ${label(c)} — ${c.reasons.join('; ')}`);
+    // Packages that export the same namespace: each one's entity description,
+    // so the agent switches when the feature matches another package.
+    const what = (c) =>
+      c.description === undefined ? '' : c.description ? ` — "${c.description}"` : ' — no description in the package';
+    for (const c of chosen) out.push(`${lead.padEnd(5)} ${label(c)} — ${c.reasons.join('; ')}${what(c)}`);
     for (const c of result.candidates.filter((c) => !chosen.includes(c))) {
-      out.push(`also  ${label(c)} — ${c.reasons.join('; ')}`);
+      out.push(`also  ${label(c)} — ${c.reasons.join('; ')}${what(c)}`);
+    }
+    if (result.candidates.some((c) => c.description !== undefined)) {
+      out.push('      several packages export this name: if the feature matches another package\'s description, use that one');
     }
     for (const c of chosen) out.push(...renderCandidate(c, intent, rel));
     if (result.related.length) out.push(`related: ${capped(result.related)}`);
@@ -1010,6 +1053,7 @@ function main(argv) {
         namespace: c.ns.namespace,
         from: c.ns.from,
         reasons: c.reasons,
+        description: c.description,
         site: c.site,
         shape: shapeFor(c.record, c.ns.namespace, intent),
         record: c.record,
