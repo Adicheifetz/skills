@@ -36,10 +36,11 @@ documents `POST https://www.wixapis.com/seo-content-plan-service/v1/content-plan
 The exact-ID Get Site Keyword Research read below was verified with Wix MCP's
 public method schema: GET `/v1/site-keyword-research`, optional
 `keywordResearchId` query, and `siteKeywordResearch` response. The schema's public
-server mapping uses `https://www.wixapis.com/seo-content-plan-service`. This API
-has no `/promote/seo/v1` alias in its mappings. Its docs-menu publication is still
-pending; if unavailable in the caller's runtime, report the error without a
-private fallback. List Keyword Research Items is a different method.
+server mapping uses `https://www.wixapis.com/seo-content-plan-service`. Its
+[official reference](https://dev.wix.com/docs/api-reference/business-management/seo/site-keyword-research-v1/get-site-keyword-research)
+is connected but **not publicly published yet**. If the method is unavailable
+in the caller's runtime, report the error and preserve the IDs. List Keyword
+Research Items is a different method and cannot prove readiness.
 
 ## 1. Trigger or inspect an existing flow
 
@@ -90,6 +91,7 @@ the chosen finite window; all IDs must be actual returned IDs:
 
 ```js
 async function () {
+  const siteId = "<actual-selected-site-id>";
   const contentPlanFlowId = "<actual-flow-id>";
   const monitoringEndsAt = Date.parse("<previously-chosen-end-time-ISO>");
   if (!Number.isFinite(monitoringEndsAt)) return { incomplete: true };
