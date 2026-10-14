@@ -7,20 +7,20 @@ import SiteLayout from "../../layouts/SiteLayout.astro";
 import ProjectDetailView from "../../components/portfolio/ProjectDetailView";
 import { fetchProjectBySlug, fetchProjectGallery } from "../../wix/portfolio/portfolio";
 import type { GalleryItem, ProjectDetail } from "../../wix/portfolio/types";
+import { readFailureResponse } from "../../wix/portfolio/errors";
 
-const slug = Astro.params.slug!;
-
-let project: ProjectDetail | null = null;
-let items: GalleryItem[] = [];
-try {
-  project = await fetchProjectBySlug(slug);
-  if (project) items = await fetchProjectGallery(project.id);
-} catch {
-  // Guarded: an unhandled SSR throw truncates the response mid-stream.
+const slug = Astro.params.slug;
+if (!slug) {
+  return new Response(null, { status: 400 });
 }
 
-if (!project) {
-  return new Response(null, { status: 404 });
+let project: ProjectDetail;
+let items: GalleryItem[];
+try {
+  project = await fetchProjectBySlug(slug);
+  items = await fetchProjectGallery(project.id);
+} catch (e) {
+  return readFailureResponse(e, `Project page "${slug}"`);
 }
 ---
 

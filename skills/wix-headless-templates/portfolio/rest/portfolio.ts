@@ -32,10 +32,10 @@ export async function fetchCollections({ limit = 100 } = {}): Promise<Collection
 }
 
 /**
- * One visible collection by URL slug; null when missing or hidden → a real 404.
+ * One visible collection by URL slug; a missing or hidden one throws (isNotFound from portfolio-core) → a real 404.
  * POST /portfolio/v1/collections/query  { query: { filter: { slug }, cursorPaging: { limit: 1 } } } → { collections }
  */
-export async function fetchCollectionBySlug(slug: string): Promise<CollectionSummary | null> {
+export async function fetchCollectionBySlug(slug: string): Promise<CollectionSummary> {
   const res = await wixRequest<Raw>("/portfolio/v1/collections/query", {
     body: { query: { filter: { slug }, cursorPaging: { limit: 1 } } },
   });
@@ -52,10 +52,10 @@ export async function fetchProjects({
 }
 
 /**
- * One visible project with its details rows by URL slug; null when missing or hidden.
+ * One visible project with its details rows by URL slug; a missing or hidden one throws (isNotFound).
  * POST /portfolio/v1/projects/query  { query: { filter: { slug }, cursorPaging: { limit: 1 } } } → { projects }
  */
-export async function fetchProjectBySlug(slug: string): Promise<ProjectDetail | null> {
+export async function fetchProjectBySlug(slug: string): Promise<ProjectDetail> {
   const res = await wixRequest<Raw>("/portfolio/v1/projects/query", {
     body: { query: { filter: { slug }, cursorPaging: { limit: 1 } } },
   });

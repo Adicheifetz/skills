@@ -24,6 +24,7 @@ pages' island imports. Files you **create**: your gallery, collection, and proje
 | `wix/media.ts` · `wix/money.ts` | `imgAttrs(url, sizes, ratio?)` — every `<img>` attribute for a DTO image (`src`, `srcSet`, `sizes`, lazy): `<img {...imgAttrs(c.imageUrl, "33vw", 0.75)} alt={c.title} />`; `imgSrc()` / `imgSrcSet()` underneath, already used by everything shipped |
 | `wix/portfolio/types.ts` | the DTOs (`CollectionSummary`, `ProjectSummary`, `ProjectDetail`, `ProjectDetailRow`, `GalleryItem`) — contracts inlined below |
 | `wix/portfolio/portfolio.ts` | `fetchCollections`, `fetchCollectionBySlug`, `fetchProjects`, `fetchProjectBySlug`, `fetchProjectGallery` — the transport; the rules and DTO mappers (hidden filter, dashboard order, cover fallback, media kinds, `mediaElement`) are in `portfolio-core.ts` beside it (shared with the REST layer) |
+| `wix/portfolio/errors.ts` | `readFailureResponse(e, what)` — a server page's answer to a read that threw: 404 when `isNotFound(e)` (in `portfolio-core.ts`: the by-slug reads throw on a missing or hidden item), else 500, logged. The readers never catch |
 | `wix/portfolio/collections-store.ts` · `collection-projects-store.ts` · `project-detail-store.ts` | the gallery, collection-page, and project-page state machines, framework-free (`createCollectionsStore()`, `createCollectionProjectsStore(slug)`, `createProjectDetailStore(slug)` — `getState`/`subscribe`/`start`/`stop`, one instance per surface); the hooks below bind them to React, every other stack uses them directly |
 | `hooks/portfolio/useCollections.ts` | React binding of `collections-store.ts` — contract below |
 | `hooks/portfolio/useCollectionProjects.ts` | React binding of `collection-projects-store.ts`: one collection + its projects, by slug — contract below |
@@ -110,8 +111,8 @@ this portfolio, not for a stereotype of its field. Then, by default:
 
 The class names here are the Astro/React spelling of layout rules that hold on every stack; on a
 stack where the components don't deploy (`lib`, `static`, a port), keep the rule and write it in
-your own CSS. The three pages ship with their frontmatter (fetch → DTO props → island, guarded
-against an SSR throw, a real 404 on a missing slug) — keep it, and point the island import at
+your own CSS. The three pages ship with their frontmatter (fetch → DTO props → island, a real
+404 on a missing slug, a 500 on a failed read) — keep it, and point the island import at
 yours. Hooks first, branches after (an early return above a hook changes hook order between
 renders and React throws). Render every state totally; nothing in a render path may throw.
 
@@ -203,7 +204,7 @@ Read the reference files listed above before writing any surface.
 
 `deploy.mjs portfolio --stack lib` put the data layer in `src/wix/` and nothing else: `sdk.ts`
 (the visitor client, configured with the public client id), `media.ts`, `money.ts`, and
-`wix/portfolio/` — `portfolio.ts`, `types.ts`, the `portfolio-core.ts` rules, and the three stores.
+`wix/portfolio/` — `portfolio.ts`, `types.ts`, `errors.ts`, the `portfolio-core.ts` rules, and the three stores.
 None of it is React. The hooks and components don't ship on this stack; the stores replace the
 hooks, and you write the components in your framework to the contracts on this page:
 
@@ -216,8 +217,8 @@ hooks, and you write the components in your framework to the contracts on this p
 - gallery items through `mediaElement(item)` from `portfolio-core.ts`; images through
   `imgAttrs` from `media.ts`.
 
-Routes `/portfolio`, `/portfolio/:slug` (`fetchCollectionBySlug`, null → your 404),
-`/projects/:slug` (`fetchProjectBySlug`, null → your 404); dev server on 4321; a static build goes
+Routes `/portfolio`, `/portfolio/:slug` (`createCollectionProjectsStore(slug)`, `notFound` → your 404),
+`/projects/:slug` (`createProjectDetailStore(slug)`, `notFound` → your 404); dev server on 4321; a static build goes
 through `npx @wix/cli@latest release` with `site.outputDirectory` pointing at the build folder, an
 SSR build is hosted by you. Page titles and descriptions from the DTO (Portfolio has no SEO item type).
 
@@ -230,7 +231,8 @@ the `.ts` beside each `.js` for reading). Everything the visitor loads lives und
 styles, `js/` — and `wix.config.json`'s `site.outputDirectory` is `"./site"`; the project root
 (config, plan, seed output) is never the upload. Same function names and DTOs as the table above,
 so the contracts on this page hold unchanged: `fetchCollections`, `fetchCollectionBySlug`,
-`fetchProjects`, `fetchProjectBySlug`, `fetchProjectGallery` from `./js/wix/portfolio.js`. The
+`fetchProjects`, `fetchProjectBySlug`, `fetchProjectGallery` from `./js/wix/portfolio.js`;
+`isNotFound` from `./js/wix/portfolio-core.js` (a by-slug read that threw → your 404 view). The
 state machines ship too: `createCollectionsStore` from `./js/wix/collections-store.js`,
 `createCollectionProjectsStore` from `./js/wix/collection-projects-store.js`,
 `createProjectDetailStore` from `./js/wix/project-detail-store.js` (`start()` once the page is up;
@@ -291,6 +293,12 @@ Routes on Wix hosting: the host serves files only, so a clean route answers 404 
 - **This vertical sells nothing** — no cart, no checkout, no `@wix/ecom`/`@wix/redirects`
   imports. A "contact about this project" CTA is a link, not a purchase flow.
 - **Route not-found off `notFound`**, and surface `error` — a transient `null` is loading, not a 404.
+- **The gallery, collection and project routes are cached** on Wix's CDN for an hour, declared in
+  `route-rules.json` (deploy wires them into `astro.config.mjs` with the adapter's `cacheWix()`
+  provider). Only 200s are stored; a release and any collection or project change refresh them. A
+  gallery item change doesn't: it shows within the hour, or at the next release. A cached render
+  is shared, so keep it to public data: per-visitor state stays in client islands. A new page
+  under a cached route is cached too.
 - **Render `details` rows as given** (text or link per row); don't invent metadata.
 - **Gallery items render through `GalleryMedia`** (or `mediaElement` where it doesn't deploy) —
   never your own branch on `kind`.

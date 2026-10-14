@@ -1,0 +1,5 @@
+{
+  "/portfolio": { "maxAge": 3600 },
+  "/portfolio/[slug]": { "maxAge": 3600 },
+  "/projects/[slug]": { "maxAge": 3600 }
+}

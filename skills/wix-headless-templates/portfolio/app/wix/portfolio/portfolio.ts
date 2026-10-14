@@ -47,8 +47,8 @@ export async function fetchCollections({ limit = 100 } = {}): Promise<Collection
   return visibleCollections((res.collections ?? []) as Raw[], imgSrc);
 }
 
-/** Fetch one visible collection by its URL slug. Null when not found or hidden. */
-export async function fetchCollectionBySlug(slug: string): Promise<CollectionSummary | null> {
+/** Fetch one visible collection by its URL slug. A missing or hidden one throws (test it with isNotFound from ./portfolio-core). */
+export async function fetchCollectionBySlug(slug: string): Promise<CollectionSummary> {
   const res = await collections.queryCollections().eq("slug", slug).limit(1).find();
   return visibleCollection(res.items?.[0] as Raw | undefined, imgSrc);
 }
@@ -62,8 +62,8 @@ export async function fetchProjects({
   return visibleProjects((res.projects ?? []) as Raw[], collectionId, imgSrc, videoSrc);
 }
 
-/** Fetch one visible project by its URL slug. Null when not found or hidden. */
-export async function fetchProjectBySlug(slug: string): Promise<ProjectDetail | null> {
+/** Fetch one visible project by its URL slug. A missing or hidden one throws (test it with isNotFound from ./portfolio-core). */
+export async function fetchProjectBySlug(slug: string): Promise<ProjectDetail> {
   const res = await projects.queryProjects().eq("slug", slug).limit(1).find();
   return visibleProject(res.items?.[0] as Raw | undefined, imgSrc, videoSrc);
 }

@@ -50,6 +50,22 @@ export function toVideo(value: unknown, imgSrc: ImgSrc, videoSrc: VideoSrc): { v
   };
 }
 
+/**
+ * A by-slug read that resolved to no visible item. The slug lookups are queries, and a query
+ * answers a missing slug with an empty 200, so the miss is raised here, once, for both transports.
+ */
+export class PortfolioNotFoundError extends Error {
+  constructor(what: string) {
+    super(`${what} not found`);
+    this.name = "PortfolioNotFoundError";
+  }
+}
+
+/** The read threw because the item doesn't exist or is hidden — the page's 404. */
+export function isNotFound(e: unknown): boolean {
+  return e instanceof PortfolioNotFoundError;
+}
+
 // ---- DTO mappers -----------------------------------------------------------------------------------
 
 export function toCollection(raw: Raw, imgSrc: ImgSrc): CollectionSummary {
@@ -125,9 +141,10 @@ export function visibleCollections(raws: Raw[], imgSrc: ImgSrc): CollectionSumma
     .map((c) => toCollection(c, imgSrc));
 }
 
-/** One visible collection, or null when missing or hidden (a real 404, never a fallback). */
-export function visibleCollection(raw: Raw | undefined | null, imgSrc: ImgSrc): CollectionSummary | null {
-  return raw && !raw.hidden ? toCollection(raw, imgSrc) : null;
+/** One visible collection; a missing or hidden one throws PortfolioNotFoundError (a real 404, never a fallback). */
+export function visibleCollection(raw: Raw | undefined | null, imgSrc: ImgSrc): CollectionSummary {
+  if (!raw || raw.hidden) throw new PortfolioNotFoundError("Collection");
+  return toCollection(raw, imgSrc);
 }
 
 /**
@@ -142,9 +159,10 @@ export function visibleProjects(raws: Raw[], collectionId: string | undefined, i
     .map((p) => toProject(p, imgSrc, videoSrc));
 }
 
-/** One visible project with its details rows, or null when missing or hidden. */
-export function visibleProject(raw: Raw | undefined | null, imgSrc: ImgSrc, videoSrc: VideoSrc): ProjectDetail | null {
-  return raw && !raw.hidden ? toDetail(raw, imgSrc, videoSrc) : null;
+/** One visible project with its details rows; a missing or hidden one throws PortfolioNotFoundError. */
+export function visibleProject(raw: Raw | undefined | null, imgSrc: ImgSrc, videoSrc: VideoSrc): ProjectDetail {
+  if (!raw || raw.hidden) throw new PortfolioNotFoundError("Project");
+  return toDetail(raw, imgSrc, videoSrc);
 }
 
 /** A project's gallery in dashboard order (item sortOrder); UNDEFINED and unresolvable items dropped. */

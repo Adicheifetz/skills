@@ -8,6 +8,7 @@
 // route a 404 off it, never off a transient null. One store per (slug, mount):
 // createCollectionProjectsStore(slug, options), not a singleton.
 import { fetchCollectionBySlug, fetchProjects } from "./portfolio";
+import { isNotFound } from "./portfolio-core";
 import type { CollectionSummary, ProjectSummary } from "./types";
 
 export interface CollectionProjectsStoreOptions {
@@ -59,12 +60,6 @@ export function createCollectionProjectsStore(
         try {
           const col = initialCollection ?? (await fetchCollectionBySlug(slug));
           if (!started) return;
-          if (!col) {
-            notFound = true;
-            projects = [];
-            emit();
-            return;
-          }
           collection = col;
           emit();
           const list = await fetchProjects({ collectionId: col.id });
@@ -72,7 +67,8 @@ export function createCollectionProjectsStore(
         } catch (e) {
           if (!started) return;
           projects = [];
-          error = e instanceof Error ? e.message : String(e);
+          if (isNotFound(e)) notFound = true;
+          else error = e instanceof Error ? e.message : String(e);
           emit();
         }
       })();

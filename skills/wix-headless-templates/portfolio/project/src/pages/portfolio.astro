@@ -5,13 +5,13 @@ import SiteLayout from "../layouts/SiteLayout.astro";
 import CollectionsView from "../components/portfolio/CollectionsView";
 import { fetchCollections } from "../wix/portfolio/portfolio";
 import type { CollectionSummary } from "../wix/portfolio/types";
+import { readFailureResponse } from "../wix/portfolio/errors";
 
-let collections: CollectionSummary[] = [];
+let collections: CollectionSummary[];
 try {
   collections = await fetchCollections();
-} catch {
-  // An unguarded SSR throw truncates the response mid-stream; the island renders the
-  // empty state instead.
+} catch (e) {
+  return readFailureResponse(e, "The portfolio gallery");
 }
 ---
 

@@ -7,6 +7,7 @@
 // first. `notFound` is the real not-found signal (project stays null while loading). One store
 // per (slug, mount): createProjectDetailStore(slug, options), not a singleton.
 import { fetchProjectBySlug, fetchProjectGallery } from "./portfolio";
+import { isNotFound } from "./portfolio-core";
 import type { GalleryItem, ProjectDetail } from "./types";
 
 export interface ProjectDetailStoreOptions {
@@ -58,12 +59,6 @@ export function createProjectDetailStore(
         try {
           const proj = initialProject ?? (await fetchProjectBySlug(slug));
           if (!started) return;
-          if (!proj) {
-            notFound = true;
-            items = [];
-            emit();
-            return;
-          }
           project = proj;
           emit();
           const gallery = await fetchProjectGallery(proj.id);
@@ -71,7 +66,8 @@ export function createProjectDetailStore(
         } catch (e) {
           if (!started) return;
           items = [];
-          error = e instanceof Error ? e.message : String(e);
+          if (isNotFound(e)) notFound = true;
+          else error = e instanceof Error ? e.message : String(e);
           emit();
         }
       })();

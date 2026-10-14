@@ -8,20 +8,20 @@ import SiteLayout from "../../layouts/SiteLayout.astro";
 import CollectionProjectsView from "../../components/portfolio/CollectionProjectsView";
 import { fetchCollectionBySlug, fetchProjects } from "../../wix/portfolio/portfolio";
 import type { CollectionSummary, ProjectSummary } from "../../wix/portfolio/types";
+import { readFailureResponse } from "../../wix/portfolio/errors";
 
-const slug = Astro.params.slug!;
-
-let collection: CollectionSummary | null = null;
-let projects: ProjectSummary[] = [];
-try {
-  collection = await fetchCollectionBySlug(slug);
-  if (collection) projects = await fetchProjects({ collectionId: collection.id });
-} catch {
-  // Guarded: an unhandled SSR throw truncates the response mid-stream.
+const slug = Astro.params.slug;
+if (!slug) {
+  return new Response(null, { status: 400 });
 }
 
-if (!collection) {
-  return new Response(null, { status: 404 });
+let collection: CollectionSummary;
+let projects: ProjectSummary[];
+try {
+  collection = await fetchCollectionBySlug(slug);
+  projects = await fetchProjects({ collectionId: collection.id });
+} catch (e) {
+  return readFailureResponse(e, `Collection page "${slug}"`);
 }
 ---
 
