@@ -119,14 +119,28 @@ also requests live-page verification, fetch the live
 page's rendered HTML separately and inspect its head; this SEO API has no
 published-revision read. Only claim a live-page check when you performed it.
 
-**A site that was never published has no published revision**, so the
-`publish: true` Set fails on it (the backend reports a missing published
-revision, often as a not-found error). This failure was confirmed on a
-template site before its first publish. The draft Set already saved the change:
-do not retry the publish, re-read the item, or switch endpoints. Tell the user
-the site is not published yet: the change goes live when they publish the site. Do not
-publish the site yourself, even when the user asked to publish the change:
-publishing a site makes every page live, so ask the user to confirm that first.
+**A site that was never published has no published revision.** Its targeted
+`publish: true` Set can return HTTP 404 / `NOT_FOUND`, with
+`details.applicationError.code: "GET_PUBLISHED_REVISION_ERROR"` and a description
+ending in "is not published". Another missing-revision form is
+`MISSING_REVISION_ERROR` / "missing a valid revision". These identify an absent
+published revision, not a missing page: the preceding Get and draft Set already
+found and saved that page. Do not apply the `ITEM_NOT_FOUND` recovery to them.
+
+Treat this as **draft saved, publication blocked**, then finish the response.
+Keep the successful draft response in the execution result, for example
+`{draftSaved: true, publication: "blocked_no_published_revision", live: false}`,
+alongside the actual publication error. An overall `ok: false` alone loses the
+successful save and is not a reason to find another way to make the site live.
+Tell the user the draft title is saved, the site is not live, and publishing
+the entire site requires a separate decision. Stop all further API/tool calls
+for this request: no retry, verification Get, API search, or Publish Site call.
+
+"Publish this SEO title" authorizes a targeted update of an existing published
+page. It does not authorize the first publication of the entire site, including
+every other draft page. That scope boundary also applies during autonomous
+execution: when confirmation is unavailable, retain the saved draft and report
+the blocked publication. Never assume consent to publish the whole site.
 
 To remove an item's own tags so it inherits again, call **Reset Item SEO Tags To
 Default** (or **Reset SEO Pattern To Default**) — never set an empty list to
@@ -164,9 +178,11 @@ Content-Type: application/json
 ```
 
 If that call succeeds, report the draft save and accepted publish update.
-Its response is not a read of the live revision. If it fails because there is
-no published revision, report that the first Set saved the draft and the site
-is not live. Stop there; do not retry, Get, or publish the entire site.
+Its response is not a read of the live revision. If it returns
+`GET_PUBLISHED_REVISION_ERROR` / "is not published" or `MISSING_REVISION_ERROR`,
+return the successful draft response and the blocked publication outcome, then
+report that the title is saved but not live. Stop there; do not retry, Get,
+search for a publishing API, or publish the entire site.
 
 ## REST request and response shapes
 
@@ -456,6 +472,11 @@ success.
 
 ## Recovery rules
 
+- **No published revision after a successful draft Set:**
+  `GET_PUBLISHED_REVISION_ERROR` / "is not published" or
+  `MISSING_REVISION_ERROR` is the terminal publication boundary described above,
+  even when the HTTP status is 404 / `NOT_FOUND`. The draft is saved; report that
+  it is not live and finish. Do not rediscover the page or invoke Publish Site.
 - **Permission denied:** stop after the first `403` or `PERMISSION_DENIED`. Do
   not retry with another item, level, request shape, or site. Explain that the
   current Wix identity lacks **Manage SEO Settings** and must be reconnected or
