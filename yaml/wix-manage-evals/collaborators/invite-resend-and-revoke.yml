@@ -6,10 +6,8 @@ description: >-
   no seeded id is needed. Bulk Invite may be refused on the test account; the
   judge scores the sequence of calls, not whether the invite went through.
 triggerPrompt: >-
-  I'm testing collaborator invites on my Wix site. Invite
-  eval-collab@example.com as a collaborator with any standard role, resend that
-  invite email once, then cancel the invite. I confirm all three actions, so go
-  ahead without asking again.
+  Invite eval-collab@example.com to my Wix site as a collaborator with any
+  standard role, resend that invite email once, then cancel the invite.
 tags: [collaborators]
 siteSetup:
   mode: template
@@ -23,7 +21,7 @@ assertions:
     maxTokens: 2048
     prompt: |
       The user asked the agent to invite eval-collab@example.com to their site,
-      resend that invite, then revoke it, and confirmed all three up front.
+      resend that invite, then revoke it.
 
       Score 8-10 if EITHER:
       (a) the agent looked up a role (GET /roles-management/roles), sent

@@ -2,7 +2,10 @@ name: collaborators/list-site-collaborators
 description: >-
   Verifies that when asked who has access to the site, the agent reads the
   manage-site-collaborators recipe, runs Query Site Contributors, and reports
-  the result without mutating anything and without dumping raw ids.
+  the result without mutating anything and without dumping raw ids. A freshly
+  provisioned site has no collaborators beyond its owner, and the public API
+  cannot add one without an invite being accepted, so the count itself is not
+  asserted.
 triggerPrompt: >-
   Who currently has collaborator access to my Wix site? Look it up and tell me
   how many collaborators there are.
