@@ -5,12 +5,13 @@ description: >-
 triggerPrompt: >-
   Save my site as a template called "Portfolio Starter" so I can reuse it for future clients.
 tags: [partners]
-maxTokens: 200000
+maxTokens: 600000
 # Copy Site As Template needs a real site to duplicate, so the run gets a fresh one and the agent
-# resolves its ID from context instead of a fabricated GUID.
+# resolves its ID from context instead of a fabricated GUID. A Studio site, not an Editor one:
+# custom templates are a Wix Studio partner feature.
 siteSetup:
   mode: template
-  templateId: blank-editor
+  templateId: events-studio
 assertions:
   - tool: ReadFullDocsArticle
     params:

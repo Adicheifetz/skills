@@ -8,7 +8,7 @@ triggerPrompt: >-
   needs a site with class schedules and online booking. Once it's created, check it and tell me whether
   she's already submitted it or not.
 tags: [partners]
-maxTokens: 200000
+maxTokens: 600000
 # Submission is set only when a real client submits, which a run can't simulate, so the scenario
 # creates its own form: the only correct status for it is "not submitted", and "no form found"
 # can't satisfy the judge.

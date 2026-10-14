@@ -8,7 +8,7 @@ triggerPrompt: >-
   bakery that wants a site with their menu, online ordering, and a catering inquiry form. Set up an
   intake form so I can collect the details from her. Her email is jane@bloombakery.com.
 tags: [partners]
-maxTokens: 200000
+maxTokens: 600000
 assertions:
   - tool: ReadFullDocsArticle
     params:

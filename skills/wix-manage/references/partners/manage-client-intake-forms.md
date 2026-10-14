@@ -11,7 +11,7 @@ Content Collector is the Studio workspace feature partners (agencies and freelan
 - **Base URL**: `https://www.wixapis.com/partners/content-collector/v1`
 - **Reference**: [Intake Forms API](https://dev.wix.com/docs/api-reference/account-level/studio-workspace/content-collector/intake-form-v1/introduction)
 
-If any call returns a permission or entitlement error, the account doesn't have Content Collector. Tell the user it isn't available on their account and stop.
+If any call returns 403 or another permission or entitlement error, the account doesn't have Content Collector. Tell the user it isn't available on their account and stop: don't retry, and don't fall back to Wix Forms or another forms API — a site form is not a Content Collector intake form.
 
 ## Endpoints
 

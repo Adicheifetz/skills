@@ -125,5 +125,5 @@ Ask the user before: deleting a template, publishing it, and creating a site fro
 
 ## Errors
 
-- `PERMISSION_DENIED` — the account lacks `SCOPE.STUDIO.MANAGE-CUSTOM-TEMPLATES`. Tell the user; suggest support if they believe they should have access.
+- 403 / `PERMISSION_DENIED` — either the account lacks `SCOPE.STUDIO.MANAGE-CUSTOM-TEMPLATES` (custom templates are a Wix Studio partner feature), or, on Copy Site As Template, the source site can't be turned into a template — for example, it isn't a Wix Studio site. Tell the user which applies and stop; don't retry or probe other endpoints. Suggest support if they believe they should have access.
 - Template not found — wrong ID or already deleted. Re-query by name.
