@@ -20,6 +20,10 @@ assertions:
       Use the FULL final reply provided by the harness for reply content.
       Completion previews may be truncated; missing preview text is not missing
       reply content. Use the tool-call trace for API and status evidence.
+      Tool responses can contain nested or escaped JSON in text content. Read
+      that response body for contentPlanFlow.id/status; do not overlook SUCCESS
+      because it is serialized inside a tool result. A final completion claim
+      alone remains insufficient API evidence.
 
       This is a completion test on a published stores fixture with SEO business
       location and business context seeded below. A flow may advance automatically
@@ -55,6 +59,10 @@ assertions:
       Use the FULL final reply provided by the harness for reply content.
       Completion previews may be truncated; missing preview text is not missing
       reply content. Use the tool-call trace for API and status evidence.
+      Tool responses can contain nested or escaped JSON in text content. Read
+      that response body for contentPlanFlow.id/status; do not overlook SUCCESS
+      because it is serialized inside a tool result. A final completion claim
+      alone remains insufficient API evidence.
 
       Judge the observable path. Require completion for a pass. Score 8+ for:
       - One HTTP request per execution; subsequent status checks use supported
@@ -65,6 +73,9 @@ assertions:
         if it ends. No automatic restart, repeat trigger, premature/repeated release
         or keyword-list readiness heuristic. Skip release after
         CONTENT_PLAN/SUCCESS; a 428 leads to a paced status recheck, not more POSTs.
+      - An exact-ID Get Site Keyword Research read after KEYWORD_RESEARCH is the
+        required readiness check, not a keyword-list readiness heuristic. It is
+        appropriate even when the next flow read shows automatic advancement.
       - Actual results reported without fabrication and no unnecessary discovery
         or guessed API shapes. Required bootstrap/runtime and recipe reads are
         correct. Candidate reads after observed SUCCESS are required.

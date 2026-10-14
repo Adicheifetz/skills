@@ -53,10 +53,8 @@ POST https://www.wixapis.com/seo-content-plan-service/v1/content-plan-flows/trig
 Response: `{ "contentPlanFlowId": "<flow-uuid>" }`. Save the actual ID.
 [Trigger Content Plan Generation Flow](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-content-plan-flow-v1/trigger-content-plan-generation-flow).
 
-For an existing flow, obtain its actual ID from the conversation or a prior
-response. **If missing, ask for it before any API call and end the turn.** Do not
-substitute the site ID, guess an ID or trigger a replacement. Preserve the actual
-flow ID, last observed status and any known release history for later resume.
+For an existing flow, apply the entry gate above. Preserve its actual ID, last
+observed status and release history for later resume.
 
 ## 2. Read status with bounded waiting
 
@@ -86,6 +84,29 @@ to the user and supported waiting window. Stop at that time; do not silently ext
 wait or one bounded delay before a single status GET. Never put multiple requests
 in a polling loop, busy-wait, or use API/doc calls as a substitute for a pause.
 Request counts and frozen `updatedAt` values do not measure elapsed time.
+When the runtime supports async `wix.request` execution and a clock, a subsequent
+flow check can use this one-delay, one-GET pattern. Set `monitoringEndsAt` from
+the chosen finite window; all IDs must be actual returned IDs:
+
+```js
+async function () {
+  const contentPlanFlowId = "<actual-flow-id>";
+  const monitoringEndsAt = Date.parse("<previously-chosen-end-time-ISO>");
+  if (!Number.isFinite(monitoringEndsAt)) return { incomplete: true };
+  if (Date.now() + 15000 > monitoringEndsAt) return { incomplete: true };
+  await new Promise(resolve => setTimeout(resolve, 15000));
+  if (Date.now() >= monitoringEndsAt) return { incomplete: true };
+  const response = await wix.request({
+    scope: "site", siteId, method: "GET",
+    url: `https://www.wixapis.com/seo-content-plan-service/v1/content-plan-flows/${contentPlanFlowId}`
+  });
+  return response.data;
+}
+```
+
+Use the same delay pattern for a subsequent exact-ID research read. Run each
+check separately and inspect its result before choosing the next action. The
+fresh flow check immediately after research `SUCCESS` needs no extra delay.
 
 If a usable clock or supported waiting is unavailable, or the window ends, report
 incomplete with the saved ID, status and release history. Expiry does not prove
@@ -105,11 +126,9 @@ failure. End the turn for a later requested resume; do not restart automatically
 
 ## 3. Check research and release once
 
-For an existing stuck flow, ask for its actual `contentPlanFlowId` before calls.
-Explain that the flow status is not research readiness: Create Content Plan is
-an action on Blog Post Candidate, distinct from the flow-status read. It requires
-matching research `SUCCESS`; ten minutes at this stage proves neither readiness
-nor failure. With the ID, inspect the flow and use its actual `keywordResearchId`.
+Create Content Plan is an action on Blog Post Candidate, distinct from the
+flow-status read. It requires matching research `SUCCESS`; ten minutes at this
+stage proves neither readiness nor failure.
 
 If the flow supplies no `keywordResearchId`, report the missing readiness input
 and stop; do not guess it. While the flow is `KEYWORD_RESEARCH`, read **that
@@ -148,9 +167,9 @@ POST https://www.wixapis.com/seo-content-plan-service/v1/create-content-plan
 Record the attempt before sending. Concurrent/repeated calls can duplicate plans.
 If release history is uncertain, ask rather than send another POST. Check HTTP
 status and response `success`; `false` requires reporting `message`, not claiming
-completion. The Create reference lists `428 Failed Precondition`; a retained
-premature call also returned 428. Inspect its actual error and
-make a paced status recheck; do not retry the POST in a loop. Other errors or an
+completion. A premature call returns HTTP `428` with application code
+`FLOW_NOT_READY_FOR_CONTENT_PLAN`. Inspect the actual error and make a paced
+status recheck; do not retry the POST in a loop. Other errors or an
 uncertain response require reporting the attempt, not repeating it.
 
 On success, retain the returned `contentPlanFlowId` and monitor it with the same
