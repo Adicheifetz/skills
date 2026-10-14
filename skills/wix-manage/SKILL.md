@@ -47,7 +47,7 @@ Lists all apps installed on a site using Apps Installer API. Useful for verifyin
 Read and update SEO titles and tags at the right level. For "change my site's SEO title", clarify homepage, specific page, or page-type pattern before discovery or writes; site-level tags accept meta tags only, never titles. Discover item IDs and pattern variables, read before every full-replace write, and report resolved tags with their sources.
 
 ### [Manage URL Redirects on a Wix Site](references/seo/manage-url-redirects.md)
-"Retrieve, create, and delete URL redirects on a Wix site using the public SEO Redirects API. Covers exact and group redirects, language-scoped redirects for multilingual sites, batches of up to 500, and the change flow for a redirect that already exists. This API has no query, search, or update method: List Redirects is the only read-many. Redirects do not chain, so creating one that points at a path another redirect starts from permanently deletes that other redirect; list and check before every write."
+"Retrieve, create, and delete URL redirects on a Wix site using the public SEO Redirects API. Covers exact and group redirects, language-scoped redirects for multilingual sites, bulk creates of up to 100 and bulk deletes of up to 500, and the change flow for a redirect that already exists. This API has no query, search, or update method: List Redirects is the only read-many. Redirects do not chain, so creating one that points at a path another redirect starts from permanently deletes that other redirect; list and check before every write."
 
 ### [Generate and Read a Wix Site's Content Plan](references/seo/manage-content-plan.md)
 Generate an SEO content plan and read its blog post topics, or troubleshoot an existing content plan flow stuck at KEYWORD_RESEARCH while polling GetContentPlanFlow. Use this recipe for both generation and stalled-flow questions: it explains the intentional pause, the Create Content Plan release request, missing flow IDs, and the exact public API paths and response fields.
@@ -454,16 +454,28 @@ Start here for existing Catalog V3 product updates, including digital products t
 ## Automations
 
 ### [Build and Manage Wix Automations](references/automations/build-and-manage-automations.md)
-Discover installed automation triggers and actions and inspect an automation’s current active status without changing site data.
+Inspect Wix automations and their on/off status, create linear automations from the site’s installed triggers and actions, and turn automations on or off on request.
 
 <details>
 <summary>Internal skills (loaded on demand by Build and Manage Wix Automations — do NOT use directly)</summary>
 
 - [Automations API Catalog](references/automations/api-catalog.md)
-  Discover installed automation triggers and actions and inspect their schemas through site-scoped public catalog APIs.
+  Discover site-specific triggers and actions, authenticate public Automation API calls, and choose the API for validation, persistence or catalog lookups.
+
+- [Automations Graph and Data Model](references/automations/automation-model.md)
+  Assemble builder-editable automation graphs with valid node relationships, namespaces and ancestor data access.
+
+- [Automations Trigger Configuration](references/automations/triggers.md)
+  Select and configure automation triggers, trigger filters and event payload schemas using the site catalog.
+
+- [Automations Action Configuration](references/automations/actions.md)
+  Configure app-defined automation actions from their input schemas and preserve supported existing action mappings.
+
+- [Automations Mapping Expressions](references/automations/bracket-expressions.md)
+  Write builder-compatible automation mapping expressions, literals and data references.
 
 - [Automations Activation Status](references/automations/activation-status.md)
-  Read an automation’s current ACTIVE or INACTIVE status and distinguish it from historical run outcomes.
+  Read an automation’s current ACTIVE or INACTIVE status, and activate or deactivate it when the user asks.
 
 </details>
 

@@ -29,6 +29,10 @@ backend, when the site needs one, comes once it is live.
 
 ## What decides the route
 
+The user's request to publish is the consent to create the site and upload: do
+not ask again before either. Ask only where this recipe says to (connecting a
+backend, replacing a frontend that is serving).
+
 Three things about where you run decide it:
 
 - **Does your shell reach Wix?** `curl -sI https://www.wixapis.com` answers with an
@@ -81,7 +85,8 @@ page whole. A web fetch is the fallback.
 ## Create the site
 
 One account-level call creates the headless site, with no Wix Business
-Solutions. Name it after the page's `<title>` and keep `"origin": "drop"`.
+Solutions. Name it after the page's `<title>`, at most 40 characters (a longer
+name is rejected), and keep `"origin": "drop"`.
 
 ```bash
 curl -sS -X POST "https://www.wixapis.com/headless-business-setup/v1/headless-business/provision" \
@@ -102,7 +107,9 @@ const created = await wix.request({ scope: 'account', method: 'POST',
 ```
 
 The site is in the user's account. When it goes live, give the user its
-`siteUrl` and the dashboard, `https://manage.wix.com/dashboard/{metaSiteId}`.
+`siteUrl`, the dashboard, `https://manage.wix.com/dashboard/{metaSiteId}`, and how
+to put their own domain on it, per [Domain Search, Purchase and Connect](../domains/domain-search-purchase-and-connect.md):
+bought through Wix, or one they already own.
 
 ## Drop with curl
 
@@ -409,16 +416,23 @@ Its commands run:
 
 ## Images
 
-You never write an image's bytes yourself, as base64 or in any other form: model
-output corrupts them past a few thousand characters, and every byte costs tokens.
-An SVG is text and goes in like a page. Every other image reaches Wix one of four
-ways:
+An SVG is text and goes in like a page. Every other image is bytes, and bytes
+reach Wix one of these ways, in this order of preference:
 
 1. **With a shell that reaches Wix**, in the `curl` drop, from disk.
 2. **When your files travel as files**, inside the zip you pass the upload tool.
-3. **A public URL**: the page keeps the absolute URL, or the Dev Machine fetches
-   the file into the site, `curl -sSL -o public/assets/hero.jpg "https://…"`.
-4. **The user uploads it** to the site's Media Manager. This is the way for images
+3. **A public URL**: the page keeps the absolute URL; the Wix MCP's
+   `UploadImageToWixSite` imports it into the site's media (`imageUrls`) and the
+   page points at the returned `static.wixstatic.com` address; or the Dev Machine
+   fetches the file into the site, `curl -sSL -o public/assets/hero.jpg "https://…"`. A share page
+   (Dropbox, Drive) is not a file URL; a direct link is.
+4. **`imageBase64` on `UploadImageToWixSite`**, when you can read the file and
+   encode it yourself (a shell, a file API): one image per call, the raw base64
+   with its `mimeType`. Encoding it from a file works; typing it out does not: a
+   model cannot reproduce a long base64 string faithfully, so a string that was
+   not produced by a tool comes back as an `atob` error or a corrupt image.
+   Never put image bytes in the `files` bundle beyond a few KB (an icon).
+5. **The user uploads it** to the site's Media Manager. This is the way for images
    that exist only as files you can't send. Publish the pages first, then name
    the missing files, give the user
    `https://manage.wix.com/dashboard/{metaSiteId}/media-manager`, and ask them to
@@ -428,9 +442,12 @@ ways:
    point the page's references at the files' `static.wixstatic.com` URLs and drop
    again.
 
-Never stand in drawings or placeholders of your own for the user's images, and
-never shrink or re-encode them. The closing message names every image still
-missing.
+`attachments` on a Wix MCP tool carries a file only from ChatGPT or Codex, which
+swap it for a download URL before the call reaches Wix. From any other client it
+arrives as the path you wrote, and Wix cannot read a path on your machine; the
+answer does not change on a retry. An image you could not send is named in the
+closing message. Never stand in drawings or placeholders of your own for the
+user's images, and never shrink or re-encode them.
 
 ## Publish anonymously
 
@@ -476,14 +493,15 @@ curl -sS -X POST \
 
 Claim last: it ends the anonymous record, and later changes are
 [drops](#change-it-later). **The URL changes on claim.** Read the new `viewUrl`
-with Query Sites in the `HEADLESS` namespace; the default query omits headless
-sites and rejects an `id` filter, so match the id yourself, paging with
-`metadata.cursors.next`:
+with Query Sites in the `HEADLESS` namespace (the default query omits headless
+sites). An `id` filter takes the `$in` form; a bare `"id": "<uuid>"` is a `400`:
 
 ```bash
 curl -sS -X POST "https://www.wixapis.com/site-list/v2/sites/query" \
   -H "Authorization: Bearer $ACCESS_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"query":{"filter":{"namespace":"HEADLESS"},"cursorPaging":{"limit":100}}}'
+  -d '{"query":{"filter":{"namespace":"HEADLESS","id":{"$in":["'$META_SITE_ID'"]}},"cursorPaging":{"limit":10}}}'
+# sites[0].viewUrl is the live address; the same query without the id filter lists every
+# headless site with its viewUrl, which is how a site is found from a URL the user gives
 ```
 
 ## The drop page
@@ -503,16 +521,16 @@ plugin or connector in a chat client).
 
 - **A top-level HTML file.** A lone one of any name is the homepage; with more
   than one, `index.html` must be among them.
-- **3 MB per file, 20 MB per site.**
-- **Static files only** in a drop. A project that needs a build is built first:
+- **20 MB per file and per site.** The Wix MCP's upload tool takes 10 MB per call.
+- **Static files only** in a drop. A project that needs a build is built first,
   where you are when the shell reaches Wix, [on the Dev Machine](#a-project-that-needs-a-build)
-  when it doesn't.
+  when it doesn't, and its build output is dropped.
 
 | Failure | Meaning |
 | --- | --- |
 | `400` `MISSING_INDEX_HTML`, `FILE_TOO_LARGE`, `TOTAL_TOO_LARGE` | In `details.applicationError.code`; fix the files. |
 | `403 PERMISSION_DENIED` on a drop | The token expired or is missing, or the site isn't the caller's. An anonymous site takes upload and release, not a drop. |
-| `500` on a drop or upload | A malformed multipart body; rebuild it as shown. The same body fails again. |
+| `500` on a drop or upload | A failure on Wix's side, with a request id and no body. Retry once; if it fails again, keep the request id for feedback and hand over the drop page. A body built by hand (not `wix.multipart()`) can also answer `500`: rebuild it as shown. |
 | `404` on the anonymous route | The hour passed or the site was claimed. |
 
 ## Send feedback to Wix
