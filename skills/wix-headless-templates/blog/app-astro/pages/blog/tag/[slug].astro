@@ -10,26 +10,22 @@ import BlogFeedView from "../../../components/blog/BlogFeedView";
 import { categoryPath, fetchPosts } from "../../../wix/blog/posts";
 import { fetchBlogCategories, fetchBlogTags, fetchTagBySlug } from "../../../wix/blog/taxonomy";
 import type { BlogCategory, BlogTag, PostPage } from "../../../wix/blog/types";
+import { readFailureResponse } from "../../../wix/blog/errors";
 
 const slug = Astro.params.slug;
 if (!slug) {
-  return new Response(null, { status: 404 });
+  return new Response(null, { status: 400 });
 }
 
-let tag: BlogTag | null = null;
-let page: PostPage | undefined;
-let categories: BlogCategory[] = [];
-let tags: BlogTag[] = [];
+let tag: BlogTag;
+let page: PostPage;
+let categories: BlogCategory[];
+let tags: BlogTag[];
 try {
   [tag, categories, tags] = await Promise.all([fetchTagBySlug(slug), fetchBlogCategories(), fetchBlogTags()]);
-  if (tag) page = await fetchPosts({ tagId: tag.id });
-} catch {
-  // Guarded: an unhandled SSR throw truncates the response mid-stream. With no seed the island
-  // fetches the filtered page client-side and shows its own error state.
-}
-
-if (!tag) {
-  return new Response(null, { status: 404 });
+  page = await fetchPosts({ tagId: tag.id });
+} catch (e) {
+  return readFailureResponse(e, `Tag page "${slug}"`);
 }
 ---
 

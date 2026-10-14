@@ -1,0 +1,6 @@
+{
+  "/blog": { "maxAge": 3600 },
+  "/blog/[...slug]": { "maxAge": 3600 },
+  "/blog/tag/[slug]": { "maxAge": 3600 },
+  "/blog/category/[slug]": { "maxAge": 3600 }
+}

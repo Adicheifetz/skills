@@ -34,6 +34,6 @@
     "@wix/cli": "^1.1.92",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "@wix/astro-wix-hosting-adapter": "^3.0.0"
+    "@wix/astro-wix-hosting-adapter": "^3.0.2"
   }
 }

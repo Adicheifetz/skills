@@ -44,7 +44,7 @@ import {
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { templatesDir } from "./templates.mjs";
-import { syncLockRoot } from "./lock.mjs";
+import { satisfies, syncLockRoot } from "./lock.mjs";
 import { blankStarter, siteContext } from "./context.mjs";
 const PINS = JSON.parse(readFileSync(new URL("./pins.json", import.meta.url), "utf8"));
 const WIX_CLI = `@wix/cli@${PINS["@wix/cli"]}`;
@@ -195,6 +195,13 @@ const VERTICAL_DEPS = {
     },
   },
 };
+
+// A vertical caches its public routes on Wix's CDN by shipping <vertical>/route-rules.json (Astro
+// route rules: pattern → rule). A vertical without one is not cached.
+const ROUTE_RULES_FILE = "route-rules.json";
+// The adapter is scaffold-owned, but its cache provider (`/cache`) ships from 3.0.2 on.
+const CACHE_ADAPTER = "@wix/astro-wix-hosting-adapter";
+const CACHE_ADAPTER_RANGE = "^3.0.2";
 
 const COPY = { recursive: true, force: false, errorOnExist: false };
 
@@ -402,6 +409,7 @@ const unknown = requested.filter((v) => !VERTICALS.includes(v));
 const wantedDeps = stack === "lib" ? { "@wix/sdk": SHARED_DEPS["@wix/sdk"] } : { ...SHARED_DEPS };
 if (uploadPolicies.length) Object.assign(wantedDeps, CAPABILITY_DEPS["media-upload"]);
 if (siteSearch) Object.assign(wantedDeps, CAPABILITY_DEPS["site-search"]);
+const routeRules = {};
 for (const vertical of requested.filter((v) => VERTICALS.includes(v))) {
   if (stack === "lib") cpSync(join(REF, vertical, "app", "wix"), join(SRC, "wix"), COPY);
   else cpSync(join(REF, vertical, "app"), SRC, COPY);
@@ -414,6 +422,8 @@ for (const vertical of requested.filter((v) => VERTICALS.includes(v))) {
     deps.core,
     stack === "astro" ? deps.astro : undefined,
   );
+  const rulesFile = join(REF, vertical, ROUTE_RULES_FILE);
+  if (stack === "astro" && existsSync(rulesFile)) Object.assign(routeRules, JSON.parse(readFileSync(rulesFile, "utf8")));
   result.verticals.push(vertical);
 }
 
@@ -461,6 +471,7 @@ if (stack === "astro" && result.verticals.length === 1 && blankStarter(PROJECT, 
 }
 
 // ---- dependency patch (fill-only) ----------------------------------------------------------------
+let hasCacheAdapter = false;
 if (result.verticals.length && existsSync(PKG_JSON)) {
   const pkg = JSON.parse(readFileSync(PKG_JSON, "utf8"));
   pkg.dependencies ??= {};
@@ -469,7 +480,20 @@ if (result.verticals.length && existsSync(PKG_JSON)) {
     ([name]) => !(name in present),
   );
   for (const [name, range] of added) pkg.dependencies[name] = range;
-  if (added.length)
+  // The one range deploy raises: caching needs an adapter with the cache provider. Without the
+  // adapter (another host) the project is not wired for Wix's cache at all.
+  const adapterField = ["devDependencies", "dependencies"].find((f) => pkg[f]?.[CACHE_ADAPTER]);
+  hasCacheAdapter = Boolean(adapterField);
+  let adapterRaised = false;
+  if (Object.keys(routeRules).length && adapterField) {
+    const floor = String(pkg[adapterField][CACHE_ADAPTER]).match(/\d+\.\d+\.\d+/)?.[0];
+    if (!floor || !satisfies(floor, `>=${CACHE_ADAPTER_RANGE.slice(1)}`)) {
+      pkg[adapterField][CACHE_ADAPTER] = CACHE_ADAPTER_RANGE;
+      adapterRaised = true;
+      result.adapterRaised = CACHE_ADAPTER_RANGE;
+    }
+  }
+  if (added.length || adapterRaised)
     writeFileSync(PKG_JSON, JSON.stringify(pkg, null, 2) + "\n");
   result.depsAdded = added.map(([name]) => name);
 } else if (result.verticals.length) {
@@ -519,6 +543,31 @@ if (stack === "astro" && result.verticals.length && existsSync(ASTRO_CONFIG)) {
   } else {
     result.astroConfig =
       "UNPATCHED — add `vite: { plugins: [tailwindcss()] }` (import from @tailwindcss/vite) to astro.config.mjs by hand";
+  }
+}
+
+// ---- astro config: cache the verticals' public routes ------------------------------------------------
+// Fill-only too: a config that already sets a cache or route rules is the owner's — a vertical added
+// later is reported, not merged in.
+if (stack === "astro" && Object.keys(routeRules).length && hasCacheAdapter && existsSync(ASTRO_CONFIG)) {
+  const config = readFileSync(ASTRO_CONFIG, "utf8");
+  const missing = Object.keys(routeRules).filter((route) => !config.includes(JSON.stringify(route)));
+  if (/\b(cache|routeRules)\s*:/.test(config)) {
+    result.cacheConfig = missing.length ? `already_set — add route rules for ${missing.join(", ")} by hand` : "already_wired";
+  } else if (config.includes("export default defineConfig({")) {
+    const rules = Object.entries(routeRules)
+      .map(([route, rule]) => `    ${JSON.stringify(route)}: ${JSON.stringify(rule)},`)
+      .join("\n");
+    const patched =
+      `import cacheWix from "${CACHE_ADAPTER}/cache";\n` +
+      config.replace(
+        "export default defineConfig({",
+        `export default defineConfig({\n  cache: { provider: cacheWix() },\n  routeRules: {\n${rules}\n  },`,
+      );
+    writeFileSync(ASTRO_CONFIG, patched);
+    result.cacheConfig = "wired";
+  } else {
+    result.cacheConfig = "UNPATCHED — add `cache: { provider: cacheWix() }` and `routeRules` to astro.config.mjs by hand";
   }
 }
 

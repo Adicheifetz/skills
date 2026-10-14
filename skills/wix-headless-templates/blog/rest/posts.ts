@@ -18,7 +18,6 @@ import {
   categoryPath,
   feedQuery,
   formatCount,
-  isNotFound,
   pickCurated,
   postMetaLine,
   postPath,
@@ -59,21 +58,14 @@ export async function fetchPosts(o: FetchPostsOptions = {}): Promise<PostPage> {
 }
 
 /**
- * One post by URL slug with the full body and SEO/comments fields. Null when the slug resolves to
- * nothing (a 404 from this read) — a real 404 for the page, never a fallback to another post; any
- * other failure throws.
+ * One post by URL slug with the full body and SEO/comments fields. A slug that resolves to nothing
+ * throws the API's 404 (test it with isNotFound from posts-core) — a real 404 for the page, never a
+ * fallback to another post; so does any other failure.
  * GET /blog/v3/posts/slugs/{slug}?fieldsets=RICH_CONTENT&fieldsets=CONTENT_TEXT&fieldsets=SEO&fieldsets=REFERENCE_ID&fieldsets=INTERNAL_ID
  * (INTERNAL_ID is the fieldset that carries referenceId; REFERENCE_ID alone returns the post without it)
  */
-export async function fetchPostBySlug(slug: string): Promise<PostDetail | null> {
-  let raw: Raw | undefined;
-  try {
-    raw = (await wixRequest<Raw>(`/blog/v3/posts/slugs/${encodeURIComponent(slug)}`, { method: "GET", query: { fieldsets: DETAIL_FIELDSETS } }))?.post;
-  } catch (e) {
-    if (isNotFound(e)) return null;
-    throw e;
-  }
-  if (!raw) return null;
+export async function fetchPostBySlug(slug: string): Promise<PostDetail> {
+  const raw = (await wixRequest<Raw>(`/blog/v3/posts/slugs/${encodeURIComponent(slug)}`, { method: "GET", query: { fieldsets: DETAIL_FIELDSETS } })).post;
   const [detail] = await withPageAuthors([toDetail(raw, imgSrc)]);
   return detail;
 }

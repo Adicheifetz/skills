@@ -57,22 +57,14 @@ export async function fetchTagsByIds(ids: readonly string[]): Promise<BlogTag[]>
 // The two by-slug getters return DIFFERENT envelopes upstream ({ category } vs { tag } here;
 // getTag(id) even returns the tag bare) — the mapping below absorbs that asymmetry once.
 
-/** One category by its URL slug. Null when not found. */
-export async function fetchCategoryBySlug(slug: string): Promise<BlogCategory | null> {
-  try {
-    const res = await categories.getCategoryBySlug(slug);
-    return res.category ? toCategory(res.category as Raw, imgSrc) : null;
-  } catch {
-    return null;
-  }
+/** One category by its URL slug. A missing slug throws the API's not-found error; so does any other failure. */
+export async function fetchCategoryBySlug(slug: string): Promise<BlogCategory> {
+  const res = await categories.getCategoryBySlug(slug);
+  return toCategory(res.category as Raw, imgSrc);
 }
 
-/** One tag by its URL slug. Null when not found. */
-export async function fetchTagBySlug(slug: string): Promise<BlogTag | null> {
-  try {
-    const res = await tags.getTagBySlug(slug);
-    return res.tag ? toTag(res.tag as Raw) : null;
-  } catch {
-    return null;
-  }
+/** One tag by its URL slug. A missing slug throws the API's not-found error; so does any other failure. */
+export async function fetchTagBySlug(slug: string): Promise<BlogTag> {
+  const res = await tags.getTagBySlug(slug);
+  return toTag(res.tag as Raw);
 }
