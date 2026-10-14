@@ -6,7 +6,7 @@ description: >-
   Bulk Invite may be refused on the test account; the judge scores the call
   sequence.
 triggerPrompt: >-
-  Invite eval-remove@example.com to my Wix site as a collaborator with any
+  Invite hadarza@wix.com to my Wix site as a collaborator with any
   standard role, then remove that person from the site right away.
 tags: [collaborators]
 siteSetup:
@@ -20,7 +20,7 @@ assertions:
     minScore: 7
     maxTokens: 2048
     prompt: |
-      The user asked the agent to invite eval-remove@example.com and then
+      The user asked the agent to invite hadarza@wix.com and then
       "remove that person" right away. The person has only been invited, never
       accepted, so the correct way to undo it is to cancel the invite.
 

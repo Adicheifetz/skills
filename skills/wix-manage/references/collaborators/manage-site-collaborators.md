@@ -8,12 +8,16 @@ description: Manages who has access to a Wix site as a collaborator (contributor
 Changes who can work on a site: invite a collaborator, remove one, or resend / revoke an invitation that has not been accepted yet.
 
 ## API Endpoints
-- `GET https://www.wixapis.com/roles-management/roles` — look up role IDs for invites
-- `GET https://www.wixapis.com/roles-management/v2/contributors/query` — list the site's collaborators
-- `POST https://www.wixapis.com/invites/site-invite/bulk` — send invites (returns the `inviteId`s)
-- `POST https://www.wixapis.com/roles-management/contributor/remove` — remove a collaborator
-- `POST https://www.wixapis.com/invites/site-invite/{inviteId}/resend` — resend a pending invite
-- `POST https://www.wixapis.com/invites/site-invite/{inviteId}/revoke` — revoke a pending invite
+Each call runs at one of two scopes. Use the scope shown. A site call is made with site scope and the site ID in the tool's site ID parameter; that is the only way the site reaches Wix, so never add a site ID to the request body. An account call is made with account scope, which ignores the site ID.
+
+| Scope | Call | Purpose |
+|---|---|---|
+| Site | `GET https://www.wixapis.com/roles-management/v2/contributors/query` | list the site's collaborators |
+| Site | `POST https://www.wixapis.com/roles-management/contributor/remove` | remove a collaborator |
+| Account | `GET https://www.wixapis.com/roles-management/roles` | look up role IDs for invites |
+| Site | `POST https://www.wixapis.com/invites/site-invite/bulk` | send invites (returns the `inviteId`s) |
+| Site | `POST https://www.wixapis.com/invites/site-invite/{inviteId}/resend` | resend a pending invite |
+| Site | `POST https://www.wixapis.com/invites/site-invite/{inviteId}/revoke` | revoke a pending invite |
 
 Docs: [Contributors](https://dev.wix.com/docs/api-reference/account-level/user-management/sites/contributors/introduction), [Site Invites](https://dev.wix.com/docs/api-reference/account-level/user-management/sites/site-invites/introduction)
 
@@ -23,7 +27,7 @@ Docs: [Contributors](https://dev.wix.com/docs/api-reference/account-level/user-m
 - **Never call Remove Contributor, revoke or resend until you have the exact ID from the user or from an earlier response.** Look-ups by email or name are not possible, so ask first. If the user names someone only by email or name, read this recipe, then reply asking for the account ID (and how to find it) — at most one Query Site Contributors call, and do not search other APIs for an email-to-account lookup or try bulk or guessed deletes. Your final message must say that collaborators can only be identified by account ID, and ask the user to provide it — even if the query failed or returned nothing useful.
 - **Collaborators are identified by account ID, not email.** Query Site Contributors returns only `accountId` and `accountOwnerId` per collaborator. If the user names a collaborator by email or name, ask them for that person's account ID, or for how to find it, before removing anyone. Do not guess which account ID belongs to which person.
 - **Invites are identified by `inviteId`.** There is no endpoint to list a site's pending invites. The `inviteId` is returned when the invite is created (`invites[].id` in the Bulk Invite response, Step 6) — keep it if you will need to resend or revoke later in the conversation. If the user does not have it, say that it cannot be looked up through the API and ask them to provide it.
-- **Bulk Invite, resend and revoke are account-level calls.** Make them with account scope, not site scope. If a call is still rejected for authorization, the most likely cause is that these endpoints require an account-level API key rather than a site-level token — tell the user this.
+- **Get Roles is the only account-level call** (account scope). Query Site Contributors, Remove Contributor, Bulk Invite, resend and revoke are site-level: make them with site scope and the site ID. Never make Bulk Invite, resend or revoke with account scope: the site is dropped and Wix rejects the call with a missing-site error. If a call is still rejected (403), the cause is not always visible in the response; stop, tell the user the call was refused, and do not call the later steps of the flow.
 
 ## Steps
 
@@ -74,7 +78,7 @@ The response is `{}` on success.
 
 ### 4. Revoke a pending invite
 
-When the user named the invite (or you created it earlier in this conversation and hold its `inviteId`), call it directly, with no body. Ask only if you cannot tell which invite is meant:
+When the user named the invite (or you created it earlier in this conversation and hold its `inviteId`), call it directly with an empty JSON body `{}`. Ask only if you cannot tell which invite is meant:
 
 ```
 POST https://www.wixapis.com/invites/site-invite/{inviteId}/revoke
@@ -84,7 +88,7 @@ The response is `{}`. Revoke applies to pending invites only; if the person has 
 
 ### 5. Resend a pending invite
 
-When the user named the invite (or you created it earlier in this conversation and hold its `inviteId`), call it directly, with no body. Ask only if you cannot tell which invite is meant:
+When the user named the invite (or you created it earlier in this conversation and hold its `inviteId`), call it directly with an empty JSON body `{}`. Ask only if you cannot tell which invite is meant:
 
 ```
 POST https://www.wixapis.com/invites/site-invite/{inviteId}/resend
@@ -94,7 +98,7 @@ The response contains the invite: `invite.id`, `invite.email`, `invite.status` (
 
 ### 6. Send an invite
 
-Ask the user for the email address(es) (1–10) and which role to grant; `policyIds` are role IDs, not names. Look them up with `GET https://www.wixapis.com/roles-management/roles` ([Get Roles Info](https://dev.wix.com/docs/api-reference/account-level/user-management/accounts/users/get-roles-info)), which returns `predefinedRoles` and `customRoles`; use the ID of the role the user chose, and do not guess an ID. If the user said "any" or "a standard role", use the least-privileged entry in `predefinedRoles`; if they gave no role at all, ask which one. Once you have the emails and a role, send the invite without asking for confirmation:
+Ask the user for the email address(es) (1–10) and which role to grant; `policyIds` are role IDs, not names. Look them up with `GET https://www.wixapis.com/roles-management/roles` ([Get Roles Info](https://dev.wix.com/docs/api-reference/account-level/user-management/accounts/users/get-roles-info)), which returns `predefinedRoles` and `customRoles`. Add `?filter.role_level=SITE_LEVEL` to list only site roles. Each entry is `{ "id": "<role id>", "title": "...", "description": "..." }`; use the ID of the role the user chose, and do not guess an ID. If the user said "any" or "a standard role", pick from `predefinedRoles` the role whose `description` grants the least access (view or content editing, not managing, billing or ownership) and name its `title` in your final message; if they gave no role at all, ask which one. Once you have the emails and a role, send the invite without asking for confirmation:
 
 ```
 POST https://www.wixapis.com/invites/site-invite/bulk
@@ -118,7 +122,7 @@ The APIs cannot tell who is talking to you, so you need the user's own `accountI
 State what was done, to which account or email, and the outcome. Do not show raw IDs unless the user asks. Always say which of these happened:
 
 - **Succeeded**, e.g. "The invite for james@bond.com has been canceled."
-- **Failed**, e.g. "I couldn't resend the invite for james@bond.com. Please try again." If the call returns 403, say so and that these calls usually need an account-level API key.
+- **Failed**, e.g. "I couldn't resend the invite for james@bond.com. Please try again." If the call returns 403, say so; do not guess a cause.
 - **Not done**, with the reason, e.g. "That account is not a collaborator on this site, so there was nothing to remove." or "That is the site owner's account, which cannot be removed without transferring ownership."
 
 For resend, read `invite.status` in the response: if it is `Used`, the person already accepted and is now a collaborator, so say they already have access rather than that the invite was resent; `Declined`, `Expired` or `Deleted` mean the invite is no longer pending.
