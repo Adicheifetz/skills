@@ -213,6 +213,23 @@ test('across packages that export one namespace, the module map package wins ove
   });
 });
 
+test('with no module map row, the package named after the namespace wins, then one with a description', () => {
+  const categories = (pkg, vertical, doc) => {
+    const auto = `auto_sdk_${vertical}_categories`;
+    const id = auto.replace(/-/g, '_');
+    pkg(auto, { 'index.typings.d.ts': `${doc ? `/** ${doc} */\n` : ''}interface Category {\n    _id?: string | null;\n}\n` }, { wix: { sdkDependency: { fqdn: `wix.${vertical}.v1.category` } } });
+    pkg(vertical, { 'index.d.ts': `import * as ${id} from '@wix/${auto}';\nexport { ${id} as categories };\n` }, { dependencies: { [`@wix/${auto}`]: '1.0.0' } });
+  };
+  scratchProject('sdk-lookup-namesake-', ['blog', 'categories', 'events'], (pkg, lookup) => {
+    categories(pkg, 'blog', null);
+    categories(pkg, 'categories', 'A category for organizing items into a hierarchical structure.');
+    categories(pkg, 'events', 'A Category groups related events.');
+    const out = lookup('categories').stdout;
+    assert.match(out, /^use {3}categories \(@wix\/categories\) — [^\n]*the package named after it/m);
+    assert.ok(out.indexOf('(@wix/events)') < out.indexOf('(@wix/blog)'), 'a package with a description comes before one without');
+  });
+});
+
 test('one package with two namespaces gets no description line', () => {
   assert.doesNotMatch(run('contacts', '--intent', 'search').out, /several packages export this name|no description/);
 });

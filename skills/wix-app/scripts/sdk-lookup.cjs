@@ -723,17 +723,25 @@ function lookup(term, intent, pkgs, curated) {
 
   const preferRule = prefer && candidates.some((c) => c.ns.namespace === prefer.choice.prefer) ? prefer : null;
   // Several packages can export the same namespace (orders: ecom, pricing-plans,
-  // events). Across packages the module map's package wins, then the package
-  // name, so the order never depends on which package is read first. The API
+  // events). Across packages the module map's package wins; with no map row,
+  // the package named after the namespace (@wix/categories, not @wix/blog),
+  // then a package whose entity has a description; then the package name, so
+  // the order never depends on which package is read first. The API
   // version and a search method rank only the namespaces of one package
   // (contacts vs contactsV5): across packages they say nothing about the feature.
   const packages = new Set(candidates.filter((c) => c.ns.namespace).map((c) => c.ns.from));
   const mapPackage = packages.size > 1 ? moduleMapRow(term)?.package : null;
+  const namesake = (c) =>
+    packages.size > 1 && !!c.ns.namespace && norm(c.ns.from.replace(/^@wix\//, '')) === baseOf(c.ns.namespace);
+  // Per package, not per namespace, so it never reorders one package's namespaces.
+  const described = new Set(candidates.filter((c) => c.record.type?.description).map((c) => c.ns.from));
   const score = (c) => [
     c.record.maturity === 'PREVIEW' || reasons.get(c).includes('deprecated') ? 0 : 1,
     preferRule && c.ns.namespace === preferRule.choice.prefer ? 1 : 0,
     c.ns.namespace ? 1 : 0,
     mapPackage && c.ns.from === mapPackage ? 1 : 0,
+    namesake(c) ? 1 : 0,
+    packages.size > 1 && described.has(c.ns.from) ? 1 : 0,
   ];
   const withinPackage = (c) => [
     intent === 'search' && c.record.methods.some((m) => m.kind === 'search') ? 1 : 0,
@@ -750,6 +758,7 @@ function lookup(term, intent, pkgs, curated) {
   });
   if (preferRule) why(candidates[0], 'curated');
   else if (mapPackage && candidates[0].ns.from === mapPackage) why(candidates[0], 'the module map package');
+  else if (namesake(candidates[0])) why(candidates[0], 'the package named after it');
   if (packages.size > 1) {
     for (const c of candidates.filter((c) => c.ns.namespace)) c.description = c.record.type?.description ?? null;
   }
