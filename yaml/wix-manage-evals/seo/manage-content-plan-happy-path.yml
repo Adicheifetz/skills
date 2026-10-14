@@ -23,7 +23,9 @@ assertions:
       - One trigger returns an actual flow ID and status proves SUCCESS for that
         same flow before its candidates are read.
       - The reply gives actual returned topics, available briefData keywords and
-        supporting URLs, count, flow ID and observed SUCCESS. Weak titles are
+        supporting URLs, count, flow ID and completion consistent with observed
+        SUCCESS. The status evidence belongs in the actual API trace; the reply
+        can say "complete" without repeating the literal SUCCESS enum. Weak titles are
         still actual results; fabricated replacements or promises do not pass.
       - No unproved release or replacement trigger occurs. CONTENT_PLAN/SUCCESS
         skips release. Any recovery requires supported proof that this flow's

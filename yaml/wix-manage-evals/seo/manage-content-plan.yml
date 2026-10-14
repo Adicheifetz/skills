@@ -6,7 +6,8 @@ description: >-
 triggerPrompt: >-
   My SEO content plan flow has been stuck at KEYWORD_RESEARCH for 10 minutes.
   I've been polling GetContentPlanFlow and the status never changes.
-  What's wrong and how do I get it to finish?
+  Do I need a different API call, or can I use the keyword-items list to tell
+  when to release it? What's the safe next step?
 tags: [seo, content-plan]
 assertions:
   - tool: ReadFullDocsArticle
@@ -20,22 +21,28 @@ assertions:
       Completion previews may be truncated; missing preview text is not missing
       reply content. Use the tool-call trace for API and status evidence.
 
-      Judge the user's recovery needs, not exact wording or endpoint spellings.
-      Score 7-8 only when the full reply and trace meet these outcomes:
+      Judge specific content-plan troubleshooting knowledge, not generic caution.
+      Score 7-8 only when the full reply and trace meet all these outcomes:
       - Ask for the actual flow ID and make no API call before obtaining it.
-      - Explain research may be running or complete; unchanged status or elapsed
-        time alone proves neither readiness nor failure.
-      - Give a safe next step: read the actual flow's status and explain that
-        recovery needs proof of matching research SUCCESS. An honest inability
-        to prove that prerequisite with supported public capabilities is valid;
-        do not require a keyword-list heuristic or an executable release recipe.
-      - Avoid premature/repeated release, replacement triggers, guessed-ID calls,
-        indefinite polling and promised completion. Later CONTENT_PLAN/SUCCESS
-        needs no release.
-      Score 9-10 for clear actionable follow-up and bounded preserve/resume
-      guidance, including the premature-428/no-repeat distinction where relevant.
-      Wrong core guidance or unsafe behavior scores below 7. Cite specific missing
-      substance and acknowledge what the full reply contains.
+      - Explain KEYWORD_RESEARCH begins before research completes; unchanged
+        status or elapsed time alone proves neither readiness nor failure.
+      - Identify Create Content Plan on Blog Post Candidate as distinct from the
+        Content Plan Flow status read, and explain its prerequisite: this flow's
+        matching keyword research must have status SUCCESS before release.
+      - Explain why the public keyword-items list cannot establish that
+        prerequisite here: it is a post-completion, site-scoped read, not a
+        per-research status read. Its items alone do not authorize release.
+      - Give the next action with the actual ID: inspect the flow's status;
+        CONTENT_PLAN/SUCCESS needs no release. If still at the keyword stage
+        without supported matching readiness proof, report that specific public
+        API limitation and preserve progress rather than guess or mutate.
+      Score below 7 for generic "can't help"/stall caution without these specific
+      cross-service and keyword-list limitations, missing the actual-ID request,
+      premature/repeated release, replacement triggers, guessed-ID execution,
+      indefinite polling or promised completion. Score 9-10 for a concise
+      actionable explanation including premature-428/no-repeat handling where
+      relevant. Do not require an unproved executable recovery procedure.
+      Cite concrete missing substance and acknowledge what the full reply contains.
 
       Full final reply (evaluate this, not the completion preview):
       {{output}}

@@ -1,6 +1,6 @@
 ---
 name: "Generate and Read a Wix Site's Content Plan"
-description: "Generate an SEO content plan for a Wix site, read its suggested blog post topics and keywords, and troubleshoot or resume an existing generation flow."
+description: "Generate an SEO content plan for a Wix site, read suggested blog post topics and keywords, and diagnose generation status and public API limitations."
 ---
 
 # Generate and Read a Wix Site's Content Plan
@@ -19,7 +19,7 @@ Settings**; execute them when the user requests the change or confirms it. Never
 change business data or publication state just to accelerate generation.
 Substitute actual returned IDs for example placeholders before executing calls.
 
-## 1. Trigger or resume
+## 1. Trigger or inspect an existing flow
 
 For new generation, trigger once:
 
@@ -71,7 +71,8 @@ failure. End the turn for a later requested resume; do not restart automatically
 
 | Observed status | Action |
 | --- | --- |
-| `CREATED`, `SITE_ANALYSIS`, `SITE_SUMMARY`, `KEYWORD_RESEARCH` | Continue paced checks within the window. |
+| `CREATED`, `SITE_ANALYSIS`, `SITE_SUMMARY` | Continue paced checks within the window. |
+| `KEYWORD_RESEARCH` | Continue paced checks for possible automatic progress; see [keyword-stage troubleshooting](#a-flow-remains-at-keyword_research) before considering release. |
 | `CONTENT_PLAN` | Continue paced checks; skip release. |
 | `SUCCESS` | Stop waiting and read candidates. |
 | `PENDING_REQUIREMENTS` | Stop; report the actual unmet requirement. Never invent site data. |
@@ -105,8 +106,10 @@ Omit `paging` to return all candidates. Read titles and keywords from `briefData
 }
 ```
 
-Report the actual flow ID, observed `SUCCESS`, count, and returned titles,
-keywords, main keywords and clickable supporting URLs. Label any shortened subset.
+The final reply must give the actual flow ID, observed completion and count,
+followed by a table with **Title | Keyword | Main keyword | Supporting URL**.
+Populate all four columns from `briefData`, with clickable supporting URLs;
+a titles-only or titles/main-keywords table is incomplete. Label any shortened subset.
 Absent fields are unavailable; do not invent them. `pageUrl` supports an existing
 page, not a newly published post. Explain weak or repetitive results honestly;
 successful generation does not establish editorial quality or promise rankings.
@@ -117,17 +120,22 @@ successful generation does not establish editorial quality or promise rankings.
 Research may still be running or may await another action. Status and elapsed
 time alone prove neither readiness nor failure. Obtain the actual ID first, then
 read its status; skip release if it has advanced to `CONTENT_PLAN` or `SUCCESS`.
+New generation can still progress automatically: continue its bounded status
+checks rather than treating this stage alone as a failed or parked flow.
 
 The documented `POST https://www.wixapis.com/seo-content-plan-service/v1/create-content-plan`
 requires the flow's matching keyword research to have status `SUCCESS`. It belongs
 to Blog Post Candidate, distinct from the Content Plan Flow being polled.
 [Create Content Plan](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-blog-post-candidate-v1/create-content-plan).
 
-This recipe has no supported public research-status read that proves that
-prerequisite before flow completion. Do not use the keyword list below as a
+A stuck `KEYWORD_RESEARCH` flow without further readiness evidence cannot be
+safely released through the public APIs described here. This recipe has no
+supported public research-status read that proves the prerequisite before flow
+completion. Do not use the keyword list below as a
 readiness heuristic, call private endpoints or attempt release to test readiness.
 If available supported capabilities cannot prove matching research `SUCCESS`,
-report the actual flow status and this limitation; stop without a mutation.
+report the actual flow status and this limitation; stop the recovery attempt
+without a mutation. This does not prohibit the bounded status monitoring above.
 
 Any independently supported recovery must confirm matching research `SUCCESS`
 and freshly read the same flow still at `KEYWORD_RESEARCH` before one authorized
@@ -151,6 +159,9 @@ No parameters are required; omit optional `paging` for all items. Match returned
 item IDs before editing. A mismatch or HTTP `404` is not permission to edit or
 retry immediately. This is a post-completion read, not a pre-completion readiness
 test.
+The list is site-scoped and returns the latest research, not per-research status.
+Its reserved `contentPlanFlowId` query field is ignored; it cannot target an older
+flow or prove that flow's readiness.
 [List Keyword Research Items](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-keyword-research-v1/list-keyword-research-items).
 
 Only `keyword` and `mainKeyword` are writable, using a field mask.
