@@ -6,8 +6,8 @@ description: >-
 triggerPrompt: >-
   My SEO content plan flow has been stuck at KEYWORD_RESEARCH for 10 minutes.
   I've been polling GetContentPlanFlow and the status never changes.
-  Do I need a different API call, or can I use the keyword-items list to tell
-  when to release it? What's the safe next step?
+  Please inspect my existing flow and tell me the safe next step. Do I need a
+  different API call, or can I use the keyword-items list to tell when to release it?
 tags: [seo, content-plan]
 assertions:
   - tool: ReadFullDocsArticle
@@ -32,7 +32,10 @@ assertions:
       - Explain why the public keyword-items list cannot establish that
         prerequisite here: it is a post-completion, site-scoped read, not a
         per-research status read. Its items alone do not authorize release.
-      - Give the next action with the actual ID: inspect the flow's status;
+      - Give the concrete diagnostic rule: do not call Create Content Plan to
+        recover this stuck flow through this recipe; no public research-status
+        read is supplied to prove the prerequisite. With the actual ID, inspect
+        the flow's status;
         CONTENT_PLAN/SUCCESS needs no release. If still at the keyword stage
         without supported matching readiness proof, report that specific public
         API limitation and preserve progress rather than guess or mutate.

@@ -1,6 +1,6 @@
 ---
 name: "Generate and Read a Wix Site's Content Plan"
-description: "Generate an SEO content plan for a Wix site, read suggested blog post topics and keywords, and diagnose generation status and public API limitations."
+description: "Generate an SEO content plan for a Wix site, read suggested blog post topics and keywords, and diagnose a generation flow that appears stuck."
 ---
 
 # Generate and Read a Wix Site's Content Plan
@@ -18,6 +18,12 @@ Use the selected site's authorization context. Writes require **Manage SEO
 Settings**; execute them when the user requests the change or confirms it. Never
 change business data or publication state just to accelerate generation.
 Substitute actual returned IDs for example placeholders before executing calls.
+If a request tool needs `siteId`, copy the actual selected or supplied site ID;
+never derive it from `contentPlanFlowId`.
+The `/seo-content-plan-service/v1` paths below match the linked official REST
+references. Trigger, status, candidate and research reads were also verified
+through Wix's official API Playground; the keyword-edit example matches its
+linked method schema. These replace the older `/promote/seo/v1` aliases.
 
 ## 1. Trigger or inspect an existing flow
 
@@ -117,6 +123,11 @@ successful generation does not establish editorial quality or promise rankings.
 
 ## A flow remains at KEYWORD_RESEARCH
 
+If the actual flow ID was not supplied, explicitly ask the user to send
+`contentPlanFlowId` in your first reply, before any API call. Merely telling them
+to "use the same ID" is not a request for the missing ID. Briefly explain the
+diagnostic limit below, then end the turn until the ID arrives.
+
 Research may still be running or may await another action. Status and elapsed
 time alone prove neither readiness nor failure. Obtain the actual ID first, then
 read its status; skip release if it has advanced to `CONTENT_PLAN` or `SUCCESS`.
@@ -128,23 +139,21 @@ requires the flow's matching keyword research to have status `SUCCESS`. It belon
 to Blog Post Candidate, distinct from the Content Plan Flow being polled.
 [Create Content Plan](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-blog-post-candidate-v1/create-content-plan).
 
-A stuck `KEYWORD_RESEARCH` flow without further readiness evidence cannot be
-safely released through the public APIs described here. This recipe has no
-supported public research-status read that proves the prerequisite before flow
-completion. Do not use the keyword list below as a
-readiness heuristic, call private endpoints or attempt release to test readiness.
-If available supported capabilities cannot prove matching research `SUCCESS`,
-report the actual flow status and this limitation; stop the recovery attempt
-without a mutation. This does not prohibit the bounded status monitoring above.
+**Do not call Create Content Plan to recover a flow reported stuck at
+`KEYWORD_RESEARCH` through this recipe.** The documented prerequisite is matching
+research `SUCCESS`, but no public research-status read is provided here. The
+keyword-items list is a post-completion, site-scoped read; its items cannot prove
+that prerequisite. Report the actual flow ID/status and the missing public
+readiness capability, then stop the recovery attempt without a mutation.
 
-Any independently supported recovery must confirm matching research `SUCCESS`
-and freshly read the same flow still at `KEYWORD_RESEARCH` before one authorized
-release. Never repeat a known release or assume unknown history permits one. A
-premature attempt can return HTTP `428`; inspect the actual error and recheck
-status with paced waiting, never retry the POST. Stop on actual cancellation.
-A successful release response is not completion; preserve any different returned
-flow ID without claiming the original completed. Never retrigger to
-bypass an unresolved prerequisite.
+This is a concrete diagnostic limit, not an instruction to search for an unnamed
+recovery method. Do not call private endpoints, release to test readiness, or
+trigger a replacement. Bounded status monitoring for possible automatic progress
+remains valid; a monitoring timeout alone proves neither a stall nor failure.
+If a previous release returned HTTP `428`, inspect its error and make a paced
+status check, without retrying the POST. Stop on actual cancellation. A successful
+release response by itself would not prove completion; never claim a different
+returned flow completed the original.
 
 ## Editing keywords after completion (optional)
 

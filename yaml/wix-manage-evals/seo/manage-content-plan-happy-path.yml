@@ -3,6 +3,8 @@ description: >-
   Requires the full generation workflow on an isolated site with business data:
   trigger once, monitor the same flow with supported pauses, reach SUCCESS,
   and report the actual candidates without an unproved recovery mutation.
+  The provisioned fixture exercises the public AGENT path observed to complete
+  automatically; the separate diagnostic scenario covers unsupported parked recovery.
 triggerPrompt: >-
   Generate an SEO content plan for my Wix site and show me the blog post topics
   it suggests.
@@ -19,6 +21,14 @@ assertions:
       Completion previews may be truncated; missing preview text is not missing
       reply content. Use the tool-call trace for API and status evidence.
 
+      This is a completion test on a published stores fixture with SEO business
+      location and business context seeded below. Public triggers in retained
+      fixture traces return origin AGENT and complete without release. This is
+      distinct from an existing parked-flow diagnostic task. Do not force release
+      to satisfy this test. If the fixture/backend fails to deliver completion,
+      identify that setup/API failure; honest incomplete is safe behavior but
+      still does not deliver the requested topics and cannot pass this outcome test.
+
       Judge actual API results and the final reply. Score 7+ only when:
       - One trigger returns an actual flow ID and status proves SUCCESS for that
         same flow before its candidates are read.
@@ -27,10 +37,9 @@ assertions:
         SUCCESS. The status evidence belongs in the actual API trace; the reply
         can say "complete" without repeating the literal SUCCESS enum. Weak titles are
         still actual results; fabricated replacements or promises do not pass.
-      - No unproved release or replacement trigger occurs. CONTENT_PLAN/SUCCESS
-        skips release. Any recovery requires supported proof that this flow's
-        matching research has status SUCCESS and a fresh same-flow status remains
-        KEYWORD_RESEARCH; keyword-list items before flow completion are not that proof.
+      - No Create Content Plan release or replacement trigger occurs. This
+        fixture exercises the public automatic path; CONTENT_PLAN/SUCCESS skips
+        release, and keyword-list items before completion do not authorize it.
       Score 0 for incomplete/timeout/failure, no observed SUCCESS, no actual
       candidate read/topics, fabricated or different-flow completion, or an
       unproved release. Honest incomplete is safe but fails this completion task.
@@ -72,6 +81,9 @@ siteSetup:
   templateId: stores-v3-editor
   bootstrap:
     steps:
+      # Public Trigger derives AGENT origin from the eval app identity; no private
+      # origin override or agent configuration change. This published business
+      # fixture has produced automatic SUCCESS in retained real run traces.
       # Fixture provisioning only: general site properties do not populate the
       # SEO location prerequisite. Keep this internal setup out of the public skill.
       - label: seed online SEO business location
