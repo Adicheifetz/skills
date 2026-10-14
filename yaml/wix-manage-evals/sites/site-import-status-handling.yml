@@ -36,6 +36,6 @@ assertions:
       Fail if the response:
       - treats AUTH_EXPIRED (or any non-DEPLOYED status) as success or "your site is live", OR
       - immediately builds/creates a site with a different tool (e.g. create-site-from-template,
-        WixSiteBuilder, CreateSiteFromTemplate, pullSiteCreationJob) to check on or replace the import, OR
+        GenerateWithHarmony, CreateFromEditorTemplate, pullSiteCreationJob) to check on or replace the import, OR
       - exposes raw ids/JSON/HTTP codes as the primary user-facing answer, OR
       - is generic with no reference to the AUTH_EXPIRED recovery via Start.

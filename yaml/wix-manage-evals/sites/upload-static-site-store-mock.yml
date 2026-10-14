@@ -19,7 +19,7 @@ triggerPrompt: >-
   <a href="#cart">Cart (0)</a></body></html>
 tags: [sites]
 assertions:
-  - tool: CreateSiteFromTemplate
+  - tool: CreateFromEditorTemplate
     negate: true
   - type: llm_judge
     minScore: 7

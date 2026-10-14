@@ -17,7 +17,7 @@ triggerPrompt: >-
   Studio</h1><p>Brand and web design for small teams.</p><p>hello@northwind.studio</p></body></html>
 tags: [sites]
 assertions:
-  - tool: CreateSiteFromTemplate
+  - tool: CreateFromEditorTemplate
     negate: true
   - type: llm_judge
     minScore: 7

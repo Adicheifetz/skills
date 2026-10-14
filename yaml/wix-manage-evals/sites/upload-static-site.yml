@@ -12,7 +12,7 @@ triggerPrompt: >-
   script.js on my computer. I don't have a Wix site yet. How do I get these files live on Wix?
 tags: [sites]
 assertions:
-  - tool: CreateSiteFromTemplate
+  - tool: CreateFromEditorTemplate
     negate: true
   - type: llm_judge
     minScore: 7
