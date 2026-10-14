@@ -29,8 +29,8 @@ assertions:
       - Explain that KEYWORD_RESEARCH means research has started and may still
         run; elapsed time alone proves neither readiness nor failure.
       - Explain the safe next action with that ID: inspect the existing flow,
-        read its matching research's own status via Get Site Keyword Research
-        using the flow's keywordResearchId, and wait for research SUCCESS before
+        read the matching research's own status separately from flow status,
+        and wait for research SUCCESS before
         Create Content Plan. Flow status or keyword-list items alone do not prove
         readiness. Recheck the same flow and release at most once only if it is
         still KEYWORD_RESEARCH; CONTENT_PLAN/SUCCESS skips release.
@@ -41,6 +41,9 @@ assertions:
       completion. Score 9-10 for concise actionable guidance and relevant
       428/unsupported-read handling. Do not require literal service labels,
       every terminal enum or a hypothetical JSON request before the ID arrives.
+      Naming Get Site Keyword Research or keywordResearchId is helpful but not
+      required if checking this exact flow's matching research status is clear.
+      Saying only to wait or read keywords without a matching status check fails.
       Cite actual missing substance and acknowledge the full reply's contents.
 
       Full final reply (evaluate this, not the completion preview):

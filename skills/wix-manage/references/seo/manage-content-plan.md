@@ -11,7 +11,10 @@ A content plan contains suggested blog post briefs, not published posts.
 **Existing-flow entry gate:** without that job's actual `contentPlanFlowId`,
 ask the user for it and end the turn after a concise diagnosis. Do not search
 for a site-level fallback or make API calls to avoid asking. The site's latest
-successful flow would not identify the user's parked job. A retained REST call
+successful flow would not identify the user's parked job. Explain the next step:
+with that ID, read the flow's `keywordResearchId`, use Get Site Keyword Research
+to check that matching research's own status, and release once only after research
+`SUCCESS` and a fresh matching `KEYWORD_RESEARCH` flow check. A retained REST call
 to `GET https://www.wixapis.com/seo-content-plan-service/v1/content-plan-flows`
 without an ID returned `404 Resource not found`; do not use it as ID discovery.
 
@@ -30,11 +33,13 @@ The `/seo-content-plan-service/v1` paths below match the linked official REST
 references. The Endpoint section of the
 [Trigger REST reference](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-content-plan-flow-v1/trigger-content-plan-generation-flow)
 documents `POST https://www.wixapis.com/seo-content-plan-service/v1/content-plan-flows/trigger`.
-The exact-ID research-status read below follows the public Get Site Keyword
-Research schema and request example merged in
-[the API contract change](https://github.com/wix-private/promote-seo/pull/15533).
-It is distinct from List Keyword Research Items. If unavailable in the caller's
-runtime, report that limitation rather than substituting a private endpoint.
+The exact-ID Get Site Keyword Research read below was verified with Wix MCP's
+public method schema: GET `/v1/site-keyword-research`, optional
+`keywordResearchId` query, and `siteKeywordResearch` response. The schema's public
+server mapping uses `https://www.wixapis.com/seo-content-plan-service`. This API
+has no `/promote/seo/v1` alias in its mappings. Its docs-menu publication is still
+pending; if unavailable in the caller's runtime, report the error without a
+private fallback. List Keyword Research Items is a different method.
 
 ## 1. Trigger or inspect an existing flow
 
@@ -143,7 +148,8 @@ POST https://www.wixapis.com/seo-content-plan-service/v1/create-content-plan
 Record the attempt before sending. Concurrent/repeated calls can duplicate plans.
 If release history is uncertain, ask rather than send another POST. Check HTTP
 status and response `success`; `false` requires reporting `message`, not claiming
-completion. A `428` can mean research is not ready: inspect its actual error and
+completion. The Create reference lists `428 Failed Precondition`; a retained
+premature call also returned 428. Inspect its actual error and
 make a paced status recheck; do not retry the POST in a loop. Other errors or an
 uncertain response require reporting the attempt, not repeating it.
 
