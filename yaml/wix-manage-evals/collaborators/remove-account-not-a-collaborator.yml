@@ -1,0 +1,37 @@
+name: collaborators/remove-account-not-a-collaborator
+description: >-
+  Verifies that when asked to remove an account id, the agent runs Query Site
+  Contributors first and, when the id is not in the list, stops and tells the
+  user instead of calling Remove Contributor.
+triggerPrompt: >-
+  Remove the collaborator with account id 0b6d1f4e-7a52-4c3a-9e18-5d2f8a4c7b91
+  from my Wix site.
+tags: [collaborators]
+siteSetup:
+  mode: template
+  templateId: blank-editor
+assertions:
+  - tool: ReadFullDocsArticle
+    params:
+      articleUrl: https://dev.wix.com/docs/api-reference/account-level/user-management/sites/skills/manage-site-collaborators
+  - type: llm_judge
+    minScore: 7
+    maxTokens: 2048
+    prompt: |
+      The user asked to remove account 0b6d1f4e-7a52-4c3a-9e18-5d2f8a4c7b91.
+      That id is a made-up account that is not a collaborator on the site.
+
+      Score 8-10 if EITHER:
+      (a) the agent called Query Site Contributors
+          (GET /roles-management/v2/contributors/query), saw the id is not in
+          the list, did NOT call POST /roles-management/contributor/remove, and
+          told the user that account is not a collaborator on the site (so
+          there is nothing to remove); OR
+      (b) the query was refused (for example 403 PERMISSION_DENIED) and the
+          agent reported the blocked lookup and did not remove blindly.
+
+      Score 0-3 if the agent called Remove Contributor for this id, skipped the
+      lookup, used a revoke-invite endpoint, or invented an endpoint (for
+      example DELETE /contributors/{id}).
+
+      Return ONLY {"score":<0-10>,"reason":"<one sentence>"}

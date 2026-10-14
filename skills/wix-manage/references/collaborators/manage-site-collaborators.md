@@ -41,7 +41,7 @@ Removal works only on existing collaborators; revoke and resend work only on pen
 
 **When the user names the person only by email**, work out what that email is before acting:
 
-1. **Invited earlier in this conversation?** If the email matches an `invites[].email` from a Bulk Invite response you received, you have its `inviteId`: treat the person as an invitee (Step 4 or 5). If the user asked to *remove* them, cancel the invite (Step 4) after confirming.
+1. **Invited earlier in this conversation?** If the email matches an `invites[].email` from a Bulk Invite response you received, you have its `inviteId`: treat the person as an invitee (Step 4 or 5). If the user asked to *remove* them, cancel the invite (Step 4).
 2. **Otherwise the email cannot be classified.** The APIs cannot say whether it belongs to a collaborator, a pending invitee, or nobody, so do not claim "not a collaborator" or "has no access". Say that collaborators are identified by account ID and invites by invite ID, and ask for the one that fits the request (for removal, the account ID). Do not guess from the contributors list.
 3. **Wrong-mode guards.** Do not revoke or resend for someone the user says already has access, and do not remove someone the user says is only invited. In those cases tell the user which action applies instead (for example: "they have only been invited, so I can cancel the invite rather than remove them").
 
@@ -57,11 +57,11 @@ No filter is needed to list everyone. To narrow by role, pass `filter.policyIds`
 { "contributors": [ { "accountId": "<account GUID>", "accountOwnerId": "<owner user GUID>" } ] }
 ```
 
-Always run this read-only query first, even when the user says to check with them before changing anything: the confirmation question comes after the lookup, never instead of it. Use it to confirm the `accountId` the user gave is a current collaborator before removing it. If it is not in the list, stop and tell the user they have no collaborator access to remove.
+Always run this read-only query before removing anyone. Use it to confirm the `accountId` the user gave is a current collaborator. If it is not in the list, stop and tell the user that account is not a collaborator on the site, so there is nothing to remove. If it is the site owner's account (it matches `accountOwnerId`), do not remove it: an owner can leave only after transferring ownership to another user. Tell the user that.
 
 ### 3. Remove a collaborator
 
-Removal clears all of the collaborator's role assignments on the site, so they lose access. **Ask the user to confirm the exact account first**, then call:
+Removal clears all of the collaborator's role assignments on the site, so they lose access. When the user gave the exact `accountId` and Step 2 shows it is a current collaborator (and not the owner), call it directly — do not ask for confirmation:
 
 ```
 POST https://www.wixapis.com/roles-management/contributor/remove
@@ -74,7 +74,7 @@ The response is `{}` on success.
 
 ### 4. Revoke a pending invite
 
-**Ask the user to confirm** which invite to cancel, then call, with no body:
+When the user named the invite (or you created it earlier in this conversation and hold its `inviteId`), call it directly, with no body. Ask only if you cannot tell which invite is meant:
 
 ```
 POST https://www.wixapis.com/invites/site-invite/{inviteId}/revoke
@@ -84,7 +84,7 @@ The response is `{}`. Revoke applies to pending invites only; if the person has 
 
 ### 5. Resend a pending invite
 
-**Ask the user to confirm**, then call, with no body:
+When the user named the invite (or you created it earlier in this conversation and hold its `inviteId`), call it directly, with no body. Ask only if you cannot tell which invite is meant:
 
 ```
 POST https://www.wixapis.com/invites/site-invite/{inviteId}/resend
@@ -94,7 +94,7 @@ The response contains the invite: `invite.id`, `invite.email`, `invite.status` (
 
 ### 6. Send an invite
 
-Ask the user for the email address(es) (1–10) and which role to grant; `policyIds` are role IDs, not names. Look them up with `GET https://www.wixapis.com/roles-management/roles` ([Get Roles Info](https://dev.wix.com/docs/api-reference/account-level/user-management/accounts/users/get-roles-info)), which returns `predefinedRoles` and `customRoles`; use the ID of the role the user chose, and do not guess an ID. If the user has not named a role, ask which one. **Ask the user to confirm** the emails and role, since this sends real emails, then call:
+Ask the user for the email address(es) (1–10) and which role to grant; `policyIds` are role IDs, not names. Look them up with `GET https://www.wixapis.com/roles-management/roles` ([Get Roles Info](https://dev.wix.com/docs/api-reference/account-level/user-management/accounts/users/get-roles-info)), which returns `predefinedRoles` and `customRoles`; use the ID of the role the user chose, and do not guess an ID. If the user said "any" or "a standard role", use the least-privileged entry in `predefinedRoles`; if they gave no role at all, ask which one. Once you have the emails and a role, send the invite without asking for confirmation:
 
 ```
 POST https://www.wixapis.com/invites/site-invite/bulk
@@ -110,7 +110,7 @@ The response has `invites[]` (each with `id`, `email`, `status`, `expirationDate
 The APIs cannot tell who is talking to you, so you need the user's own `accountId` from them. Then:
 
 1. Run Step 2. If their account is not in the contributors list, stop: the site owner is not listed as a collaborator, and an owner can leave only after transferring ownership to another user. Tell them that and do not call Remove Contributor.
-2. Tell the user this cannot be undone, ask them to confirm, then call Remove Contributor (Step 3) with their `accountId`.
+2. Call Remove Contributor (Step 3) with their `accountId`. The user asked for this, so do not ask for confirmation, but do not soften it afterwards: removal cannot be undone.
 3. On success, state clearly and in bold that they can no longer use this site's dashboard, and should close the tab or click the Wix logo at the top left to go to All Sites. For example: **You have been removed from this site. The dashboard will no longer work for you — close this tab or click the Wix logo at the top left to go to All Sites.**
 
 ## Reporting back
@@ -119,6 +119,6 @@ State what was done, to which account or email, and the outcome. Do not show raw
 
 - **Succeeded**, e.g. "The invite for james@bond.com has been canceled."
 - **Failed**, e.g. "I couldn't resend the invite for james@bond.com. Please try again." If the call returns 403, say so and that these calls usually need an account-level API key.
-- **Not done because the user declined to confirm**, e.g. "Understood — no invite was resent."
+- **Not done**, with the reason, e.g. "That account is not a collaborator on this site, so there was nothing to remove." or "That is the site owner's account, which cannot be removed without transferring ownership."
 
 For resend, read `invite.status` in the response: if it is `Used`, the person already accepted and is now a collaborator, so say they already have access rather than that the invite was resent; `Declined`, `Expired` or `Deleted` mean the invite is no longer pending.
