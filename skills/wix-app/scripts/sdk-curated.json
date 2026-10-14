@@ -27,19 +27,19 @@
       "entities": ["location", "locations"],
       "namespaces": ["locations"],
       "note": "queryLocations is admin-only although its scope is SCOPE.DC-MULTILOCATION.READ-LOCATIONS: route it to a backend endpoint and elevate it there.",
-      "source": "SKILL.md (Identity and Elevation Requirement)"
+      "source": "moved from SKILL.md (Identity and Elevation Requirement), which links here"
     },
     {
       "entities": ["member", "members"],
       "namespaces": ["members"],
-      "note": "getMember and queryMembers withhold PRIVATE members from visitor and member callers. getCurrentMember (the docs page is get-my-member) needs visitor or member authentication.",
+      "note": "getMember and queryMembers withhold PRIVATE members from visitor and member callers: never elevate them to fill a sparse result.",
       "source": "SKILL.md (Identity and Elevation Requirement)"
     },
     {
       "entities": ["cart", "currentcart"],
       "namespaces": ["currentCartV2", "cartV2"],
       "note": "currentCartV2.addLineItemsToCurrentCart is visitor-callable although its scope is SCOPE.ECOM.MANAGE-ADMIN. Never elevate it.",
-      "source": "SKILL.md (Identity and Elevation Requirement)"
+      "source": "moved from SKILL.md (Identity and Elevation Requirement), which links here"
     }
   ]
 }

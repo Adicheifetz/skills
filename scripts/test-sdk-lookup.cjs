@@ -161,6 +161,34 @@ test('a write method needs the revision', () => {
   assert.match(run('contacts', '--intent', 'write').out, /read the entity first/i);
 });
 
+test('a method prints its JSDoc notes, which say who may call it where the identity tag does not', () => {
+  const [r] = json('members', '--intent', 'all');
+  const m = method(r.candidates[0], 'getCurrentMember');
+  assert.deepEqual(m.identities, ['APP']);
+  assert.deepEqual(m.notes, ['This method requires visitor or member authentication.']);
+  assert.match(run('members', '--intent', 'all').out, /^ {16}note {4}This method requires visitor or member authentication\.$/m);
+});
+
+test('an export form the lookup does not read exits 4 instead of labeling the package not exported', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdk-lookup-odd-'));
+  try {
+    const pkg = (name, files, deps) => {
+      const to = path.join(dir, 'node_modules', '@wix', name);
+      fs.mkdirSync(path.join(to, 'build', 'cjs'), { recursive: true });
+      fs.writeFileSync(path.join(to, 'package.json'), JSON.stringify({ name: `@wix/${name}`, dependencies: deps }));
+      for (const [f, src] of Object.entries(files)) fs.writeFileSync(path.join(to, 'build', 'cjs', f), src);
+    };
+    pkg('auto_sdk_odd_things', { 'index.typings.d.ts': '' }, {});
+    pkg('odd', { 'index.d.ts': "export * as things from '@wix/auto_sdk_odd_things';\n" }, { '@wix/auto_sdk_odd_things': '1.0.0' });
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ dependencies: { '@wix/odd': '1.0.0' } }));
+    const r = spawnSync(process.execPath, [LOOKUP, 'things'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(r.status, 4);
+    assert.match(r.stderr, /@wix\/odd exports @wix\/auto_sdk_odd_things in a form sdk-lookup does not read/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('the scope says where to find it, the other methods say how to see them, the package is named', () => {
   const { out } = run('contacts', '--intent', 'search');
   assert.match(out, /scope: not in the package \(the method docs page lists it\)/);

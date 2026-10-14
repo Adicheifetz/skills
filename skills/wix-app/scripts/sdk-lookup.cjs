@@ -16,9 +16,11 @@
 //
 // Exit codes: 0 every entity found · 1 an entity matched nothing (near matches
 // printed) · 3 an entity's package is not installed (install command printed)
-// · 2 usage.
+// · 2 usage · 4 an installed package is in a form the lookup does not read.
 const fs = require('fs');
 const path = require('path');
+
+class LookupError extends Error {}
 
 const INTENTS = {
   search: ['search', 'query-builder', 'query', 'list'],
@@ -104,6 +106,12 @@ function findPackages(project) {
       const entry = autos.get(dep) ?? { dir: depDir, exportedAs: [] };
       const m = src.match(new RegExp(`import \\* as (\\w+) from '${dep}';\\s*export \\{ \\1 as (\\w+) \\}`));
       if (m) entry.exportedAs.push({ from: wrapper, namespace: m[2] });
+      // The export file names the package in a form this regex does not read
+      // (`export * as ns from '…'`): stop, or it is labeled "not exported". A bare
+      // `import '…'` (app-management's custom-charges) exports nothing.
+      else if (new RegExp(`(export|import \\* as \\w+)[^;']*from '${dep}'`).test(src)) {
+        throw new LookupError(`${wrapper} exports ${dep} in a form sdk-lookup does not read (${path.relative(dir, barrel)}); its namespace is unknown, so do not trust this lookup`);
+      }
       autos.set(dep, entry);
     }
   }
@@ -156,6 +164,23 @@ function readDeclaration(src, at) {
 
 const tags = (doc, tag) =>
   [...doc.matchAll(new RegExp(`@${tag}(?:\\s+([^\\n*]*))?`, 'g'))].map((m) => (m[1] ?? '').trim());
+
+// The `> **Note:**` blocks of a method's JSDoc, the same text as its docs page.
+// They carry who may call it ("requires visitor or member authentication"),
+// which @applicableIdentity does not: getCurrentMember is tagged APP alone.
+function notesOf(doc) {
+  const lines = doc.split('\n').map((l) => l.replace(/^\s*\*\s?/, ''));
+  const notes = [];
+  for (let i = 0; i < lines.length; i++) {
+    const head = /^>\s*\*\*Notes?:\*\*/.exec(lines[i]);
+    if (!head) continue;
+    const text = [lines[i].slice(head[0].length)];
+    while (i + 1 < lines.length && lines[i + 1].startsWith('>')) text.push(lines[++i].slice(1));
+    const note = text.join(' ').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/\s+/g, ' ').trim();
+    if (note) notes.push(note);
+  }
+  return notes;
+}
 
 function kindOf(name, params, ret) {
   if (/^on[A-Z]/.test(name)) return 'event';
@@ -344,6 +369,7 @@ function deriveRecord(name, dir) {
         scopes: [...new Set([...(prev?.scopes ?? []), ...tags(doc, 'permissionScopeId')])],
         identities: [...new Set([...(prev?.identities ?? []), ...tags(doc, 'applicableIdentity')])],
         admin: /@adminMethod\b/.test(doc) || !!prev?.admin,
+        notes: [...new Set([...(prev?.notes ?? []), ...notesOf(doc)])],
         required: [...new Set([...(prev?.required ?? []), ...requiredOf(params)])],
         maturity: maturity ? maturity.toUpperCase() : prev?.maturity ?? 'GA',
         deprecated: /@deprecated\b/.test(doc)
@@ -909,7 +935,8 @@ function renderCandidate(c, intent, rel) {
     const call = `${ns ?? 'sdk'}.${m.name}(${m.params.join(', ')}) → ${m.returns}`;
     out.push(`  ${m.kind.padEnd(13)} ${call}`);
     // @applicableIdentity is APP on visitor methods too (addLineItemsToCurrentCart,
-    // getCurrentMember), so it says nothing about who may call: not printed.
+    // getCurrentMember), so it says nothing about who may call: not printed. The
+    // JSDoc notes say it when the docs page does.
     const facts = [`permission ${m.permission ?? '?'}`];
     facts.push(m.scopes?.length ? `scope ${m.scopes.join(' | ')}` : 'scope: not in the package (the method docs page lists it)');
     if (m.admin) facts.push('admin method');
@@ -917,6 +944,7 @@ function renderCandidate(c, intent, rel) {
     if (m.maturity !== 'GA') facts.push(m.maturity.toLowerCase());
     if (m.deprecated) facts.push(`DEPRECATED${m.deprecated.replacedBy ? ` → ${m.deprecated.replacedBy}` : ''}`);
     out.push(`  ${''.padEnd(13)} ${facts.join(' · ')}`);
+    for (const n of m.notes ?? []) out.push(`  ${''.padEnd(13)} note    ${n}`);
     if (m.arg) out.push(`  ${''.padEnd(13)} arg     ${m.arg}`);
     if (m.result) out.push(`  ${''.padEnd(13)} returns ${m.result}`);
     if (m.queryForm) {
@@ -961,7 +989,14 @@ function main(argv) {
     return 2;
   }
   activatePnp(project);
-  const pkgs = findPackages(project);
+  let pkgs;
+  try {
+    pkgs = findPackages(project);
+  } catch (e) {
+    if (!(e instanceof LookupError)) throw e;
+    console.error(`sdk-lookup: ${e.message}`);
+    return 4;
+  }
   if (!pkgs.autos.size) {
     console.error(`no @wix/auto_sdk_* packages found from ${project}; install the vertical's @wix/<package> first`);
     return 3;
