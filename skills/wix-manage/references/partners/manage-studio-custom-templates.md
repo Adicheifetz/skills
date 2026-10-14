@@ -51,13 +51,13 @@ curl -X POST 'https://www.wixapis.com/wixstudio/templates/v1/templates/query' \
 
 ## How many client sites came from a template
 
-Call Get Template and report `sites.count`. For a named list, resolve each ID in `sites.metaSiteIds` to a site name with the Sites APIs.
+Call Get Template and report `sites.count`. For a named list, resolve each ID in `sites.metaSiteIds` to a site name with [Query Sites](../sites/query-sites.md).
 
 Only sites created **in this workspace** are counted. Sites created by other accounts from the marketplace or from a downloaded `.wix` file aren't available through the API — tell the user those figures are in the Studio workspace UI.
 
 ## Save a site as a template
 
-1. Get the template name (4–20 characters) and the source site. Resolve a site name to its site ID with the Sites APIs.
+1. Get the template name (4–20 characters) and the source site. Resolve a site name to its site ID with [Query Sites](../sites/query-sites.md).
 2. Call Copy Site As Template:
 
    ```bash
