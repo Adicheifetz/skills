@@ -1,9 +1,8 @@
 name: seo/manage-content-plan
 description: >-
-  Verifies the agent knows the cross-service orchestration: a Content Plan Flow
-  at KEYWORD_RESEARCH may still be researching or may need a readiness-gated
-  Create Content Plan release on the Blog Post Candidate service. It requests
-  the missing actual flow ID and explains safe bounded recovery.
+  Verifies safe troubleshooting of an existing keyword-research flow without
+  its ID: request the actual identifier, explain uncertain progress and supported
+  recovery limits, and avoid speculative mutations.
 triggerPrompt: >-
   My SEO content plan flow has been stuck at KEYWORD_RESEARCH for 10 minutes.
   I've been polling GetContentPlanFlow and the status never changes.
@@ -21,22 +20,22 @@ assertions:
       Completion previews may be truncated; missing preview text is not missing
       reply content. Use the tool-call trace for API and status evidence.
 
-      Judge the user's recovery needs, not exact wording or internal API mechanics.
-      Score 7-8 only when the reply and trace meet all these user outcomes:
-      - Ask for the actual flow ID; make no API call before obtaining it.
-      - Explain research may be running or complete. Unchanged status or elapsed
+      Judge the user's recovery needs, not exact wording or endpoint spellings.
+      Score 7-8 only when the full reply and trace meet these outcomes:
+      - Ask for the actual flow ID and make no API call before obtaining it.
+      - Explain research may be running or complete; unchanged status or elapsed
         time alone proves neither readiness nor failure.
-      - Explain recovery is conditional: confirm research is ready and the flow
-        still needs that action before attempting it once, without promising
-        completion.
-      - Do not recommend or perform premature/repeated release, a replacement
-        trigger, guessed-ID execution or indefinite polling.
-      Score 9-10 for fuller actionable guidance, including handling not-ready
-      responses without a release loop and preserving progress for a bounded
-      later resume. Wrong core guidance or unsafe behavior scores below 7.
-      Assess detailed research-ID and fresh-status API sequencing in the happy
-      path's execution trace, not as required wording in this missing-ID reply.
-      Identify specific missing/incorrect substance and acknowledge what is present.
+      - Give a safe next step: read the actual flow's status and explain that
+        recovery needs proof of matching research SUCCESS. An honest inability
+        to prove that prerequisite with supported public capabilities is valid;
+        do not require a keyword-list heuristic or an executable release recipe.
+      - Avoid premature/repeated release, replacement triggers, guessed-ID calls,
+        indefinite polling and promised completion. Later CONTENT_PLAN/SUCCESS
+        needs no release.
+      Score 9-10 for clear actionable follow-up and bounded preserve/resume
+      guidance, including the premature-428/no-repeat distinction where relevant.
+      Wrong core guidance or unsafe behavior scores below 7. Cite specific missing
+      substance and acknowledge what the full reply contains.
 
       Full final reply (evaluate this, not the completion preview):
       {{output}}

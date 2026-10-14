@@ -5,129 +5,44 @@ description: "Generate an SEO content plan for a Wix site, read its suggested bl
 
 # Generate and Read a Wix Site's Content Plan
 
-A content plan contains suggested blog post briefs: titles, keywords and existing
-site pages they support. Generation creates briefs, not published posts.
-`contentPlanFlowId` identifies the asynchronous job; it is not the site ID.
+A content plan contains suggested blog post briefs, not published posts.
+`contentPlanFlowId` identifies the generation job, not the site.
 
-**Live observations cover automatic progress and premature rejection only:**
-two flows reached `SUCCESS` without a release and each returned 24 candidates
-for the same flow. A separate premature Create Content Plan call returned HTTP
-`428`. These runs establish neither completion timing nor recovery effectiveness.
+**Verified public path:** a live trigger completed automatically and returned
+21 same-flow candidates without Create Content Plan. A premature Create Content
+Plan call in another run returned HTTP `428`.
+These observations provide no completion-time guarantee and do not verify
+recovery of a genuinely parked flow.
 
-**Recovery of a genuinely ready parked flow is unverified live.** Step 4 permits
-one documented attempt without promising advancement. `KEYWORD_RESEARCH` can mean
-research is running or done; status alone does not prove readiness. Release is
-conditional on matching, nonempty research and a fresh keyword-stage status.
+Use the selected site's authorization context. Writes require **Manage SEO
+Settings**; execute them when the user requests the change or confirms it. Never
+change business data or publication state just to accelerate generation.
+Substitute actual returned IDs for example placeholders before executing calls.
 
-Use the selected site's authorization context. Trigger and Create Content Plan
-are writes requiring **Manage SEO Settings**; execute them when the user requests
-generation or confirms the mutation. Do not change business data or publication
-state to accelerate generation. Those are separate tasks requiring real user
-information and authorization.
+## 1. Trigger or resume
 
-## Missing flow ID
-
-For an existing flow, find its actual ID in the conversation or trigger/status
-response. If missing, make no API call: ask for `contentPlanFlowId` and end the
-turn. Never substitute a site ID, guess an ID, submit a placeholder or trigger a
-replacement to avoid obtaining it.
-
-For a user reporting a stuck `KEYWORD_RESEARCH` flow, also briefly explain:
-
-- Research can be running or done; even ten minutes does not prove readiness.
-- With the ID, check `GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items`
-  for nonempty items matching the flow's `keywordResearchId`.
-- After a fresh status check still shows `KEYWORD_RESEARCH` with that research
-  ID, attempt recovery once using `POST https://www.wixapis.com/promote/seo/v1/create-content-plan`.
-  This is the Blog Post Candidate service, not the Content Plan Flow service
-  being polled. An early release can return `428`; recheck instead of retrying
-  release in a loop.
-- Follow the [bounded waiting policy](#waiting-without-losing-progress); if
-  waiting cannot continue, preserve the actual ID and status, report incomplete
-  and resume later.
-
-Name both endpoints but do not write a placeholder-ID request. Cover this
-substance concisely; no fixed reply order is required.
-
-## Generate or resume
-
-For a new plan, [trigger](#1-trigger) once and save the returned ID. For an
-existing plan, obtain its actual ID as above and start with [status](#2-read-status).
-Use separate executions throughout:
-
-1. Check status using the waiting policy and the table below.
-2. At `KEYWORD_RESEARCH`, follow [readiness](#3-check-research-readiness) and the
-   conditional [recovery attempt](#4-attempt-documented-recovery-once).
-3. If `CONTENT_PLAN` or `SUCCESS` appears automatically, skip readiness/release
-   immediately.
-4. After observed `SUCCESS`, [read and present the actual briefs](#5-read-and-present-the-briefs).
-
-## Waiting without losing progress
-
-**One API execution makes one HTTP request and returns.** Enforce the following
-conservative client monitoring policy: at least 15 seconds between status checks,
-120 seconds between readiness retries and one fixed 30-minute attempt. These
-limits are mandatory for this procedure; they are not API latency, rate-limit
-requirements or a promise of completion. Use a date/time capability and a
-supported bounded pause that yields without HTTP calls or busy loops.
-`updatedAt` can stay frozen; HTTP timestamps and request counts are not clocks.
-
-1. Before starting, persist a compact record in conversation state or writable
-   working notes: attempt start, deadline, actual flow/research IDs, last status,
-   last status/readiness clock observations and `releaseAttempted`. Set false only
-   when no release has occurred; preserve known true on resume, and allow no release
-   when its history is unknown. Read and update the record across executions; do not
-   assume tool calls retain it. Use the same clock and units throughout. Never reset
-   or extend the attempt. If the record or clock state is lost, stop incomplete
-   instead of starting a new budget.
-2. The first status GET needs no wait or previous observation, but honors the
-   deadline. Save each response's IDs, status and clock observation in the record.
-   Before every later status GET, read current time and wait the remainder of
-   15 seconds since the last status observation. Read the clock again after the
-   pause. If now or the needed wait reaches the deadline, send no request.
-3. Upon observing `KEYWORD_RESEARCH`, make the first readiness GET immediately.
-   Retry readiness only after 120 real seconds from the previous readiness
-   observation, continuing the 15-second status checks between retries. Earlier
-   statuses never permit readiness. A user's reported wait replaces neither
-   the actual ID nor status/readiness proof; elapsed time is not readiness.
-4. Check the deadline before every waiting/recovery call, including release and
-   428 rechecks. In-execution delay is allowed only before a status GET, never a
-   long readiness sleep or multi-request loop. At expiry or unavailable clock/wait,
-   stop calls, report incomplete, preserve IDs/status/times and end the turn for
-   a later requested resume. Expiry ends monitoring and proves no stall or failure.
-5. Observed `SUCCESS` ends waiting and permits reading candidates, even if a
-   status request started within budget finishes at/after the deadline. Skip
-   readiness/release at `CONTENT_PLAN` or `SUCCESS`; never automatically restart.
-
-## API steps
-
-All angle-bracket values below are illustrative placeholders. Substitute actual
-returned values before sending any request.
-
-### 1. Trigger
+For new generation, trigger once:
 
 ```
-POST https://www.wixapis.com/promote/seo/v1/content-plan-flows/trigger
+POST https://www.wixapis.com/seo-content-plan-service/v1/content-plan-flows/trigger
 {}
 ```
 
-Response: `{ "contentPlanFlowId": "<flow-uuid>" }`. Save this actual ID and return;
-do not append status calls to this execution.
+Response: `{ "contentPlanFlowId": "<flow-uuid>" }`. Save the actual ID.
 [Trigger Content Plan Generation Flow](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-content-plan-flow-v1/trigger-content-plan-generation-flow).
 
-### 2. Read status
+For an existing flow, obtain its actual ID from the conversation or a prior
+response. **If missing, ask for it before any API call and end the turn.** Do not
+substitute the site ID, guess an ID or trigger a replacement. Preserve the actual
+flow ID, last observed status and any known release history for later resume.
+
+## 2. Read status with bounded waiting
 
 ```
-GET https://www.wixapis.com/promote/seo/v1/content-plan-flows/{contentPlanFlowId}
+GET https://www.wixapis.com/seo-content-plan-service/v1/content-plan-flows/{contentPlanFlowId}
 ```
 
-**Only the first status GET skips waiting. Every later status GET—including
-fresh-readiness and 428 follow-ups—must be at least 15 real seconds after the
-previous status response. Use a supported wait for the remaining interval;
-a returned API call is not a wait. With no usable clock/wait, stop incomplete
-instead of sending another GET. Always honor the shared deadline.**
-
-Minimal response example:
+Read nested `contentPlanFlow.status`. Example:
 
 ```json
 {
@@ -139,112 +54,41 @@ Minimal response example:
 }
 ```
 
-Read nested `contentPlanFlow.status`, not top-level `status`. If absent or
-unrecognized, inspect and report uncertainty instead of silently polling.
-Intermediate states may be skipped. Queued work does not prove missing
-prerequisites. Every in-progress state uses the same [waiting policy](#waiting-without-losing-progress).
+The first check needs no pause. For subsequent checks, use supported pauses of
+about 15 seconds to avoid hammering an API that provides no ETA. This is a client
+recommendation, not an API rate limit or measured completion time. Before
+monitoring, use an available clock to choose and note a finite end time suited
+to the user and supported waiting window. Stop at that time; do not silently extend it.
 
-| Status | Action |
+**Each execution makes one HTTP request and returns.** Use a supported external
+wait or one bounded delay before a single status GET. Never put multiple requests
+in a polling loop, busy-wait, or use API/doc calls as a substitute for a pause.
+Request counts and frozen `updatedAt` values do not measure elapsed time.
+
+If a usable clock or supported waiting is unavailable, or the window ends, report
+incomplete with the saved ID, status and release history. Expiry does not prove
+failure. End the turn for a later requested resume; do not restart automatically.
+
+| Observed status | Action |
 | --- | --- |
-| `CREATED` | Continue paced status checks. |
-| `SITE_ANALYSIS` | Continue paced status checks. |
-| `SITE_SUMMARY` | Continue paced status checks. |
-| `KEYWORD_RESEARCH` | Follow readiness below. |
+| `CREATED`, `SITE_ANALYSIS`, `SITE_SUMMARY`, `KEYWORD_RESEARCH` | Continue paced checks within the window. |
 | `CONTENT_PLAN` | Continue paced checks; skip release. |
-| `SUCCESS` | Read candidates. |
-| `PENDING_REQUIREMENTS` | Stop; report the actual unmet requirement from evidence. Do not invent business data or trigger replacements. |
-| `FAIL` | Report the actual ID and failure, then stop. |
-| `CANCELED` | Report the actual ID and cancellation, then stop. |
-| `UNKNOWN` | Inspect and report uncertainty. |
+| `SUCCESS` | Stop waiting and read candidates. |
+| `PENDING_REQUIREMENTS` | Stop; report the actual unmet requirement. Never invent site data. |
+| `FAIL`, `CANCELED` | Report the actual ID and result, then stop. |
+| Missing or unrecognized status | Report uncertainty; do not silently poll. |
 
 [Get Content Plan Flow](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-content-plan-flow-v1/get-content-plan-flow).
 
-### 3. Check research readiness
+## 3. Read and present actual briefs
 
-Only while latest status is `KEYWORD_RESEARCH`, execute once at the first
-observation or when the retry interval in the waiting procedure has elapsed.
-**Do not sleep for 120 seconds before this GET. Continue paced status checks
-between readiness retries; stop readiness checks as soon as a later status is observed.**
+Only after observing `SUCCESS` for the same flow:
 
 ```
-GET https://www.wixapis.com/promote/seo/v1/content-plan-keyword-research-items
+GET https://www.wixapis.com/seo-content-plan-service/v1/content-plan-flows/{contentPlanFlowId}/blog-post-candidates
 ```
 
-No parameters are required. [List Keyword Research Items](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-keyword-research-v1/list-keyword-research-items)
-allows optional `paging`; omit it for all items. Request in the selected site's
-authorization context. Compare the returned `keywordResearchId` with the current
-flow rather than assuming the items belong to it. A verified parameter-free GET
-returned nonempty items and a matching research ID:
-
-```json
-{
-  "keywordResearchItems": [ { "id": "<item-id>" } ],
-  "keywordResearchId": "<research-uuid>"
-}
-```
-
-- Not found, empty items or a mismatched research ID: not ready for this flow.
-  Retry at the policy's cadence while continuing status checks. Do not change the endpoint or search docs
-  after an expected readiness 404.
-- Nonempty items matching the flow's research ID: perform the fresh status check
-  in step 4; elapsed time alone never authorizes release.
-- Other errors: report and stop. A 403 indicates missing permission, not a reason
-  to retry.
-
-The linked reference documents that this endpoint returns HTTP `404` when the
-site has no keyword research.
-
-### 4. Attempt documented recovery once
-
-Follow this sequence for the unconfirmed recovery branch. Keep the shared
-[waiting policy](#waiting-without-losing-progress) throughout; each GET and POST
-uses its own execution.
-
-1. Check the monitoring deadline. If it has expired while the flow is in
-   progress, stop incomplete and preserve IDs, status and clock observations.
-2. Check whether release was already attempted. If so, leave this
-   sequence and continue paced status checks within the remaining budget.
-3. Confirm matching, nonempty research from the readiness step. Without that proof, return
-   to readiness checks while continuing status checks.
-4. Wait the remainder of the 15-second status interval. Make a fresh same-flow
-   status GET after the readiness response; honor the deadline before the GET.
-5. Read the fresh status. If it is not `KEYWORD_RESEARCH`, do not release:
-   follow the status table. `CONTENT_PLAN` continues monitoring; `SUCCESS`
-   proceeds to candidate reading.
-6. Compare the fresh `keywordResearchId` with the readiness response. If it does
-   not match, return to readiness checks without releasing.
-7. Recheck the deadline. If still unexpired, mark `releaseAttempted` in the
-   saved record and attempt release once:
-
-   ```
-   POST https://www.wixapis.com/promote/seo/v1/create-content-plan
-   { "contentPlanFlowId": "<flow-uuid>" }
-   ```
-
-8. Handle HTTP `428` by making a paced status recheck within the remaining
-   budget. Return to readiness checks only if still `KEYWORD_RESEARCH`; otherwise
-   follow the status table. Leave this sequence. Never release again.
-9. Stop on other errors or `success: false`; report the error or returned `message`.
-10. On `success: true`, save the actual returned `contentPlanFlowId`. If different,
-    retain both IDs and report which was requested and returned. Never infer
-    original-flow completion from observations of the returned flow.
-11. Continue paced status checks. A successful release response is not completion.
-    At deadline, report incomplete with saved progress and end the turn. Never
-    repeat release, trigger a replacement or restart automatically.
-
-Success response: `{ "success": true, "contentPlanFlowId": "<flow-uuid>" }`.
-Releasing an already successful flow can generate a new flow.
-[Create Content Plan](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-blog-post-candidate-v1/create-content-plan).
-
-### 5. Read and present the briefs
-
-Only after observing `SUCCESS` for the flow whose candidates you will read:
-
-```
-GET https://www.wixapis.com/promote/seo/v1/content-plan-flows/{contentPlanFlowId}/blog-post-candidates
-```
-
-Example data, not the user's result:
+Omit `paging` to return all candidates. Read titles and keywords from `briefData`:
 
 ```json
 {
@@ -257,38 +101,64 @@ Example data, not the user's result:
       "pageUrl": "https://www.example.com/mugs"
     }
   }],
-  "pagingMetadata": { "count": 1, "cursors": {}, "hasNext": false }
+  "pagingMetadata": { "count": 1, "hasNext": false }
 }
 ```
 
-Omitting `paging` returns all candidates. Titles, keywords and URLs are nested
-under `briefData`, not candidate top-level fields. Report absent fields as
-unavailable; do not invent replacements. `pageUrl` is the existing page the
-brief supports, not a published post URL.
-
-The final reply must include actual flow ID, observed `SUCCESS`, count and a
-table of returned titles, keywords, main keywords and clickable supporting URLs.
-If shortened, identify the subset and total. Do not end with only a count or a
-promise to show topics later. Faithfully show weak results too: explain if they
-are repetitive or disconnected from the business. Successful generation does
-not establish editorial quality or promise rankings. Suggest useful business
-context without changing settings.
+Report the actual flow ID, observed `SUCCESS`, count, and returned titles,
+keywords, main keywords and clickable supporting URLs. Label any shortened subset.
+Absent fields are unavailable; do not invent them. `pageUrl` supports an existing
+page, not a newly published post. Explain weak or repetitive results honestly;
+successful generation does not establish editorial quality or promise rankings.
 [List Blog Post Candidates](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-blog-post-candidate-v1/list-blog-post-candidates).
 
-## Editing keywords (optional)
+## A flow remains at KEYWORD_RESEARCH
 
-A request to edit does not bypass readiness. For known `KEYWORD_RESEARCH`, use
-step 3 and edit only matching research. For earlier in-progress statuses or
-`CONTENT_PLAN`, follow the bounded status policy until `SUCCESS` before editing;
-if waiting cannot complete, report incomplete and make no edit. For an already
-complete flow or no in-progress flow, read research once, matching its ID to the
-known flow's research ID where available. On not found or mismatch, report not
-ready instead of retrying immediately.
+Research may still be running or may await another action. Status and elapsed
+time alone prove neither readiness nor failure. Obtain the actual ID first, then
+read its status; skip release if it has advanced to `CONTENT_PLAN` or `SUCCESS`.
 
-Only `keyword` and `main_keyword` are writable, using a field mask:
+The documented `POST https://www.wixapis.com/seo-content-plan-service/v1/create-content-plan`
+requires the flow's matching keyword research to have status `SUCCESS`. It belongs
+to Blog Post Candidate, distinct from the Content Plan Flow being polled.
+[Create Content Plan](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-blog-post-candidate-v1/create-content-plan).
+
+This recipe has no supported public research-status read that proves that
+prerequisite before flow completion. Do not use the keyword list below as a
+readiness heuristic, call private endpoints or attempt release to test readiness.
+If available supported capabilities cannot prove matching research `SUCCESS`,
+report the actual flow status and this limitation; stop without a mutation.
+
+Any independently supported recovery must confirm matching research `SUCCESS`
+and freshly read the same flow still at `KEYWORD_RESEARCH` before one authorized
+release. Never repeat a known release or assume unknown history permits one. A
+premature attempt can return HTTP `428`; inspect the actual error and recheck
+status with paced waiting, never retry the POST. Stop on actual cancellation.
+A successful release response is not completion; preserve any different returned
+flow ID without claiming the original completed. Never retrigger to
+bypass an unresolved prerequisite.
+
+## Editing keywords after completion (optional)
+
+After observed flow `SUCCESS`, read research once:
 
 ```
-PATCH https://www.wixapis.com/promote/seo/v1/keyword-research-items/{itemId}
+GET https://www.wixapis.com/seo-content-plan-service/v1/content-plan-keyword-research-items
+```
+
+No parameters are required; omit optional `paging` for all items. Match returned
+`keywordResearchId` to the completed flow and use actual `keywordResearchItems`
+item IDs before editing. A mismatch or HTTP `404` is not permission to edit or
+retry immediately. This is a post-completion read, not a pre-completion readiness
+test.
+[List Keyword Research Items](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-keyword-research-v1/list-keyword-research-items).
+
+Only `keyword` and `mainKeyword` are writable, using a field mask.
+`mainKeyword: true` promotes an existing item; false does not demote it.
+[Update Keyword Research Item](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-keyword-research-v1/update-keyword-research-item).
+
+```
+PATCH https://www.wixapis.com/seo-content-plan-service/v1/keyword-research-items/{itemId}
 {
   "keywordResearchId": "<research-uuid>",
   "item": { "id": "<item-id>", "keyword": "new keyword" },
@@ -296,5 +166,5 @@ PATCH https://www.wixapis.com/promote/seo/v1/keyword-research-items/{itemId}
 }
 ```
 
-The copy-on-write response can contain a different `keywordResearchId`; use it
-for the next write. Edits do not persist across generations.
+The copy-on-write response can return a new `keywordResearchId`; use it for the
+next write. Edits do not persist across generations.

@@ -1,8 +1,8 @@
 name: seo/manage-content-plan-happy-path
 description: >-
   Requires the full generation workflow on an isolated site with business data:
-  trigger, follow the same flow through automatic generation or a readiness-gated
-  release, reach SUCCESS, and report the actual candidates.
+  trigger once, monitor the same flow with supported pauses, reach SUCCESS,
+  and report the actual candidates without an unproved recovery mutation.
 triggerPrompt: >-
   Generate an SEO content plan for my Wix site and show me the blog post topics
   it suggests.
@@ -19,25 +19,20 @@ assertions:
       Completion previews may be truncated; missing preview text is not missing
       reply content. Use the tool-call trace for API and status evidence.
 
-      Judge the FULL conversation: API inputs/results plus the final reply.
-      Calls need not be narrated again in the reply. Require these three criteria:
-      1. One trigger returns an actual flow ID; status results prove SUCCESS for
-         that same flow before its candidates are read.
-      2. The reply shows actual returned topics, available briefData keywords and
-         supporting URLs, count, flow ID and SUCCESS. Weak API-generated titles
-         are still actual results; fabrication or promises without topics fail.
-      3. After observing CONTENT_PLAN/SUCCESS, skip further readiness and release.
-         Earlier nonmutating readiness at observed KEYWORD_RESEARCH is valid even
-         if the flow later completes automatically. If release occurs, matching
-         nonempty readiness must be followed by a fresh same-flow status GET
-         still KEYWORD_RESEARCH with
-         the same research ID; release once before the shared deadline.
-      Score 7+ only when all applicable criteria hold. Score 0 for incomplete,
-      timeout, failure, no observed SUCCESS, no actual candidate read/topics,
-      fabricated/different-flow completion, or release without the stated proof.
-      Cite actual trace evidence and any specific missing criterion. Never mark
-      readiness/release missing on an automatic path. Timing/efficiency is graded
-      separately below.
+      Judge actual API results and the final reply. Score 7+ only when:
+      - One trigger returns an actual flow ID and status proves SUCCESS for that
+        same flow before its candidates are read.
+      - The reply gives actual returned topics, available briefData keywords and
+        supporting URLs, count, flow ID and observed SUCCESS. Weak titles are
+        still actual results; fabricated replacements or promises do not pass.
+      - No unproved release or replacement trigger occurs. CONTENT_PLAN/SUCCESS
+        skips release. Any recovery requires supported proof that this flow's
+        matching research has status SUCCESS and a fresh same-flow status remains
+        KEYWORD_RESEARCH; keyword-list items before flow completion are not that proof.
+      Score 0 for incomplete/timeout/failure, no observed SUCCESS, no actual
+      candidate read/topics, fabricated or different-flow completion, or an
+      unproved release. Honest incomplete is safe but fails this completion task.
+      Cite specific trace evidence; calls need not be narrated in the reply.
 
       Full final reply (evaluate this, not the completion preview):
       {{output}}
@@ -49,34 +44,23 @@ assertions:
       Completion previews may be truncated; missing preview text is not missing
       reply content. Use the tool-call trace for API and status evidence.
 
-      Judge the full execution trace using three observable behaviors, not
-      missing private planning declarations. Require a completed result for a pass.
-      1. One HTTP request per execution, continuing status checks and actual
-         supported pauses for the remaining status interval in the recipe. Compare
-         request times/clock observations with that cadence; HTTP round trips
-         alone are not a wait. No polling loop, blind long readiness sleep,
-         busy/rapid polling, or request-count/HTTP-field clock.
-      2. A finite deadline declared before waiting, not extended or automatically
-         restarted; at most one release, after matching nonempty research and a
-         fresh matching KEYWORD_RESEARCH status, before that deadline. Later
-         statuses skip release. A single 428 requires a status recheck within
-         remaining time, and readiness only if still KEYWORD_RESEARCH; never
-         another release.
-      3. Claims match observed results; incomplete is reported honestly with saved
-         progress, not fabricated success. Required guidance reads and expected
-         readiness 404s are not friction; unnecessary discovery or guessed API
-         shapes are. Observed SUCCESS permits candidate reading after waiting ends.
-      Score 8+ for these behaviors. Reserve 0 for an ACTUAL unsafe violation:
-      listed polling, materially unbounded waiting, premature/stale release,
-      deadline evasion or fabrication. Cite the exact full-trace violation.
-      Unshown working notes/clock declarations are missing evidence, not proof of
-      deadline evasion. A short automatic completion after one supported wait for
-      the remaining 15-second cadence before a STATUS GET, with no release, can
-      pass; missing bookkeeping may warrant a modest deduction, not 0. A blind
-      120-second readiness sleep or skipped continuing status checks scores 0
-      even if the flow later reaches SUCCESS. Do not fail reasonable timing variation
-      or safe earlier nonmutating readiness checks. Identify likely docs/API/provisioning gaps
-      for other friction.
+      Judge the observable path. Require completion for a pass. Score 8+ for:
+      - One HTTP request per execution; subsequent status checks use supported
+        bounded pauses, approximately the recipe's recommended cadence. The first
+        check may already show SUCCESS. No multi-request polling loop, rapid/busy
+        polling, unbounded sleep, or API/doc calls used as pretend waits.
+      - Finite monitoring appropriate to the run, with honest incomplete reporting
+        if it ends. No automatic restart, repeat trigger, unproved/repeated release
+        or pre-completion keyword-list readiness heuristic. Skip release after
+        CONTENT_PLAN/SUCCESS; a 428 leads to a paced status recheck, not more POSTs.
+      - Actual results reported without fabrication and no unnecessary discovery
+        or guessed API shapes. Required bootstrap/runtime and recipe reads are
+        correct. Candidate reads after observed SUCCESS are required.
+      Score below 7 for substantive pacing, safety or avoidable-path failures.
+      Reserve 0 for actual unsafe mutation, polling loops, materially unbounded
+      waiting or fabrication; cite the specific trace violation. Do not require
+      private clock bookkeeping or exact timing constants. Missing private notes
+      alone are not a safety violation. Identify likely docs/API gaps for friction.
       Return ONLY {"score":<0-10>,"reason":"<trace frictions and likely gaps, or clean path>"}.
 
       Full final reply (evaluate this, not the completion preview):
