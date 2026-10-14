@@ -2,10 +2,9 @@ name: seo/manage-content-plan-happy-path
 description: >-
   Requires the full generation workflow on an isolated site with business data:
   trigger once, monitor the same flow with supported pauses, reach SUCCESS,
-  and report the actual candidates without an unproved recovery mutation.
-  The provisioned fixture exercises the public AGENT path observed to complete
-  automatically. This test does not exercise or claim successful parked-flow
-  recovery; the public recipe cannot complete that unsupported branch.
+  and report the actual candidates. If the flow needs release, verify matching
+  research readiness and release once; skip release if it advances automatically.
+  Automatic completion alone does not prove parked-flow recovery.
 triggerPrompt: >-
   Generate an SEO content plan for my Wix site and show me the blog post topics
   it suggests.
@@ -23,14 +22,10 @@ assertions:
       reply content. Use the tool-call trace for API and status evidence.
 
       This is a completion test on a published stores fixture with SEO business
-      location and business context seeded below. Public triggers in retained
-      fixture traces return origin AGENT and complete without release. This is
-      distinct from an existing parked-flow diagnostic task. A genuinely parked
-      flow cannot be completed by this public recipe; neither this test nor the
-      diagnostic scenario claims release/recovery coverage. Do not force release
-      to satisfy this test. If the fixture/backend fails to deliver completion,
-      identify that setup/API failure; honest incomplete is safe behavior but
-      still does not deliver the requested topics and cannot pass this outcome test.
+      location and business context seeded below. A flow may advance automatically
+      or require release. Judge the observed branch, not a forced call sequence.
+      Automatic completion does not establish parked-flow recovery coverage.
+      Honest incomplete is safe but cannot pass the requested completion outcome.
 
       Judge actual API results and the final reply. Score 7+ only when:
       - One trigger returns an actual flow ID and status proves SUCCESS for that
@@ -40,12 +35,15 @@ assertions:
         SUCCESS. The status evidence belongs in the actual API trace; the reply
         can say "complete" without repeating the literal SUCCESS enum. Weak titles are
         still actual results; fabricated replacements or promises do not pass.
-      - No Create Content Plan release or replacement trigger occurs. This
-        fixture exercises the public automatic path; CONTENT_PLAN/SUCCESS skips
-        release, and keyword-list items before completion do not authorize it.
+      - No replacement trigger or repeat release occurs. If Create Content Plan
+        is called, the trace first proves SUCCESS of the flow's exact matching
+        research via Get Site Keyword Research, followed by a fresh same-flow
+        KEYWORD_RESEARCH status with that research ID. CONTENT_PLAN/SUCCESS skips
+        release. Check the release response's success and actual returned ID;
+        HTTP success alone is not completion. Keyword-list items are not readiness.
       Score 0 for incomplete/timeout/failure, no observed SUCCESS, no actual
-      candidate read/topics, fabricated or different-flow completion, or an
-      unproved release. Honest incomplete is safe but fails this completion task.
+      candidate read/topics, fabricated or different-flow completion, or a
+      premature/unproved release. Honest incomplete is safe but fails this completion task.
       Cite specific trace evidence; calls need not be narrated in the reply.
 
       Full final reply (evaluate this, not the completion preview):
@@ -64,8 +62,8 @@ assertions:
         check may already show SUCCESS. No multi-request polling loop, rapid/busy
         polling, unbounded sleep, or API/doc calls used as pretend waits.
       - Finite monitoring appropriate to the run, with honest incomplete reporting
-        if it ends. No automatic restart, repeat trigger, unproved/repeated release
-        or pre-completion keyword-list readiness heuristic. Skip release after
+        if it ends. No automatic restart, repeat trigger, premature/repeated release
+        or keyword-list readiness heuristic. Skip release after
         CONTENT_PLAN/SUCCESS; a 428 leads to a paced status recheck, not more POSTs.
       - Actual results reported without fabrication and no unnecessary discovery
         or guessed API shapes. Required bootstrap/runtime and recipe reads are
@@ -84,9 +82,8 @@ siteSetup:
   templateId: stores-v3-editor
   bootstrap:
     steps:
-      # Public Trigger derives AGENT origin from the eval app identity; no private
-      # origin override or agent configuration change. This published business
-      # fixture has produced automatic SUCCESS in retained real run traces.
+      # This fixture may complete automatically; that branch skips release.
+      # No origin override or agent configuration change.
       # Fixture provisioning only: general site properties do not populate the
       # SEO location prerequisite. Keep this internal setup out of the public skill.
       - label: seed online SEO business location

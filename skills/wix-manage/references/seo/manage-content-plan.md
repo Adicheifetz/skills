@@ -1,6 +1,6 @@
 ---
 name: "Generate and Read a Wix Site's Content Plan"
-description: "Generate an SEO content plan for a Wix site, read suggested blog post topics and keywords, and diagnose a generation flow that appears stuck."
+description: "Generate an SEO content plan for a Wix site, read suggested blog post topics and keywords, or continue a paused generation flow."
 ---
 
 # Generate and Read a Wix Site's Content Plan
@@ -15,11 +15,10 @@ successful flow would not identify the user's parked job. A retained REST call
 to `GET https://www.wixapis.com/seo-content-plan-service/v1/content-plan-flows`
 without an ID returned `404 Resource not found`; do not use it as ID discovery.
 
-**Verified public path:** a live trigger completed automatically and returned
-21 same-flow candidates without Create Content Plan. A premature Create Content
-Plan call in another run returned HTTP `428`.
-These observations provide no completion-time guarantee and do not verify
-recovery of a genuinely parked flow.
+`KEYWORD_RESEARCH` means research has started, not finished. Read the matching
+research's own status before releasing the flow. Some flows advance automatically;
+`CONTENT_PLAN` or `SUCCESS` needs no release. Polling alone does not release a
+flow that is waiting for Create Content Plan.
 
 Use the selected site's authorization context. Writes require **Manage SEO
 Settings**; execute them when the user requests the change or confirms it. Never
@@ -31,9 +30,11 @@ The `/seo-content-plan-service/v1` paths below match the linked official REST
 references. The Endpoint section of the
 [Trigger REST reference](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-content-plan-flow-v1/trigger-content-plan-generation-flow)
 documents `POST https://www.wixapis.com/seo-content-plan-service/v1/content-plan-flows/trigger`.
-Trigger, status, candidate and research reads were also verified
-through Wix's official API Playground; the keyword-edit example matches its
-linked method schema. These replace the older `/promote/seo/v1` aliases.
+The exact-ID research-status read below follows the public Get Site Keyword
+Research schema and request example merged in
+[the API contract change](https://github.com/wix-private/promote-seo/pull/15533).
+It is distinct from List Keyword Research Items. If unavailable in the caller's
+runtime, report that limitation rather than substituting a private endpoint.
 
 ## 1. Trigger or inspect an existing flow
 
@@ -88,7 +89,7 @@ failure. End the turn for a later requested resume; do not restart automatically
 | Observed status | Action |
 | --- | --- |
 | `CREATED`, `SITE_ANALYSIS`, `SITE_SUMMARY` | Continue paced checks within the window. |
-| `KEYWORD_RESEARCH` | Continue bounded paced checks for possible automatic progress. For an already reported stuck flow, follow the [parked-flow limitation](#a-flow-remains-at-keyword_research). |
+| `KEYWORD_RESEARCH` | Follow [Check research and release once](#3-check-research-and-release-once), within the same monitoring window. |
 | `CONTENT_PLAN` | Continue paced checks; skip release. |
 | `SUCCESS` | Stop waiting and read candidates. |
 | `PENDING_REQUIREMENTS` | Stop; report the actual unmet requirement. Never invent site data. |
@@ -97,7 +98,63 @@ failure. End the turn for a later requested resume; do not restart automatically
 
 [Get Content Plan Flow](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-content-plan-flow-v1/get-content-plan-flow).
 
-## 3. Read and present actual briefs
+## 3. Check research and release once
+
+For an existing stuck flow, ask for its actual `contentPlanFlowId` before calls.
+Explain that the flow status is not research readiness: Create Content Plan is
+an action on Blog Post Candidate, distinct from the flow-status read. It requires
+matching research `SUCCESS`; ten minutes at this stage proves neither readiness
+nor failure. With the ID, inspect the flow and use its actual `keywordResearchId`.
+
+If the flow supplies no `keywordResearchId`, report the missing readiness input
+and stop; do not guess it. While the flow is `KEYWORD_RESEARCH`, read **that
+research**, not latest research:
+
+```
+GET https://www.wixapis.com/seo-content-plan-service/v1/site-keyword-research?keywordResearchId={keywordResearchId}
+```
+
+Read `siteKeywordResearch.id`, `status` and `contentPlanFlowId`. Require its ID
+and flow ID to match the actual flow being followed. Never omit the query ID:
+the ID-less read selects latest successful research and cannot prove readiness
+of this job. Keyword-list items are also not a research-status check.
+
+| Research result | Action |
+| --- | --- |
+| Matching `IN_PROGRESS` | Use a supported pause and a separate single-request read within the existing window; do not release. |
+| Matching `SUCCESS` | Re-read the same flow immediately before release and apply the guards below. |
+| Briefly not found | The flow can link the ID before its research record exists. Retry a paced read within the window, then inspect the flow if it persists; do not release or restart. |
+| `FAIL`, `CANCELED`, `REVERTED`, missing/unknown status, mismatched IDs | Stop and report the actual result; no release or replacement. |
+| Method unavailable, authorization denied, or other error | Report the specific error and preserve the IDs; no private fallback or readiness guess. |
+
+After matching research `SUCCESS`, a fresh flow read must still show
+`KEYWORD_RESEARCH` with the same research ID. If it has advanced to
+`CONTENT_PLAN` or `SUCCESS`, skip release and follow its status. A changed research
+ID requires checking the new research; the old success cannot authorize it.
+
+When the user requested generation or continuation, and no release has already
+been attempted for this flow, call Create Content Plan **once**:
+
+```
+POST https://www.wixapis.com/seo-content-plan-service/v1/create-content-plan
+{ "contentPlanFlowId": "<actual-flow-id>" }
+```
+
+Record the attempt before sending. Concurrent/repeated calls can duplicate plans.
+If release history is uncertain, ask rather than send another POST. Check HTTP
+status and response `success`; `false` requires reporting `message`, not claiming
+completion. A `428` can mean research is not ready: inspect its actual error and
+make a paced status recheck; do not retry the POST in a loop. Other errors or an
+uncertain response require reporting the attempt, not repeating it.
+
+On success, retain the returned `contentPlanFlowId` and monitor it with the same
+bounded, single-request approach. A different returned ID is a separate flow;
+explain that and never claim the original completed. Completion still requires
+observed `SUCCESS` and actual candidates. Do not release an already successful
+flow to recover it: that action regenerates a separate plan.
+[Create Content Plan](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-blog-post-candidate-v1/create-content-plan).
+
+## 4. Read and present actual briefs
 
 Only after observing `SUCCESS` for the same flow:
 
@@ -130,47 +187,6 @@ Absent fields are unavailable; do not invent them. `pageUrl` supports an existin
 page, not a newly published post. Explain weak or repetitive results honestly;
 successful generation does not establish editorial quality or promise rankings.
 [List Blog Post Candidates](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-blog-post-candidate-v1/list-blog-post-candidates).
-
-## A flow remains at KEYWORD_RESEARCH
-
-**This recipe cannot complete a genuinely parked flow.** Parked-flow recovery
-is outside the public path verified here; this section diagnoses the limitation
-and preserves the actual job, rather than promising recovery.
-
-If the actual flow ID was not supplied, explicitly ask the user to send
-`contentPlanFlowId` in your first reply, before any API call. Merely telling them
-to "use the same ID" is not a request for the missing ID. Briefly explain the
-diagnostic limit below, then end the turn until the ID arrives.
-In that explanation, distinguish the Create Content Plan action from the flow
-status read, state its matching-research `SUCCESS` prerequisite, and explain why
-the keyword list cannot prove it. Generic "keep polling" advice misses the cause.
-
-Research may still be running or may await another action. Status and elapsed
-time alone prove neither readiness nor failure. Obtain the actual ID first, then
-read its status; skip release if it has advanced to `CONTENT_PLAN` or `SUCCESS`.
-New generation can still progress automatically: continue its bounded status
-checks rather than treating this stage alone as a failed or parked flow.
-
-The documented `POST https://www.wixapis.com/seo-content-plan-service/v1/create-content-plan`
-requires the flow's matching keyword research to have status `SUCCESS`. It belongs
-to Blog Post Candidate, distinct from the Content Plan Flow being polled.
-[Create Content Plan](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-blog-post-candidate-v1/create-content-plan).
-
-**Do not call Create Content Plan to recover a flow reported stuck at
-`KEYWORD_RESEARCH` through this recipe.** The documented prerequisite is matching
-research `SUCCESS`, but no public research-status read is provided here. The
-keyword-items list is a post-completion, site-scoped read; its items cannot prove
-that prerequisite. Report the actual flow ID/status and the missing public
-readiness capability, then stop the recovery attempt without a mutation.
-
-This is a concrete diagnostic limit, not an instruction to search for an unnamed
-recovery method. Do not call private endpoints, release to test readiness, or
-trigger a replacement. Bounded status monitoring for possible automatic progress
-remains valid; a monitoring timeout alone proves neither a stall nor failure.
-If a previous release returned HTTP `428`, inspect its error and make a paced
-status check, without retrying the POST. Stop on actual cancellation. A successful
-release response by itself would not prove completion; never claim a different
-returned flow completed the original.
 
 ## Editing keywords after completion (optional)
 
