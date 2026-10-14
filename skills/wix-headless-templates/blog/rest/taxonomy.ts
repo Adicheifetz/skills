@@ -56,24 +56,16 @@ export async function fetchTagsByIds(ids: readonly string[]): Promise<BlogTag[]>
 }
 
 // The two by-slug getters answer in DIFFERENT envelopes ({ category } and { tag }); a missing slug
-// is a 404 — mapped to null here, as the SDK transport does.
+// is a 404 — it propagates, as on the SDK transport, for the caller to read with isNotFound.
 
-/** One category by its URL slug. Null when not found.  GET /blog/v3/categories/slugs/{slug} */
-export async function fetchCategoryBySlug(slug: string): Promise<BlogCategory | null> {
-  try {
-    const res = await wixRequest<Raw>(`/blog/v3/categories/slugs/${encodeURIComponent(slug)}`, { method: "GET" });
-    return res?.category ? toCategory(res.category, imgSrc) : null;
-  } catch {
-    return null;
-  }
+/** One category by its URL slug. A missing slug throws the API's not-found error; so does any other failure.  GET /blog/v3/categories/slugs/{slug} */
+export async function fetchCategoryBySlug(slug: string): Promise<BlogCategory> {
+  const res = await wixRequest<Raw>(`/blog/v3/categories/slugs/${encodeURIComponent(slug)}`, { method: "GET" });
+  return toCategory(res.category, imgSrc);
 }
 
-/** One tag by its URL slug. Null when not found.  GET /blog/v3/tags/slugs/{slug} */
-export async function fetchTagBySlug(slug: string): Promise<BlogTag | null> {
-  try {
-    const res = await wixRequest<Raw>(`/blog/v3/tags/slugs/${encodeURIComponent(slug)}`, { method: "GET" });
-    return res?.tag ? toTag(res.tag) : null;
-  } catch {
-    return null;
-  }
+/** One tag by its URL slug. A missing slug throws the API's not-found error; so does any other failure.  GET /blog/v3/tags/slugs/{slug} */
+export async function fetchTagBySlug(slug: string): Promise<BlogTag> {
+  const res = await wixRequest<Raw>(`/blog/v3/tags/slugs/${encodeURIComponent(slug)}`, { method: "GET" });
+  return toTag(res.tag);
 }

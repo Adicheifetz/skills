@@ -8,6 +8,7 @@
 // `initialTags`, `initialRelated`) and no client read happens except the personal like state; a SPA
 // passes only the slug. One store per post surface: createPostStore().
 import { fetchPostBySlug, fetchRelatedPosts } from "./posts";
+import { isNotFound } from "./posts-core";
 import { fetchLikeState, likePost, unlikePost } from "./post-likes";
 import { fetchBlogCategories, fetchTagsByIds, inIdOrder } from "./taxonomy";
 import type { BlogCategory, BlogTag, PostDetail, PostSummary } from "./types";
@@ -135,10 +136,15 @@ export function createPostStore({ slug, initialPost, initialCategories, initialT
         fetchPostBySlug(slug)
           .then((p) => {
             if (!started) return;
-            if (p) { post = p; viewCount = p.viewCount; commentCount = p.commentCount; afterPost(p); } else notFound = true;
+            post = p; viewCount = p.viewCount; commentCount = p.commentCount; afterPost(p);
             emit();
           })
-          .catch((e) => { if (started) { error = e instanceof Error ? e.message : String(e); emit(); } });
+          .catch((e) => {
+            if (!started) return;
+            if (isNotFound(e)) notFound = true;
+            else error = e instanceof Error ? e.message : String(e);
+            emit();
+          });
       }
     },
     stop() { started = false; },

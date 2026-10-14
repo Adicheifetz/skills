@@ -17,7 +17,6 @@ import {
   RELATED_LIMIT,
   categoryPath,
   formatCount,
-  isNotFound,
   pickCurated,
   postMetaLine,
   postPath,
@@ -70,20 +69,13 @@ export async function fetchPosts({ limit = 20, cursor, categoryId, tagId }: Fetc
 /**
  * One post by its URL slug with the full body and SEO/comments fields (RICH_CONTENT, CONTENT_TEXT,
  * SEO, REFERENCE_ID, INTERNAL_ID — without them those fields come back undefined; INTERNAL_ID is the
- * one that actually carries referenceId). Null when the slug resolves
- * to nothing (404 / NOT_FOUND is an expected miss); any other failure throws. The dedicated
+ * one that actually carries referenceId). A slug that resolves to nothing throws the API's not-found
+ * error (test it with isNotFound from ./posts-core); so does any other failure. The dedicated
  * by-slug read, not a slug query: slugs are per translation, so a slug-only query is ambiguous on
  * a multilingual site.
  */
-export async function fetchPostBySlug(slug: string): Promise<PostDetail | null> {
-  let raw: Raw | undefined;
-  try {
-    raw = (await posts.getPostBySlug(slug, { fieldsets: [...DETAIL_FIELDSETS] as any })).post as Raw | undefined;
-  } catch (e) {
-    if (isNotFound(e)) return null;
-    throw e;
-  }
-  if (!raw) return null;
+export async function fetchPostBySlug(slug: string): Promise<PostDetail> {
+  const raw = (await posts.getPostBySlug(slug, { fieldsets: [...DETAIL_FIELDSETS] as any })).post as Raw;
   const [detail] = await withPageAuthors([toDetail(raw, imgSrc)]);
   return detail;
 }

@@ -26,6 +26,7 @@ your home page.
 | `wix/media.ts` · `wix/money.ts` | `imgAttrs(url, sizes, ratio)` — every `<img>` attribute for a DTO image (`src`, `srcSet`, `sizes`, lazy): `<img {...imgAttrs(post.coverUrl, "(min-width: 1024px) 33vw, 100vw", 9 / 16)} alt={post.coverAlt} />`; `imgSrc()` / `imgSrcSet()` underneath |
 | `wix/blog/types.ts` | the DTOs (`PostSummary`, `PostDetail`, `BlogAuthor`, `PostMetrics`, `BlogCategory`, `BlogTag`, `PostPage`, `BlogComment`, `CommentPage`) — contracts inlined below |
 | `wix/blog/posts.ts` | `fetchPosts` (cursor-paged, pinned first, category/tag filtered on Wix, authors joined), `fetchPostBySlug` (full body + SEO + comments fields), `fetchRelatedPosts`, `fetchPostsByIds`, `fetchPostMetrics`; the helpers `postMetaLine`, `relativeDateLabel`, `formatCount`, `postPath`, `categoryPath`, `tagPath` — the transport; the rules and DTO mappers are in `posts-core.ts` beside it (shared with the REST layer) |
+| `wix/blog/errors.ts` | `readFailureResponse(e, what)` — a server page's answer to a read that threw: 404 when `isNotFound(e)` (in `posts-core.ts`), else 500, logged. The readers never catch: an error propagates as Wix sent it |
 | `wix/blog/taxonomy.ts` | `fetchBlogCategories({ withPosts? })`, `fetchBlogTags`, `fetchTagsByIds`, `fetchCategoryBySlug`, `fetchTagBySlug`, `inIdOrder` — the transport; mappers in `taxonomy-core.ts` |
 | `wix/blog/authors.ts` | `fetchAuthorsByIds` (one batched Members read per page), `fetchCurrentMemberId` — over the SDK's authenticated fetch; mappers in `authors-core.ts` |
 | `wix/blog/post-likes.ts` | `likePost`, `unlikePost`, `fetchLikeState` — the viewer's like, client-only |
@@ -251,7 +252,7 @@ Read the reference files listed above before writing any surface.
 
 `deploy.mjs blog --stack lib` put the data layer in `src/wix/` and nothing else: `sdk.ts` (the
 visitor client, configured with the public client id), `media.ts`, `money.ts`, and `wix/blog/` —
-`posts.ts`, `taxonomy.ts`, `authors.ts`, `post-likes.ts`, `comments.ts`, `types.ts`, the `*-core.ts`
+`posts.ts`, `taxonomy.ts`, `authors.ts`, `post-likes.ts`, `comments.ts`, `errors.ts`, `types.ts`, the `*-core.ts`
 rules, and the three stores `blog-feed-store.ts`, `post-store.ts`, `comments-store.ts`. None of it is
 React. The hooks and components don't ship on this stack; the stores replace the hooks, and you write
 the components in your framework to the contracts on this page:
@@ -265,7 +266,7 @@ the components in your framework to the contracts on this page:
 - the body: `@wix/ricos` is a React component — without React it doesn't render; use
   `post.paragraphs` (and `comment.text`) and say so in the closing message.
 
-Routes `/blog`, `/blog/:slug` (null → your 404 view), `/blog/category/:slug`, `/blog/tag/:slug`
+Routes `/blog`, `/blog/:slug` (`notFound` → your 404 view), `/blog/category/:slug`, `/blog/tag/:slug`
 (`fetchCategoryBySlug`/`fetchTagBySlug` → `createBlogFeedStore({ initialCategoryId })` or a plain
 `setActiveCategoryId`); dev server on 4321; a static build goes through `npx @wix/cli@latest release`
 with `site.outputDirectory` pointing at the build folder, an SSR build is hosted by you. Post-page
@@ -284,7 +285,7 @@ above, so the contracts on this page hold unchanged: `fetchPosts`, `fetchPostByS
 `./js/wix/posts.js`; `fetchBlogCategories`, `fetchBlogTags`, `fetchTagsByIds`, `fetchCategoryBySlug`,
 `fetchTagBySlug` from `./js/wix/taxonomy.js`; `likePost`/`unlikePost`/`fetchLikeState` from
 `./js/wix/post-likes.js`; the comments from `./js/wix/comments.js`; `imgAttrs` from
-`./js/wix/media.js`. The state machines ship too: `createBlogFeedStore` from
+`./js/wix/media.js`; `isNotFound` from `./js/wix/posts-core.js` (a by-slug read that threw → your 404 view). The state machines ship too: `createBlogFeedStore` from
 `./js/wix/blog-feed-store.js` (the feed — filters, cursor paging; `start()` once the page is up),
 `createPostStore` from `./js/wix/post-store.js` (the post, its resolved chips, related, the like
 toggle), and `createCommentsStore` from `./js/wix/comments-store.js`. No components ship — you write
@@ -380,6 +381,11 @@ Routes on Wix hosting: the host serves files only, so a clean route answers 404 
   resolved; anything else goes through `wix/media.ts`.
 - **Error is not empty** — render the empty state only when `error` is null; a failed read shows the
   error state.
+- **The feed, post, category and tag routes are cached** on Wix's CDN for an hour, declared in
+  `route-rules.json` (deploy wires them into `astro.config.mjs` with the adapter's `cacheWix()`
+  provider). Only 200s are stored; a release and any change to the site's Wix data refresh them.
+  A cached render is shared, so keep it to public data: per-visitor state (likes, the member's own
+  comments) stays in client islands. A new page under a cached route is cached too.
 - Where the shipped components deploy: theme via the `@theme` tokens, your markup in Tailwind
   utilities on the same tokens; no parallel theme files, no hardcoded palettes. Where they don't
   (`lib`, `static`, a port): style with what your stack does well, on one token set of your own.

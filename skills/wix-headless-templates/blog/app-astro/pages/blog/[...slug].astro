@@ -15,6 +15,7 @@ import { PostCard } from "../../components/blog/BlogFeedView";
 import { categoryPath, fetchPostBySlug, fetchRelatedPosts, postMetaLine, tagPath } from "../../wix/blog/posts";
 import { fetchBlogCategories, fetchTagsByIds, inIdOrder } from "../../wix/blog/taxonomy";
 import type { BlogCategory, BlogTag, PostDetail, PostSummary } from "../../wix/blog/types";
+import { readFailureResponse } from "../../wix/blog/errors";
 import { WIX_APPS } from "@wix/essentials";
 import { SEO } from "@wix/seo/components";
 import { loadSEOTagsServiceConfig } from "@wix/seo/services";
@@ -31,7 +32,7 @@ export const wixMetadata = {
 // The rest param arrives decoded and re-joined ("a/b" for /blog/a/b) — exactly the stored slug.
 const slug = Astro.params.slug;
 if (!slug) {
-  return new Response(null, { status: 404 });
+  return new Response(null, { status: 400 });
 }
 
 // Behind Wix's proxy the request URL is internal — the real public page URL arrives on
@@ -42,10 +43,10 @@ const pageUrl =
     ? forwardedUrl
     : Astro.url.href;
 
-let post: PostDetail | null = null;
-let allCategories: BlogCategory[] = [];
-let postTags: BlogTag[] = [];
-let related: PostSummary[] = [];
+let post: PostDetail;
+let allCategories: BlogCategory[];
+let postTags: BlogTag[];
+let related: PostSummary[];
 let seoTagsServiceConfig = null;
 try {
   [post, allCategories, seoTagsServiceConfig] = await Promise.all([
@@ -57,16 +58,10 @@ try {
       itemData: { slug },
     }).catch(() => null),
   ]);
-  if (post) {
-    // Tags are read BY ID (a blog's tags run to hundreds); the related strip needs the post's ids.
-    [postTags, related] = await Promise.all([fetchTagsByIds(post.tagIds), fetchRelatedPosts(post)]);
-  }
-} catch {
-  // Guarded: an unhandled SSR throw truncates the response mid-stream.
-}
-
-if (!post) {
-  return new Response(null, { status: 404 });
+  // Tags are read BY ID (a blog's tags run to hundreds); the related strip needs the post's ids.
+  [postTags, related] = await Promise.all([fetchTagsByIds(post.tagIds), fetchRelatedPosts(post)]);
+} catch (e) {
+  return readFailureResponse(e, `Blog post "${slug}"`);
 }
 
 // Chips in the POST's order (its categoryIds), ids that resolved to nothing dropped.
