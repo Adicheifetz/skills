@@ -4,7 +4,8 @@ description: >-
   trigger once, monitor the same flow with supported pauses, reach SUCCESS,
   and report the actual candidates without an unproved recovery mutation.
   The provisioned fixture exercises the public AGENT path observed to complete
-  automatically; the separate diagnostic scenario covers unsupported parked recovery.
+  automatically. This test does not exercise or claim successful parked-flow
+  recovery; the public recipe cannot complete that unsupported branch.
 triggerPrompt: >-
   Generate an SEO content plan for my Wix site and show me the blog post topics
   it suggests.
@@ -24,7 +25,9 @@ assertions:
       This is a completion test on a published stores fixture with SEO business
       location and business context seeded below. Public triggers in retained
       fixture traces return origin AGENT and complete without release. This is
-      distinct from an existing parked-flow diagnostic task. Do not force release
+      distinct from an existing parked-flow diagnostic task. A genuinely parked
+      flow cannot be completed by this public recipe; neither this test nor the
+      diagnostic scenario claims release/recovery coverage. Do not force release
       to satisfy this test. If the fixture/backend fails to deliver completion,
       identify that setup/API failure; honest incomplete is safe behavior but
       still does not deliver the requested topics and cannot pass this outcome test.

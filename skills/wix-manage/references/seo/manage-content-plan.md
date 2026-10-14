@@ -8,6 +8,13 @@ description: "Generate an SEO content plan for a Wix site, read suggested blog p
 A content plan contains suggested blog post briefs, not published posts.
 `contentPlanFlowId` identifies the generation job, not the site.
 
+**Existing-flow entry gate:** without that job's actual `contentPlanFlowId`,
+ask the user for it and end the turn after a concise diagnosis. Do not search
+for a site-level fallback or make API calls to avoid asking. The site's latest
+successful flow would not identify the user's parked job. A retained REST call
+to `GET https://www.wixapis.com/seo-content-plan-service/v1/content-plan-flows`
+without an ID returned `404 Resource not found`; do not use it as ID discovery.
+
 **Verified public path:** a live trigger completed automatically and returned
 21 same-flow candidates without Create Content Plan. A premature Create Content
 Plan call in another run returned HTTP `428`.
@@ -21,7 +28,10 @@ Substitute actual returned IDs for example placeholders before executing calls.
 If a request tool needs `siteId`, copy the actual selected or supplied site ID;
 never derive it from `contentPlanFlowId`.
 The `/seo-content-plan-service/v1` paths below match the linked official REST
-references. Trigger, status, candidate and research reads were also verified
+references. The Endpoint section of the
+[Trigger REST reference](https://dev.wix.com/docs/api-reference/business-management/seo/content-plan-content-plan-flow-v1/trigger-content-plan-generation-flow)
+documents `POST https://www.wixapis.com/seo-content-plan-service/v1/content-plan-flows/trigger`.
+Trigger, status, candidate and research reads were also verified
 through Wix's official API Playground; the keyword-edit example matches its
 linked method schema. These replace the older `/promote/seo/v1` aliases.
 
@@ -78,7 +88,7 @@ failure. End the turn for a later requested resume; do not restart automatically
 | Observed status | Action |
 | --- | --- |
 | `CREATED`, `SITE_ANALYSIS`, `SITE_SUMMARY` | Continue paced checks within the window. |
-| `KEYWORD_RESEARCH` | Continue paced checks for possible automatic progress; see [keyword-stage troubleshooting](#a-flow-remains-at-keyword_research) before considering release. |
+| `KEYWORD_RESEARCH` | Continue bounded paced checks for possible automatic progress. For an already reported stuck flow, follow the [parked-flow limitation](#a-flow-remains-at-keyword_research). |
 | `CONTENT_PLAN` | Continue paced checks; skip release. |
 | `SUCCESS` | Stop waiting and read candidates. |
 | `PENDING_REQUIREMENTS` | Stop; report the actual unmet requirement. Never invent site data. |
@@ -123,10 +133,17 @@ successful generation does not establish editorial quality or promise rankings.
 
 ## A flow remains at KEYWORD_RESEARCH
 
+**This recipe cannot complete a genuinely parked flow.** Parked-flow recovery
+is outside the public path verified here; this section diagnoses the limitation
+and preserves the actual job, rather than promising recovery.
+
 If the actual flow ID was not supplied, explicitly ask the user to send
 `contentPlanFlowId` in your first reply, before any API call. Merely telling them
 to "use the same ID" is not a request for the missing ID. Briefly explain the
 diagnostic limit below, then end the turn until the ID arrives.
+In that explanation, distinguish the Create Content Plan action from the flow
+status read, state its matching-research `SUCCESS` prerequisite, and explain why
+the keyword list cannot prove it. Generic "keep polling" advice misses the cause.
 
 Research may still be running or may await another action. Status and elapsed
 time alone prove neither readiness nor failure. Obtain the actual ID first, then

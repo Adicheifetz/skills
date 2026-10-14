@@ -2,12 +2,12 @@ name: seo/manage-content-plan
 description: >-
   Verifies safe troubleshooting of an existing keyword-research flow without
   its ID: request the actual identifier, explain uncertain progress and supported
-  recovery limits, and avoid speculative mutations.
+  recovery limits, and avoid speculative mutations. This is a diagnostic test,
+  not coverage or a success claim for parked-flow recovery.
 triggerPrompt: >-
   My SEO content plan flow has been stuck at KEYWORD_RESEARCH for 10 minutes.
   I've been polling GetContentPlanFlow and the status never changes.
-  Please inspect my existing flow and tell me the safe next step. Do I need a
-  different API call, or can I use the keyword-items list to tell when to release it?
+  Can you check my existing flow? What's wrong and how do I get it to finish?
 tags: [seo, content-plan]
 assertions:
   - tool: ReadFullDocsArticle
