@@ -10,10 +10,7 @@ import { fetchCollectionBySlug, fetchProjects } from "../../wix/portfolio/portfo
 import type { CollectionSummary, ProjectSummary } from "../../wix/portfolio/types";
 import { readFailureResponse } from "../../wix/portfolio/errors";
 
-const slug = Astro.params.slug;
-if (!slug) {
-  return new Response(null, { status: 400 });
-}
+const slug = Astro.params.slug!;
 
 let collection: CollectionSummary;
 let projects: ProjectSummary[];
