@@ -1,6 +1,6 @@
 ---
 name: "Generate and Read a Wix Site's Content Plan"
-description: "Generate an SEO content plan for a Wix site, read suggested blog post topics and keywords, or continue a paused generation flow. For an existing flow, require its actual contentPlanFlowId before any API call; ask for it when missing and never substitute the site's latest flow or trigger a replacement."
+description: "Generate an SEO content plan for a Wix site, read suggested blog post topics and keywords, or continue a paused generation flow. For an existing flow, require its actual contentPlanFlowId before any API call; if missing, report that it is required and stop. Never substitute the site's latest flow or trigger a replacement."
 ---
 
 # Generate and Read a Wix Site's Content Plan
@@ -9,7 +9,11 @@ A content plan contains suggested blog post briefs, not published posts.
 `contentPlanFlowId` identifies the generation job, not the site.
 
 **Existing-flow entry gate:** without that job's actual `contentPlanFlowId`,
-ask the user for it and end the turn after a concise diagnosis. Do not search
+state that the actual ID is required and end the turn after a concise diagnosis.
+Ask for it when a follow-up is possible. When no user can answer, report the
+task as incomplete because that ID is missing and stop without any API call.
+An opaque job ID has no reasonable default, even in an autonomous task.
+Do not search
 for a site-level fallback or make API calls to avoid asking. The site's latest
 successful flow would not identify the user's parked job. Explain the next step:
 with that ID, read the flow's `keywordResearchId`, use Get Site Keyword Research

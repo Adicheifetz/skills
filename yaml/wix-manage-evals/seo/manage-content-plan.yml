@@ -1,7 +1,7 @@
 name: seo/manage-content-plan
 description: >-
   Verifies troubleshooting of an existing keyword-research flow without its ID:
-  request the actual identifier before calls, distinguish flow stage from matching
+  identify the missing actual identifier and stop before calls, distinguish flow stage from matching
   research readiness, and explain how to safely continue the same job.
 triggerPrompt: >-
   My SEO content plan flow has been stuck at KEYWORD_RESEARCH for 10 minutes.
@@ -24,7 +24,10 @@ assertions:
       contract, not exact wording or an exhaustive recital of later branches.
       The actual flow ID is absent, so do not require an API call or completed
       recovery in this turn. Score 7-8 when all core outcomes are present:
-      - Ask for the actual contentPlanFlowId before any API execution; no guessed
+      - Identify the missing actual contentPlanFlowId and stop before any API
+        execution. Request it if a follow-up is possible; in a non-interactive
+        run, explicitly report incomplete because the actual ID is required.
+        Either must preserve the same no-call boundary. No guessed
         ID, site-ID substitution, latest-flow fallback or replacement trigger.
       - Explain that KEYWORD_RESEARCH means research has started and may still
         run; elapsed time alone proves neither readiness nor failure.
@@ -36,7 +39,7 @@ assertions:
         still KEYWORD_RESEARCH; CONTENT_PLAN/SUCCESS skips release.
       Score below 7 for generic caution without the direct matching-research
       check and release prerequisite, a false claim that no public status read
-      exists, omission of the actual-ID request, premature/repeated release,
+      exists, omission of the missing actual-ID prerequisite, premature/repeated release,
       replacement triggers, guessed-ID execution, indefinite polling or promised
       completion. Score 9-10 for concise actionable guidance and relevant
       428/unsupported-read handling. Do not require literal service labels,
@@ -59,7 +62,8 @@ assertions:
       Judge the path and efficiency, not the correctness checklist again.
       Score 8+ for required runtime/bootstrap and recipe reads, no unnecessary
       discovery or API execution, and a concise focused follow-up for the actual
-      flow ID with the next action explained. Required reads are not friction.
+      flow ID (or an incomplete report naming that missing ID when no follow-up
+      is possible) with the next action explained. Required reads are not friction.
       Penalize redundant docs/schema searches, repeated recipe reads, API attempts
       before the ID arrives, distracting placeholder examples, unrelated questions
       and repetitive digressions. Necessary recovery explanation is not an extra
