@@ -974,6 +974,10 @@ function renderCandidate(c, intent, rel) {
   if (!ns) out.push(`// ${c.name} is not exported from a public package root; check its wrapper's subpath exports`);
   else if (c.ns.installed === false) out.push(`// ${c.ns.from} is not installed (only pulled in by another package): npm i ${c.ns.from}`);
   out.push(ns ? `import { ${ns} } from '${c.ns.from}';` : `import * as sdk from '${c.name}';`);
+  // Before the methods: a long method list must not push the declaration file
+  // past an agent's `| head`.
+  if (r.type) out.push(`  type ${r.type.name}  ${rel(r.type.file)}:${r.type.line}`);
+  out.push(`  package ${r.package}@${r.version}`);
   const shape = shapeFor(r, ns, intent);
   if (shape.length) out.push(`shape ${shape[0]}`, ...shape.slice(1).map((l) => `      ${l}`));
   const kinds = INTENTS[intent];
@@ -1019,8 +1023,6 @@ function renderCandidate(c, intent, rel) {
   } else if (r.events.length) {
     out.push(`  events: ${r.events.map((e) => e.name).join(', ')}`);
   }
-  if (r.type) out.push(`  type ${r.type.name}  ${rel(r.type.file)}:${r.type.line}`);
-  out.push(`  package ${r.package}@${r.version}`);
   return out;
 }
 

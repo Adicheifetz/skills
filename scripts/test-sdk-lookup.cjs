@@ -242,6 +242,14 @@ test('the scope says where to find it, the other methods say how to see them, th
   assert.doesNotMatch(out, /sdk-index/);
 });
 
+test('the entity type and package lines come right after the import, before the methods a | head can cut', () => {
+  const lines = run('contacts', '--intent', 'write').out.split('\n');
+  const at = lines.indexOf("import { contactsV5 } from '@wix/crm';");
+  assert.ok(at >= 0);
+  assert.match(lines[at + 1], /^ {2}type Contact {2}\S+:\d+$/);
+  assert.match(lines[at + 2], /^ {2}package @wix\/auto_sdk_crm_contacts-v-5@/);
+});
+
 test('an event shows its scope IDs, and a package whose wrapper is not installed gets the install command', () => {
   const { code, out } = run('refunds', '--intent', 'event');
   assert.equal(code, 0);
