@@ -161,6 +161,32 @@ siteSetup:
 - `bootstrap.steps` — ordered HTTP calls run against the new site before the agent runs. They are fail-fast: a non-2xx step fails the run.
 - Do **not** use a `{{site-id}}` run variable in `triggerPrompt` together with `siteSetup` — the provisioned site supplies the id.
 
+#### Passing values between bootstrap steps
+
+Bootstrap captures each successful step's JSON response body. Later steps can reference those values in their `url` and string values inside `body`; no capture configuration or extra YAML fields are needed.
+
+| Placeholder | Value |
+| --- | --- |
+| `{{siteId}}` | The provisioned site's ID. |
+| `{{prev.<path>}}` | A value from the immediately preceding step's response body. |
+| `{{steps.N.<path>}}` | A value from step `N`'s response body, using zero-based step indexes. |
+
+Paths use dot notation; numeric path segments index arrays. For example, `{{steps.0.results.0.item.id}}` reads the first result's item ID from the first step. Count every bootstrap step, including app installation, when choosing `N`.
+
+For example, if step 0 installs Forms and step 1 creates a form whose response is `{"form":{"id":"generated-form-id"}}`, a subsequent Create Submission step can use this body fragment alongside its submission answers:
+
+```yaml
+body:
+  submission:
+    formId: "{{steps.1.form.id}}"
+```
+
+If submission creation immediately follows form creation, `"{{prev.form.id}}"` is equivalent. For multiple submissions to the same form, keep using `"{{steps.1.form.id}}"`: after the first submission, `prev` refers to that submission's response. A server-generated, read-only form ID therefore does not prevent seeding related submissions. See [Create Form](https://dev.wix.com/docs/api-reference/crm/forms/form-schemas/create-form) and [Create Submission](https://dev.wix.com/docs/api-reference/crm/forms/form-submissions/create-submission) for the full request contracts.
+
+References must resolve to a string, number, or boolean. A body value consisting entirely of one placeholder preserves that scalar's JSON type; embedding it in a longer string produces text. Values substituted into URLs are URL-encoded. Objects, arrays, nulls, missing paths, and references to steps that have not run cause a templating failure and stop bootstrap before the dependent HTTP call. Unknown placeholder names are left unchanged, so check spelling carefully.
+
+These references are resolved within bootstrap steps; they do not expose captured responses as variables in `triggerPrompt`.
+
 ## Adding a Wix App Eval Scenario
 
 Every `wix-app` skill change should be covered by an **eval scenario** — a YAML file describing a realistic build request and how to verify the agent handled it. `wix-app` scenarios are the **source of truth** in the repo and sync to EvalForge on merge (see [wix-app scenarios: sync on merge](skill-evaluation.md#wix-app-scenarios-sync-on-merge)); they're selected by **tag**.
