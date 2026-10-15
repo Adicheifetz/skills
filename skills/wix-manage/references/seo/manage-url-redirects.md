@@ -1,6 +1,6 @@
 ---
 name: "Manage URL Redirects on a Wix Site"
-description: "Retrieve, create, and delete URL redirects on a Wix site using the public SEO Redirects API. Covers exact and group redirects, language-scoped redirects for multilingual sites, batches of up to 500, and the change flow for a redirect that already exists. This API has no query, search, or update method: List Redirects is the only read-many. Redirects do not chain, so creating one that points at a path another redirect starts from permanently deletes that other redirect; list and check before every write."
+description: "Retrieve, create, and delete URL redirects on a Wix site using the public SEO Redirects API. Covers exact and group redirects, language-scoped redirects for multilingual sites, bulk creates of up to 100 and bulk deletes of up to 500, and the change flow for a redirect that already exists. This API has no query, search, or update method: List Redirects is the only read-many. Redirects do not chain, so creating one that points at a path another redirect starts from permanently deletes that other redirect; list and check before every write."
 ---
 
 # Manage URL Redirects on a Wix Site
@@ -71,6 +71,12 @@ directly - do not go looking for the shapes in the docs first.
 | Delete Redirect | `DELETE /redirects/{redirectId}` - empty response |
 | Bulk Create Redirects | `POST /bulk/redirects/create` |
 | Bulk Delete Redirects | `POST /bulk/redirects/delete` |
+
+**`POST /redirects` is not Create Redirect.** It looks like the standard create
+path, but it is not part of this API and rejects a `{ "redirect": ... }` body
+with a 400. Create one redirect with `POST /create-redirect` and many with
+`POST /bulk/redirects/create`. Do not build any other path from the method
+names: `/list-redirects` and `/redirects/query` return 404.
 
 Create Redirect takes the redirect nested under `redirect`. `options` and
 `language` are optional, `id` only when preserving an existing redirect's
@@ -185,7 +191,7 @@ count as the same path.
 
 **There is no query endpoint and no search endpoint.** Most Wix APIs have one, so
 this is the second place an agent goes wrong. Do not call, construct, or go
-looking for `POST /v1/redirects/query`, a `/search` path, or any filtered variant:
+looking for `POST /v1/redirects/query`, `/list-redirects`, a `/search` path, or any filtered variant:
 they do not exist, and trying one wastes a turn and returns nothing useful.
 
 - **List Redirects** returns every redirect on the site in one response. It takes
@@ -213,8 +219,9 @@ redirect is not in effect, and if the create fails the old redirect is gone.
 
 ## Batches
 
-**Bulk Create Redirects** and **Bulk Delete Redirects** take 1 to 500 items and
-report each one separately **inside a successful response**:
+**Bulk Create Redirects** takes 1 to 100 redirects and **Bulk Delete Redirects**
+takes 1 to 500 IDs. A larger list is rejected as a whole with a 400, so split it
+first. Both report each item separately **inside a successful response**:
 
 - Read every outcome from `results[].itemMetadata`, matched to your request by
   `originalIndex`. A failed item carries `error.code`, such as `FROM_URL_EXISTS`
@@ -224,6 +231,28 @@ report each one separately **inside a successful response**:
   List Redirects to find out. Never report them as successes.
 - A malformed request, such as an empty list, is rejected as a whole with a 400
   and returns no per-item results.
+
+There is no import endpoint. To migrate a list of old URLs, such as a CSV from
+another platform, follow this path and nothing else:
+
+1. Parse the whole list before any call. Skip the header row, trim whitespace,
+   and drop exact duplicate rows. Each row is one exact redirect unless the user
+   asked for a whole section.
+2. Call **List Redirects** once and run the checks above against every row. If
+   either check matches any row, the same rule applies as for a single create:
+   name every row and every existing redirect at stake, end your turn without
+   writing, and continue only after the user answers. A row whose `to` equals an
+   existing redirect's `from` is the dangerous one - Bulk Create deletes that
+   redirect with no error to catch afterwards. If nothing matched, continue in
+   the same turn.
+3. Split the rows into chunks of 100 and call **Bulk Create Redirects** once per
+   chunk, in order. 250 rows is three calls: 100, 100, then 50.
+4. Read each chunk's `results[].itemMetadata` and keep a running count. Never
+   delete a redirect that reported success in order to create it again, and
+   never resend a chunk that succeeded. A success with no `id` means the same
+   redirect was already on the site, not that the write was lost.
+5. Report the total from those results. Call List Redirects again only if
+   `bulkActionMetadata.undetailedFailures` was not `0`.
 
 Two more sharp edges to report truthfully:
 

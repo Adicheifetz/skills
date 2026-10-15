@@ -4,6 +4,9 @@ description: "Changes a Wix form that already exists, with Form Schemas v4 `PATC
 ---
 # RECIPE: Update a Wix Form
 
+> These calls need the Wix Forms app on the site (`appDefId` `225dd912-7dea-4738-8688-4b8c6955ffc2`); a `428`, a `400` naming the app, or an empty result on a site that should have content means it is not there. [List Installed Apps](../app-installation/list-installed-apps.md) shows what the site has; [Install Wix Apps](../app-installation/install-wix-apps.md) adds it by that id.
+
+
 > **Standard call shape (every curl below).** The `<AUTH>` placeholder is shorthand for `Authorization: Bearer <TOKEN>` only. Body-bearing requests also need `Content-Type: application/json`. Send `wix-site-id: <SITE_ID>` when the token is account-scoped.
 
 Change what a form collects — **add a field, relabel one, tighten a rule, reorder, retire one** — on a form that already exists. **Composing the field itself is not here**: [About Form Fields](https://dev.wix.com/docs/api-reference/crm/forms/form-schemas/about-form-fields) owns the `identifier` / `inputType` / `componentType` table and the options/enum shapes, and [Create Form](./create-form.md) § Silent breakers apply to an added field exactly as to a created one.
@@ -13,6 +16,8 @@ Change what a form collects — **add a field, relabel one, tighten a rule, reor
 ---
 
 ## The call
+
+**No `formId` yet** ("my contact form")? List the forms and pick it by `name`: `GET https://www.wixapis.com/form-schema-service/v4/forms?namespace=wix.form_app.form&fieldsets=METADATA` returns only names and IDs. That call skips disabled forms; if the form isn't there, call again with `&enabled=false`.
 
 ```bash
 # 1 · read the form back: you need its current revision, and every field you intend to keep
@@ -37,6 +42,7 @@ curl -X PATCH \
 
 - **⚠️ `namespace` is a REQUIRED query parameter on the read, and this is what a revise run trips over.** Without it the read returns `400 namespace has size 0, expected 10 or more, namespace must not be empty` — a violation naming a *field*, so it reads like a body problem. Fix the call, don't reshape the payload. (The filter on `POST .../v4/forms/query` needs it too.)
 - **The read-back is the body.** Apply your change to what the `GET` returned and send that as `form`. `namespace` is **immutable** and travels along; **there is no `fieldMask`**, and no `revision` outside `form` — inventing either is a silent partial write.
+- **⚠️ Delete the legacy `fields` array before you send.** The read-back carries `fields` (the old field list) next to `formFields`. Send both and the old list wins: the `PATCH` returns `200` and bumps `revision`, but a field you added only to `formFields` is dropped, and only its layout item is kept. Spreading the whole form (`{ ...form, formFields }`) does exactly this. Remove `fields` and `deletedFields` first: `const { fields, deletedFields, ...body } = form`.
 - **⚠️ Append to `formFields`; never rebuild the entries you read.** `[...form.formFields, newField]` works. Mapping the array to "clean up" each field — dropping `fieldType`, re-shaping an options block — fails with `fieldType cannot be provided with any these fields: input_options, display_options` on **every** field at once. The read-back's field objects are already a valid write shape: pass them through untouched and touch only the one field you are changing.
 - **`formFields` is replaced wholesale.** Wix: *"Any field that's missing from the array you send is moved to `deletedFormFields`, so resend every field you want to keep."* Same for `steps[].layout` — miss an item and that field goes unplaced, which renders empty. Drops are recoverable from `deletedFormFields`, but nothing announces them.
 - **A stale `revision` is rejected** — re-`GET` and re-apply; never guess or increment it.
@@ -105,6 +111,7 @@ Then hand back the dashboard links ([Forms Dashboard Navigation](./forms-dashboa
 | `fieldType cannot be provided with any these fields: input_options, display_options` — on every field | The read-back's `formFields` were re-mapped or "cleaned" before sending | Send the fields exactly as read and append the new one: `[...form.formFields, newField]` |
 | `inputType enum must be in [UNKNOWN_INPUT_TYPE, STRING, NUMBER, …]` | An invented `inputType` such as `ENUM` (with an `enumOptions` block) for a choice field | A dropdown or radio is `inputType: "STRING"` with `stringOptions.componentType`; multi choice is `ARRAY` |
 | The `PATCH` is rejected for a `revision` mismatch | Someone (or an earlier call) updated the form since your read | Re-`GET` and re-apply the change; never increment the revision yourself |
+| The `PATCH` returns `200` and bumps `revision`, but the new field is missing from the read-back (its layout item is there) | The body still carried the legacy `fields` array from the read-back, and the server applied that old list | Remove `fields` and `deletedFields` from the body, re-`GET`, and send again. Don't retry the same body |
 | Fields that were on the form are gone after the update | `formFields` was sent partial — the omitted fields moved to `deletedFormFields` | Re-send them in a further `PATCH`, from `deletedFormFields` in the read-back; always send the whole array |
 | Surviving fields render empty for the owner | `steps[].layout` was sent without their items | Re-send every layout item, including `SUBMIT_BUTTON`'s; re-verify with `/summary` |
 | The added dropdown/radio reads back as a text input with `textInputOptions` | `identifier` was `TEXT_INPUT` rather than the choice kind — `componentType` alone doesn't route the renderer | Set `identifier` to the choice kind and re-send. Deleting and re-adding the field with the same `identifier` reproduces it ([Create Form](./create-form.md) § Choice fields) |
@@ -115,6 +122,7 @@ Then hand back the dashboard links ([Forms Dashboard Navigation](./forms-dashboa
 
 ## Related Documentation
 
+- [Read Forms and Submissions](./read-forms-and-submissions.md) — finding the form to update when you have no `formId` yet
 - [Create Form](./create-form.md) — composing fields, the identifier table, choice fields, the layout rules, plan caps
 - [Forms Dashboard Navigation](./forms-dashboard-navigation.md) — the builder and submissions links to hand back
 - [Update Form](https://dev.wix.com/docs/api-reference/crm/forms/form-schemas/update-form) — the `PATCH` contract and its replace semantics
