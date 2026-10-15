@@ -10,6 +10,8 @@ description: "Reads a site's Wix forms and the submissions visitors sent to them
 
 List a site's forms, find one, and read the submissions sent to it. The usual order is **find the form first, then query its submissions by `formId`**. Every call here is a read — nothing on the site changes, so no confirmation is needed.
 
+This recipe gives every URL, filter field and response field these reads need, including where each answer's label is (STEP 5). Call the APIs from it directly. Search the docs or the API spec only for a field it doesn't cover.
+
 ---
 
 ## STEP 1 · Know the namespace — never guess it
@@ -242,7 +244,40 @@ A submission's answers are in its `submissions` object, keyed by each field's **
 "submissions": { "email_1923": "jane@example.com", "short_answer_7b5c": "Hello" }
 ```
 
-The targets are not labels. To show the user readable answers, read the form once (Get Form) and match each `formFields[].inputOptions.target` to the label inside that field's `inputOptions`, for example `stringOptions.textInputOptions.label`.
+The targets are not labels. To show the user readable answers, read the form once (Get Form) and match each `formFields[].inputOptions.target` to that field's label.
+
+**Where the label is.** It sits 2 levels below `inputOptions`, at `inputOptions.<inputType>Options.<componentType>Options.label`. Both names are the enum value in camelCase plus `Options`:
+
+| Field | Label path |
+|---|---|
+| Short or long answer, email | `inputOptions.stringOptions.textInputOptions.label` |
+| Phone | `inputOptions.stringOptions.phoneInputOptions.label` |
+| Dropdown | `inputOptions.stringOptions.dropdownOptions.label` |
+| Single choice | `inputOptions.stringOptions.radioGroupOptions.label` |
+| Number | `inputOptions.numberOptions.numberInputOptions.label` |
+| Multiple choice | `inputOptions.arrayOptions.checkboxGroupOptions.label` |
+| Checkbox | `inputOptions.booleanOptions.checkboxOptions.label`: a rich content object, not a string |
+
+So you don't need to look the path up per field type. Take the first string `label` under `inputOptions`, and fall back to the target:
+
+```javascript
+function labelsByTarget(form) {
+  const labels = {};
+  for (const field of form.formFields || []) {
+    const input = field.inputOptions;
+    if (!input?.target) continue;
+    let label;
+    for (const typeOptions of Object.values(input)) {
+      if (!typeOptions || typeof typeOptions !== 'object') continue;
+      for (const componentOptions of Object.values(typeOptions)) {
+        if (typeof componentOptions?.label === 'string') label ??= componentOptions.label;
+      }
+    }
+    labels[input.target] = label || input.target;
+  }
+  return labels;
+}
+```
 
 **Return only what the user asked for.** A submission page can be large. Before you answer or pass results on, keep only the fields you need, such as `id`, `createdDate`, `contactId` and the few answers that matter. Use `fieldsets=METADATA` on List Forms for the same reason.
 
