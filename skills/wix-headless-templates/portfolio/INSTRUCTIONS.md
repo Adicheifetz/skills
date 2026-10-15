@@ -295,10 +295,9 @@ Routes on Wix hosting: the host serves files only, so a clean route answers 404 
 - **Route not-found off `notFound`**, and surface `error` — a transient `null` is loading, not a 404.
 - **The gallery, collection and project routes are cached** on Wix's CDN for an hour, declared in
   `route-rules.json` (deploy wires them into `astro.config.mjs` with the adapter's `cacheWix()`
-  provider). Only 200s are stored; a release and any collection or project change refresh them. A
-  gallery item change doesn't: it shows within the hour, or at the next release. A cached render
-  is shared, so keep it to public data: per-visitor state stays in client islands. A new page
-  under a cached route is cached too.
+  provider). Only 200s are stored; a release and any change to the site's Wix data refresh them.
+  A cached render is shared, so keep it to public data: per-visitor state stays in client islands.
+  A new page under a cached route is cached too.
 - **Render `details` rows as given** (text or link per row); don't invent metadata.
 - **Gallery items render through `GalleryMedia`** (or `mediaElement` where it doesn't deploy) —
   never your own branch on `kind`.
