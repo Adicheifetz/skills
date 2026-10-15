@@ -26,10 +26,7 @@ export const wixMetadata = {
   },
 };
 
-const slug = Astro.params.slug;
-if (!slug) {
-  return new Response(null, { status: 400 });
-}
+const slug = Astro.params.slug!;
 
 // Behind Wix's proxy the request URL is internal — the real public page URL arrives on
 // x-wix-forwarded-url; the SEO service needs the public one.

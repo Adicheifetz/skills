@@ -12,10 +12,7 @@ import { fetchBlogCategories, fetchBlogTags, fetchTagBySlug } from "../../../wix
 import type { BlogCategory, BlogTag, PostPage } from "../../../wix/blog/types";
 import { readFailureResponse } from "../../../wix/blog/errors";
 
-const slug = Astro.params.slug;
-if (!slug) {
-  return new Response(null, { status: 400 });
-}
+const slug = Astro.params.slug!;
 
 let tag: BlogTag;
 let page: PostPage;
