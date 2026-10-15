@@ -9,9 +9,11 @@ triggerPrompt: >-
   How many submissions did my contact form get between October 1 and October 7, 2026?
 tags: [forms]
 maxTokens: 400000
-# Same seed as forms/latest-submissions, and the same limit: submissions can't be seeded, so the
-# right answer is 0 and the judges grade the date-range request in the tool-call trace. A closed
-# range with two named ends forces both bounds, so the $and rule is what gets tested.
+# Same seed as forms/latest-submissions: 3 contact form submissions and 1 newsletter submission,
+# chained to their forms with {{steps.N.form.id}}. The server stamps createdDate at run time,
+# which is always after the asked range, so the right answer is 0 while the all-time count is 3.
+# That catches an agent that answers with the total. A closed range with two named ends forces
+# both bounds, so the $and rule is what gets tested.
 siteSetup:
   mode: template
   templateId: blank-editor
@@ -89,6 +91,38 @@ siteSetup:
                   large:
                     items:
                       - { fieldId: c4668719-180a-4ffe-8c60-3dbc11a9843d, row: 0, column: 0, width: 12, height: 1 }
+      - label: seed contact form submission 1 of 3 (oldest)
+        method: post
+        url: https://www.wixapis.com/form-submission-service/v4/submissions
+        body:
+          submission:
+            formId: "{{steps.1.form.id}}"
+            submissions:
+              email_1923: alice.first@example.com
+      - label: seed contact form submission 2 of 3
+        method: post
+        url: https://www.wixapis.com/form-submission-service/v4/submissions
+        body:
+          submission:
+            formId: "{{steps.1.form.id}}"
+            submissions:
+              email_1923: ben.second@example.com
+      - label: seed contact form submission 3 of 3 (newest)
+        method: post
+        url: https://www.wixapis.com/form-submission-service/v4/submissions
+        body:
+          submission:
+            formId: "{{steps.1.form.id}}"
+            submissions:
+              email_1923: carla.third@example.com
+      - label: seed a Newsletter signup submission — it must not show up as a contact form submission
+        method: post
+        url: https://www.wixapis.com/form-submission-service/v4/submissions
+        body:
+          submission:
+            formId: "{{steps.2.form.id}}"
+            submissions:
+              email_c466: newsletter.only@example.com
 assertions:
   - tool: ReadFullDocsArticle
     params:
@@ -99,8 +133,10 @@ assertions:
     prompt: |
       The user asked how many submissions their contact form got between
       October 1 and October 7, 2026. The site has two forms in the wix.form_app.form namespace,
-      "Contact form" and "Newsletter signup". The contact form has no
-      submissions, so the correct answer is 0.
+      "Contact form" and "Newsletter signup". The contact form has 3
+      submissions and the newsletter form has 1, all created when this test
+      ran, which is after October 7, 2026. None fall in the asked range, so
+      the correct answer is 0.
 
       Pass if:
       - the agent found the "Contact form" ID from the site's forms, AND
@@ -118,7 +154,8 @@ assertions:
       - it answers 0 for that range.
 
       Fail if:
-      - it reports a number other than 0, OR
+      - it reports a number other than 0, such as 3 (the contact form's
+        all-time total) or 4 (every submission on the site), OR
       - its final query has only one bound, so the range is open-ended, OR
       - it answers with Count Submissions' all-time totalCount as if it were
         the 7-day count, OR

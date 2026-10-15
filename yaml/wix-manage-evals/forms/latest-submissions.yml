@@ -8,10 +8,10 @@ triggerPrompt: >-
   Show me the latest submissions to my contact form.
 tags: [forms]
 maxTokens: 600000
-# Two forms are seeded so the agent has to find the contact form's ID first. Submissions can't
-# be seeded: bootstrap steps can't pass the created form's ID to a later step, and a form's ID
-# is read-only. So the form has no submissions, and the judges grade the request the agent
-# built (visible in the tool-call trace) plus an honest "no submissions yet" answer.
+# Two forms are seeded so the agent has to find the contact form's ID first. The submission steps
+# reuse each form's returned ID with {{steps.N.form.id}} (step 1 = contact form, step 2 =
+# newsletter). The contact form gets 3 submissions in a known order, and the newsletter form
+# gets 1, so the judges can check both the order and that the agent filtered by formId.
 siteSetup:
   mode: template
   templateId: blank-editor
@@ -89,6 +89,38 @@ siteSetup:
                   large:
                     items:
                       - { fieldId: c4668719-180a-4ffe-8c60-3dbc11a9843d, row: 0, column: 0, width: 12, height: 1 }
+      - label: seed contact form submission 1 of 3 (oldest)
+        method: post
+        url: https://www.wixapis.com/form-submission-service/v4/submissions
+        body:
+          submission:
+            formId: "{{steps.1.form.id}}"
+            submissions:
+              email_1923: alice.first@example.com
+      - label: seed contact form submission 2 of 3
+        method: post
+        url: https://www.wixapis.com/form-submission-service/v4/submissions
+        body:
+          submission:
+            formId: "{{steps.1.form.id}}"
+            submissions:
+              email_1923: ben.second@example.com
+      - label: seed contact form submission 3 of 3 (newest)
+        method: post
+        url: https://www.wixapis.com/form-submission-service/v4/submissions
+        body:
+          submission:
+            formId: "{{steps.1.form.id}}"
+            submissions:
+              email_1923: carla.third@example.com
+      - label: seed a Newsletter signup submission — it must not show up as a contact form submission
+        method: post
+        url: https://www.wixapis.com/form-submission-service/v4/submissions
+        body:
+          submission:
+            formId: "{{steps.2.form.id}}"
+            submissions:
+              email_c466: newsletter.only@example.com
 assertions:
   - tool: ReadFullDocsArticle
     params:
@@ -99,7 +131,10 @@ assertions:
     prompt: |
       The user asked for the latest submissions to their contact form. The
       site has two forms in the wix.form_app.form namespace, "Contact form"
-      and "Newsletter signup". The contact form has no submissions yet.
+      and "Newsletter signup". The contact form has 3 submissions, created in
+      this order: alice.first@example.com, ben.second@example.com,
+      carla.third@example.com. The Newsletter signup form has 1 submission,
+      from newsletter.only@example.com.
 
       Pass if:
       - the agent found the "Contact form" ID by listing or querying the
@@ -111,13 +146,16 @@ assertions:
         with "namespace": "wix.form_app.form" INSIDE query.filter and the
         contact form's formId in the filter, AND
       - it sorted by createdDate DESC (fieldName "createdDate", order "DESC"), AND
-      - it told the user the contact form has no submissions yet.
+      - it showed the user the contact form's 3 submissions, newest first:
+        carla.third@example.com, then ben.second@example.com, then
+        alice.first@example.com.
 
       Fail if:
+      - it says the contact form has no submissions, OR
       - it reports submissions, names or answers that the API did not
         return, OR
-      - it reads the Newsletter signup form's submissions as the contact
-        form's, OR
+      - it lists newsletter.only@example.com as a contact form submission, OR
+      - it shows the submissions oldest first, OR
       - its only submissions query that succeeded had no createdDate sort,
         so "latest" was never asked for, OR
       - it created, updated or deleted any form or submission — the request
