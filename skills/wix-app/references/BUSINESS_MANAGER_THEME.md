@@ -14,47 +14,26 @@ npm install @wix/design-system@latest @wix/wix-ui-icons-common@latest
 
 The redesigned styles and matching icon set ship as a pair — update them together. An older `@wix/design-system` leaves a surface half-migrated however the providers are wired, since refinements ship continuously during the rollout.
 
-## 2. The wrapper — write this file once per app
+## 2. Use the provider the package exports — never write the defaults yourself
+
+**Do not hand-write the provider stack or the defaults object.** The values are Business Manager's, not yours, and a copy goes stale silently: three copies of this list existed across Wix in one month and they had already drifted apart in both directions. Import the provider instead, and pass it the props you would have passed `WixDesignSystemProvider`:
 
 ```tsx
-// src/extensions/dashboard/BusinessManagerTheme.tsx
-import type { FC, ReactNode } from 'react';
+import { BusinessManagerThemeProvider } from '@wix/patterns/provider';
 import { i18n } from '@wix/essentials';
-import {
-  WixDesignSystemProvider,
-  WixDesignSystemIconThemeProvider,
-  WixDesignSystemDefaultPropsProvider,
-  type WixDesignSystemDefaultProps,
-} from '@wix/design-system';
-import { IconThemeProvider } from '@wix/wix-ui-icons-common/core';
 import '@wix/design-system/styles.global.css';
 import '@wix/design-system/themes/odeditor.global.css';
 
-const BUSINESS_MANAGER_DEFAULTS: WixDesignSystemDefaultProps = {
-  Button: { size: 'small', skin: 'dark' },
-  IconButton: { size: 'small', skin: 'dark', priority: 'tertiary' },
-  TextButton: { size: 'small', skin: 'standard' },
-  Input: { size: 'small' },
-  Search: { size: 'small', border: 'standard' },
-};
-
-export const BusinessManagerTheme: FC<{ children: ReactNode; locale?: string }> = ({
-  children,
-  locale = i18n.getLocale(),
-}) => (
-  <WixDesignSystemProvider locale={locale}>
-    <WixDesignSystemIconThemeProvider>
-      <IconThemeProvider theme="odeditor">
-        <WixDesignSystemDefaultPropsProvider defaults={BUSINESS_MANAGER_DEFAULTS}>
-          {children}
-        </WixDesignSystemDefaultPropsProvider>
-      </IconThemeProvider>
-    </WixDesignSystemIconThemeProvider>
-  </WixDesignSystemProvider>
-);
+<BusinessManagerThemeProvider locale={i18n.getLocale()}>
+  {/* WixPatternsProvider and the page go inside */}
+</BusinessManagerThemeProvider>;
 ```
 
-Duplicating these four providers per entry file is how one surface silently drifts out of the theme. Each piece earns its place:
+The two stylesheet imports stay in the app's entry file: global CSS order belongs to the bundler, and a bare CSS import inside a library can be tree-shaken.
+
+**If the installed `@wix/patterns` has no such export, upgrade it rather than writing the wrapper by hand.** The provider is moving to `@wix/design-system`, which is where the defaults belong; when it lands there, import it from `@wix/design-system` and the patterns one becomes a re-export.
+
+What the provider applies, and why each piece is needed:
 
 | Piece | Without it |
 | --- | --- |
@@ -117,7 +96,7 @@ Everything you style yourself — which `--wds-*` token replaces a hardcoded val
 
 ## 7. Verify
 
-- The entry file wraps the page in `BusinessManagerTheme`, and that file imports both stylesheets and nests all four providers in order.
+- The entry file wraps the surface in `BusinessManagerThemeProvider` from the package, and imports both stylesheets itself. No hand-written provider stack, no local defaults object.
 - Every icon comes from `@wix/wix-ui-icons-common/lazy` (not the package root, and not `/lazy/system`).
 - `grep -rn "style={{" src/` and `grep -rn "#[0-9A-Fa-f]\{3,6\}" src/` return nothing for the page's own files, or only lines carrying a justification comment.
 - In devtools, a component's colours resolve from `--wds-*` properties. A literal means that element is still custom-styled.
