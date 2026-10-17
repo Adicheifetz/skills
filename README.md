@@ -10,7 +10,7 @@ Agent skills for building Wix app extensions, managing Wix business solutions, d
 
 ### Claude Code Plugin
 
-In [Claude Code](https://docs.anthropic.com/en/docs/claude-code), run: 
+In [Claude Code](https://docs.anthropic.com/en/docs/claude-code), run:
 
 ```bash
 /plugin marketplace add wix/skills
@@ -63,7 +63,7 @@ npx skills add wix/skills -g
 | [wix-headless](skills/wix-headless/SKILL.md) | Connect Wix business services to a headless frontend (SDK + Wix CLI), and optionally build & host the site | Setting up a Wix Headless backend or adding Wix business features (Stores, Bookings, CMS, Blog, Events, Forms, Members, Restaurants, Portfolio, Pricing Plans) — install apps, seed content, and produce an SDK-integration guide; for managed projects also scaffold a new site (create) or wire an existing design (connect), then build and release. Works across managed, self-managed, and stripe project types |
 | [wix-vibe-headless](skills/wix-vibe-headless/SKILL.md) | Connect an existing front end to Wix over client-only REST | Wiring a vibe-coded / HTML / Vite app to a live Wix site (storefront, bookings, blog, events, portfolio, restaurants, CMS, pricing plans) from the browser with a public `WIX_CLIENT_ID` — no SDK, no backend |
 | [wix-docs](skills/wix-docs/SKILL.md) | Look up the Wix API/SDK docs (shared fallback) | Confirming an exact Wix endpoint, method schema, field, or enum before writing code — `curl` doc-search + the `.md`-twin trick, or the Wix MCP tools. Referenced by the other skills as their docs-lookup fallback |
-| [replatform](replatform/README.md) | Migrate sites from WordPress and other platforms into Wix | Migrating an exiting business from another platform into Wix. Both backend data and website. `npx skills add wix/skills/replatform` |
+| [wix-replatform](wix-replatform/README.md) | Migrate sites from WordPress and other platforms into Wix | Migrating an existing business from another platform into Wix. Both backend data and website. `npx skills add wix/skills/wix-replatform` |
 
 ## Supported Agents
 
@@ -91,19 +91,20 @@ When a major bump is required (a breaking change in the underlying `wix-cli`), t
 
 ## Releasing
 
-Run the [`release-bump`](.github/workflows/release-bump.yml) workflow from the **Actions** tab and pick a `version_strategy`. The rest is automatic — the bump PR auto-merges once checks pass and [`release.yml`](.github/workflows/release.yml) publishes to npm via Trusted Publishing.
+Run the [`release-bump`](https://github.com/wix-private/ax-skills/actions/workflows/release-bump.yml) workflow from the **Actions** tab of `wix-private/ax-skills` and pick a `version_strategy`. The rest is automatic — the bump PR auto-merges once checks pass, the sync carries the new version to `wix/skills`, and [`release.yml`](https://github.com/wix/skills/blob/main/.github/workflows/release.yml) there publishes to npm via Trusted Publishing.
 
 ## Serving (`www.wix.com/skills`)
 
-Besides the npm package, skills are served as raw markdown / `.tgz` at `https://www.wix.com/skills/<name>` (also `dev.wix.com/skills`), directly from this repo's `main` branch with no build step. Responses are cached, so a merge to `main` reflects there within a few minutes.
+Besides the npm package, skills are served as raw markdown / `.tgz` at `https://www.wix.com/skills/<name>` (also `dev.wix.com/skills`), directly from the `main` branch of `wix/skills` with no build step. Responses are cached, so a change reflects there within a few minutes of reaching that branch.
 
 ## Contributing
 
+The source of truth for these skills is **[`wix-private/ax-skills`](https://github.com/wix-private/ax-skills)** (default branch `master`). The public repository, [`github.com/wix/skills`](https://github.com/wix/skills), is a read-only mirror of it: every merge to `ax-skills` master is synced there automatically, and pull requests opened against the mirror are not merged.
+
+- **Wix employees:** open pull requests in `wix-private/ax-skills`. Review, evals and the skill-review check run there.
+- **Everyone else:** open an issue in `wix/skills` describing the change. A maintainer ports accepted changes to the source.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on adding new skills.
-
-### Eval Token Budgets
-
-Eval scenarios under `yaml/wix-manage-evals/` may define a top-level `maxTokens` value. The GitHub Actions eval gate compares that budget against the PR run's total tokens for the scenario and fails the PR check when the budget is exceeded. This gate-owned field is separate from `llm_judge.maxTokens`, which only configures the judge assertion.
 
 ## License
 

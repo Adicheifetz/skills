@@ -1,6 +1,6 @@
 ---
 name: wix-manage
-description: "REST recipes to configure and manage a Wix site's business solutions — stores, bookings, payments, CMS, and more. Open the matching recipe for the exact endpoint, method, and payload before calling — never guess a Wix API, never write Wix dashboard URL from memory. Routes to: automations, stores, bookings, get-paid, CMS, contacts, forms, media, app-installation, custom-apps, pricing-plans, restaurants, ricos rich-content, sites, blog, calendar, domains, events, site-properties, ecommerce, marketing, google-ads, google-business-profile, analytics, accessibility, seo, dashboard-navigation."
+description: "REST recipes to configure and manage a Wix site's business solutions — stores, bookings, payments, CMS, and more. Open the matching recipe for the exact endpoint, method, and payload before calling — never guess a Wix API, never write Wix dashboard URL from memory. Routes to: automations, stores, bookings, get-paid, CMS, contacts, forms, media, app-installation, custom-apps, pricing-plans, restaurants, ricos rich-content, sites, collaborators, blog, calendar, domains, events, site-properties, ecommerce, marketing, google-ads, google-business-profile, analytics, accessibility, seo, dashboard-navigation."
 compatibility: Requires Wix REST API access (API key or OAuth).
 ---
 
@@ -47,7 +47,7 @@ Lists all apps installed on a site using Apps Installer API. Useful for verifyin
 Read and update SEO titles and tags at the right level. For "change my site's SEO title", clarify homepage, specific page, or page-type pattern before discovery or writes; site-level tags accept meta tags only, never titles. Discover item IDs and pattern variables, read before every full-replace write, and report resolved tags with their sources.
 
 ### [Manage URL Redirects on a Wix Site](references/seo/manage-url-redirects.md)
-"Retrieve, create, and delete URL redirects on a Wix site using the public SEO Redirects API. Covers exact and group redirects, language-scoped redirects for multilingual sites, batches of up to 500, and the change flow for a redirect that already exists. This API has no query, search, or update method: List Redirects is the only read-many. Redirects do not chain, so creating one that points at a path another redirect starts from permanently deletes that other redirect; list and check before every write."
+"Retrieve, create, and delete URL redirects on a Wix site using the public SEO Redirects API. Covers exact and group redirects, language-scoped redirects for multilingual sites, bulk creates of up to 100 and bulk deletes of up to 500, and the change flow for a redirect that already exists. This API has no query, search, or update method: List Redirects is the only read-many. Redirects do not chain, so creating one that points at a path another redirect starts from permanently deletes that other redirect; list and check before every write."
 
 ### [Generate and Read a Wix Site's Content Plan](references/seo/manage-content-plan.md)
 Generate an SEO content plan and read its blog post topics, or troubleshoot an existing content plan flow stuck at KEYWORD_RESEARCH while polling GetContentPlanFlow. Use this recipe for both generation and stalled-flow questions: it explains the intentional pause, the Create Content Plan release request, missing flow IDs, and the exact public API paths and response fields.
@@ -252,8 +252,11 @@ Routes discounts, coupons, sales and bundles to promotion recipes, and visual pr
 ### [Update Form](references/forms/update-form.md)
 "Changes a Wix form that already exists, with Form Schemas v4 `PATCH` — add a field to my form, add a dropdown, make a field required or optional, rename a label, reorder or retire a question. Covers reading the form back for its `revision` (and the required `namespace` query parameter), the whole-form body that a `PATCH` needs, the wholesale `formFields` replace that silently soft-deletes anything you omit, changing a field's component type in place, retiring a field that already has submissions, and the read-back that proves what was stored. Use whenever the form exists and the request changes what it collects; use Create Form when there is no form yet."
 
+### [Read Forms and Submissions](references/forms/read-forms-and-submissions.md)
+"Reads a site's Wix forms and the submissions visitors sent to them — what forms do I have, find a form by name, show the latest submissions, who filled in my contact form, how many submissions did I get last week, submissions from one contact, unread submissions. Covers finding the form's namespace instead of guessing it, where that namespace goes on each read, the Form Schemas and Form Submissions endpoints (and the look-alike URLs that 404), forms hidden from a default listing, the closed list of submission fields you can filter and sort by, date ranges, cursor paging, totals per form, and reading answers by field. Read-only; changing a form is Update Form, building one is Create Form."
+
 ### [Forms Dashboard Navigation](references/forms/forms-dashboard-navigation.md)
-"Builds direct links to Wix Forms dashboard pages on manage.wix.com. The paths are not guessable and appear in no API reference, so take them from here: under `https://manage.wix.com/dashboard/{metaSiteId}/`, the forms list is `wix-forms`, a form's builder is `wix-forms/form/{formId}`, and that form's submissions are `wix-forms/form/{formId}/submissions` — there is no site-wide submissions page, and nothing lives under `contacts/forms`, `forms`, `form-builder` or `wix-forms-and-payments` (the legacy app). Also standalone forms, and each Forms entity paired with its read API so you can fetch one and hand back a 'view it in your dashboard' link."
+"Builds direct links to Wix Forms dashboard pages on manage.wix.com. The paths are not guessable and appear in no API reference, so take them from here: under `https://manage.wix.com/dashboard/{metaSiteId}/`, the forms list is `wix-forms`, a form's builder is `wix-forms/form/{formId}`, and that form's submissions are `wix-forms/form/{formId}/submissions` — there is no site-wide submissions page, and nothing lives under `contacts/forms`, `forms`, `form-builder` or `wix-forms-and-payments` (the legacy app). Also standalone forms, and the dashboard link for each Forms entity; reading forms and submissions is Read Forms and Submissions."
 
 ---
 
@@ -390,13 +393,20 @@ Authoritative recipe for hand-authoring valid Ricos rich-content JSON (the richC
 
 ---
 
+## Collaborators
+
+### [Manage Site Collaborators](references/collaborators/manage-site-collaborators.md)
+Manages who has access to a Wix site as a collaborator (contributor) — finds the site's current collaborators, invites someone, removes a collaborator, and resends or revokes a pending collaborator invite. Use when the user wants to give someone access to the site, take it away, or follow up on an invitation that has not been accepted.
+
+---
+
 ## Sites
 
 ### [Create Site from Template](references/sites/create-site-from-template.md)
 Creates new Wix sites from templates using account-level APIs. Covers template search, site creation, and publishing. Not for headless sites.
 
 ### [Create Headless Site](references/sites/create-headless-site.md)
-Creates a Wix Headless site (headless business) with one account-level API call — site, Wix Business Solution apps, and a configured OAuth client.
+Creates a Wix Headless website: a site in the user's Wix account whose frontend is files uploaded to Wix hosting, with the Wix business backend behind it through APIs. The site is created and its pages put live by Upload a Website or HTML Files; a Wix Business Solution (a store, blog, bookings and more) is then integrated into it by the Wix Headless kit, from its cold start.
 
 ### [Manage OAuth Apps](references/sites/manage-oauth-apps.md)
 Create, read, update, and query OAuth apps for a Wix headless site. Each OAuth app's id is the client_id a frontend uses to mint anonymous visitor tokens and call Wix APIs.
@@ -417,7 +427,7 @@ Drive the Wix Site Import agent to migrate an existing store or site from anothe
 "Builds direct links to the account-level sites pages on manage.wix.com — the My Sites list (all sites in the account) and each site's own dashboard. Pairs the site list with the Query Sites read API. Use when the user asks where something is in the Wix dashboard, wants a direct link to a dashboard page, or you need a dashboard URL to include with the result of an API operation."
 
 ### [Upload a Website or HTML Files](references/sites/upload-static-site.md)
-Publish a user's ready-made website — an index.html, a static build, or a zip exported from an AI builder or any other tool — as a live Wix site. Covers every way to get there — publishing straight into the user's Wix account when you hold their identity, publishing anonymously with a save link when you don't, and handing the user the Wix Headless drop page, or releasing it as a Wix Headless project — and how to get the user's identity through the Wix CLI. Use whenever the user wants to upload, publish, deploy, or host their own HTML/CSS/JS as a NEW site, including files generated for them earlier in the conversation, or to update a site published this way (replace its files on the same site and URL). Not for migrating a live store/site from another platform by URL or from CSV exports (use Site Import), not for adding HTML or custom code into an existing Wix site, and not for uploading images or documents to a site's media files.
+Create and update a Wix Headless website by uploading its files — an index.html, a static build, a zip exported from an AI builder or any other tool, or pages you write for the user — as a live site in the user's Wix account. Covers every route: uploading with the user's identity (curl with a Wix CLI token, or the Wix MCP), publishing anonymously with a save link when you don't hold it, and the Wix Headless drop page; then updating the same site and URL, and connecting a Wix backend (stores, bookings, forms) through the headless skill. Use when the user wants to upload, publish, deploy or host HTML/CSS/JS as a new Wix site, their own or written for them, or to change a site published this way. Not for migrating a live store/site from another platform by URL or from CSV exports (use Site Import), not for adding HTML or custom code into an existing Wix site, and not for uploading images or documents to a site's media files.
 
 ---
 
@@ -454,16 +464,28 @@ Start here for existing Catalog V3 product updates, including digital products t
 ## Automations
 
 ### [Build and Manage Wix Automations](references/automations/build-and-manage-automations.md)
-Discover installed automation triggers and actions and inspect an automation’s current active status without changing site data.
+Inspect Wix automations and their on/off status, create linear automations from the site’s installed triggers and actions, and turn automations on or off on request.
 
 <details>
 <summary>Internal skills (loaded on demand by Build and Manage Wix Automations — do NOT use directly)</summary>
 
 - [Automations API Catalog](references/automations/api-catalog.md)
-  Discover installed automation triggers and actions and inspect their schemas through site-scoped public catalog APIs.
+  Discover site-specific triggers and actions, authenticate public Automation API calls, and choose the API for validation, persistence or catalog lookups.
+
+- [Automations Graph and Data Model](references/automations/automation-model.md)
+  Assemble builder-editable automation graphs with valid node relationships, namespaces and ancestor data access.
+
+- [Automations Trigger Configuration](references/automations/triggers.md)
+  Select and configure automation triggers, trigger filters and event payload schemas using the site catalog.
+
+- [Automations Action Configuration](references/automations/actions.md)
+  Configure app-defined automation actions from their input schemas and preserve supported existing action mappings.
+
+- [Automations Mapping Expressions](references/automations/bracket-expressions.md)
+  Write builder-compatible automation mapping expressions, literals and data references.
 
 - [Automations Activation Status](references/automations/activation-status.md)
-  Read an automation’s current ACTIVE or INACTIVE status and distinguish it from historical run outcomes.
+  Read an automation’s current ACTIVE or INACTIVE status, and activate or deactivate it when the user asks.
 
 </details>
 
