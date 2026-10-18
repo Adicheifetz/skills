@@ -18,14 +18,13 @@ The redesigned styles and matching icon set ship as a pair — update them toget
 
 **The values are Business Manager's, not yours.** A copy goes stale silently — three copies of this list existed across Wix in one month and had already drifted apart in both directions, and none matched the published guidance. So import the provider wherever one exists, and pass it the props you would have passed `WixDesignSystemProvider`.
 
-**Check the installed packages, in this order, and use the first that has it:**
+**Check the installed package before writing anything:**
 
 ```bash
 grep -r "BusinessManagerThemeProvider" node_modules/@wix/design-system/dist/types/index.d.ts
-grep -r "BusinessManagerThemeProvider" node_modules/@wix/patterns/dist/types/exports/provider/index.d.ts
 ```
 
-`@wix/design-system` is where it belongs and is the one to prefer; `@wix/patterns/provider` re-exports it for dashboard surfaces.
+`@wix/design-system` is the only place it lives — `@wix/patterns` does not define or re-export it, because the theme is not patterns' to own.
 
 ```tsx
 import { BusinessManagerThemeProvider } from '@wix/design-system';

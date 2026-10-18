@@ -50,7 +50,7 @@ Use `observeState()` from the Dashboard SDK to receive data from the host dashbo
 import { dashboard } from "@wix/dashboard";
 import { useEffect, useState, type FC } from "react";
 import { Card, Text } from "@wix/design-system";
-import { BusinessManagerThemeProvider } from "@wix/patterns/provider";
+import { BusinessManagerThemeProvider } from "@wix/design-system";
 
 const Plugin: FC = () => {
   const [params, setParams] = useState<Record<string, unknown>>({});

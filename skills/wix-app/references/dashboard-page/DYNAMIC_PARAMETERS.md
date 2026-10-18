@@ -156,7 +156,7 @@ Generate `src/extensions/dashboard/withProviders.tsx`:
 ```typescript
 import React from 'react';
 import { i18n } from '@wix/essentials';
-import { BusinessManagerThemeProvider } from '@wix/patterns/provider';
+import { BusinessManagerThemeProvider } from '@wix/design-system';
 
 export default function withProviders<P extends {} = {}>(Component: React.FC<P>) {
   return function DashboardProviders(props: P) {

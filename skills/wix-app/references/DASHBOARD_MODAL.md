@@ -37,7 +37,7 @@ Wrap the generated `<modal>.tsx` in `BusinessManagerThemeProvider`, at the root,
 ```tsx
 import type { FC } from 'react';
 import { CustomModalLayout } from '@wix/design-system';
-import { BusinessManagerThemeProvider } from '@wix/patterns/provider';
+import { BusinessManagerThemeProvider } from '@wix/design-system';
 import modalConfig from './<modal>.config';
 
 const Modal: FC = () => (
