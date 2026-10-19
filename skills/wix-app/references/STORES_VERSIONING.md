@@ -108,6 +108,28 @@ For the full table see the [Catalog V1 to V3 Migration Guide](https://dev.wix.co
 
 ---
 
+## Display SDK product images
+
+In the V3 SDK, `media.main.image` is a **string**, including Wix image URIs. The raw REST
+response can show an image object instead: `media.main.image.url` from that response is not
+the SDK access path. Pass the whole SDK image value to `toBrowserImageUrl` from
+[IMAGE_RENDERING.md](dashboard-page/IMAGE_RENDERING.md), then choose a fallback:
+
+```typescript
+import { productsV3 } from '@wix/stores';
+
+export function productImageUrl(product: productsV3.V3Product): string | undefined {
+  const main = product.media?.main;
+  return toBrowserImageUrl(main?.image)
+    || (main?.mediaType === 'IMAGE' ? toBrowserImageUrl(main.url) : undefined)
+    || toBrowserImageUrl(main?.thumbnail?.url);
+}
+```
+
+Use this mapping in both views. Collection thumbnails may prefer normalized `main.thumbnail.url`.
+A video's thumbnail is an image; its own `url` is not. Request
+`'THUMBNAIL'` in **both** list and detail calls; it is not returned by default.
+
 ## Webhooks
 
 **Subscribe to BOTH V1 and V3 webhooks** so your app handles every site.
