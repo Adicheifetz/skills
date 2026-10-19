@@ -10,6 +10,46 @@ Keep the source's image field type and original value when using schema-driven P
 collections or entity fields. Their image renderers handle the supported URI and structured
 image formats. Do not replace them with a custom WDS renderer just to show an image.
 
+## Editable images use Media Manager
+
+In an editable entity page, an image is a media field, not a text field containing its URL.
+Keep the schema's image editor when one is available. For SDK-backed forms, look up the
+installed Patterns image input before building a custom editor; its media picker may already
+provide the required behavior. A separate static preview above a URL input is not an image editor.
+
+Show the current image with a Replace action over it on hover and keyboard focus. Give the
+icon button an accessible name and tooltip. Clicking it opens the site's Media Manager for a
+single image. An empty value has an Add image action. Read-only views have no editing actions.
+Use a URL input only as an optional secondary action when the user requests linking by URL.
+
+If the installed Patterns components cannot provide this control, use WDS `ImageViewer` with
+its update/add actions wired to the dashboard host's picker:
+
+```typescript
+import { dashboard } from '@wix/dashboard';
+
+const { items } = await dashboard.openMediaManager({
+  category: 'IMAGE',
+  multiSelect: false,
+});
+const selected = items[0];
+```
+
+The host opens this modal; do not create a Dashboard Modal extension for Media Manager.
+See [openMediaManager](DASHBOARD_API.md#openmediamanager) for the returned file descriptor.
+Map the selected image to the source's documented writable image shape, keeping its original
+URI/metadata separate from the browser preview URL. An empty result or picker dismissal must
+leave the form value unchanged. Selection updates the form draft and preview; the existing
+entity Save action persists it, and Cancel discards it. Preserve unrelated gallery items and
+other entity data. Do not save just because the picker closed.
+
+When browser access is available, verify the hover/focus Replace action, that clicking it opens
+Media Manager, and that dismissing it leaves the existing image unchanged. Also verify that a
+selection updates the draft preview and that save/reload retains the selected image, using a
+test record or an explicitly authorized image change. Report any unverified interaction.
+
+Official API: [openMediaManager](https://dev.wix.com/docs/sdk/host-modules/dashboard/open-media-manager).
+
 ## Custom image rendering
 
 Read the source's image field declaration before mapping it. Select the image value, not the
