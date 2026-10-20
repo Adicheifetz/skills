@@ -28,18 +28,19 @@ its update/add actions wired to the dashboard host's picker:
 ```typescript
 import { dashboard } from '@wix/dashboard';
 
-const { items } = await dashboard.openMediaManager({
+const selection = await dashboard.openMediaManager({
   category: 'IMAGE',
   multiSelect: false,
 });
-const selected = items[0];
+const selected = selection?.items?.[0];
 ```
 
 The host opens this modal; do not create a Dashboard Modal extension for Media Manager.
 See [openMediaManager](DASHBOARD_API.md#openmediamanager) for the returned file descriptor.
 Map the selected image to the source's documented writable image shape, keeping its original
-URI/metadata separate from the browser preview URL. An empty result or picker dismissal must
-leave the form value unchanged. Selection updates the form draft and preview; the existing
+URI/metadata separate from the browser preview URL. Picker dismissal can return no result;
+do not destructure `items` before checking it. No result or an empty selection leaves the form
+value unchanged and shows no error. Selection updates the form draft and preview; the existing
 entity Save action persists it, and Cancel discards it. Preserve unrelated gallery items and
 other entity data. Do not save just because the picker closed.
 
