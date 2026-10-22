@@ -220,7 +220,7 @@ Use a Dashboard Modal for dialogs that neither write nor display a listed record
 | Draft template — start here for any dashboard page: finding, copying and adapting the package's page templates | [DRAFT_TEMPLATE.md](references/dashboard-page/DRAFT_TEMPLATE.md) |
 | The state object `useTableCollection()` returns | [TABLE_STATE.md](references/dashboard-page/TABLE_STATE.md) |
 | Finding the SDK method and field names behind a page | [DATA_SOURCES.md](references/dashboard-page/DATA_SOURCES.md) |
-| Display and edit images from any collection source — CMS, vertical SDKs, and custom data; Media Manager image replacement | [IMAGE_RENDERING.md](references/dashboard-page/IMAGE_RENDERING.md) |
+| Display and edit images from any collection source — CMS, vertical SDKs, and custom data; Patterns media inputs, host picker integration, and image URI extraction | [IMAGE_RENDERING.md](references/dashboard-page/IMAGE_RENDERING.md) |
 | Filter paths, WQL operators and cursor paging | [QUERY_AND_PAGING.md](references/dashboard-page/QUERY_AND_PAGING.md) |
 
 ---
